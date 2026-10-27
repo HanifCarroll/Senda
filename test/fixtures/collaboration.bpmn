@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_collaboration" targetNamespace="urn:experiment:bpmn">
+  <bpmn:collaboration id="Collaboration">
+    <bpmn:participant id="Pool_Designer" name="Designer" processRef="Designer" />
+    <bpmn:participant id="Pool_Client" name="Client" processRef="Client" />
+    <bpmn:messageFlow id="M_Proposal" sourceRef="Prepare" targetRef="Approve" name="Proposal" />
+    <bpmn:messageFlow id="M_Acceptance" sourceRef="Approve" targetRef="Wait" name="Acceptance" />
+  </bpmn:collaboration>
+  <bpmn:process id="Designer" name="Designer" isExecutable="false">
+    <bpmn:laneSet id="Lanes_Designer">
+      <bpmn:lane id="Sales" name="Sales">
+        <bpmn:flowNodeRef>Start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Prepare</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Wait</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Timer</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Remind</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>ReminderEnd</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Delivery" name="Delivery">
+        <bpmn:flowNodeRef>Book</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start" name="Inquiry received">
+      <bpmn:outgoing>F_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sendTask id="Prepare" name="Send proposal">
+      <bpmn:incoming>F_1</bpmn:incoming>
+      <bpmn:outgoing>F_2</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:receiveTask id="Wait" name="Receive acceptance">
+      <bpmn:incoming>F_2</bpmn:incoming>
+      <bpmn:outgoing>F_3</bpmn:outgoing>
+    </bpmn:receiveTask>
+    <bpmn:boundaryEvent id="Timer" name="After seven days" attachedToRef="Wait" cancelActivity="false">
+      <bpmn:outgoing>F_5</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerDefinition">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P7D</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:sendTask id="Remind" name="Send reminder">
+      <bpmn:incoming>F_5</bpmn:incoming>
+      <bpmn:outgoing>F_6</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="ReminderEnd" name="Reminder sent">
+      <bpmn:incoming>F_6</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:task id="Book" name="Book engagement">
+      <bpmn:incoming>F_3</bpmn:incoming>
+      <bpmn:outgoing>F_4</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="End" name="Engagement booked">
+      <bpmn:incoming>F_4</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:dataObject id="ProposalData" name="Proposal" />
+    <bpmn:dataObjectReference id="ProposalRef" name="Proposal" dataObjectRef="ProposalData" />
+    <bpmn:sequenceFlow id="F_1" sourceRef="Start" targetRef="Prepare" />
+    <bpmn:sequenceFlow id="F_2" sourceRef="Prepare" targetRef="Wait" />
+    <bpmn:sequenceFlow id="F_3" sourceRef="Wait" targetRef="Book" />
+    <bpmn:sequenceFlow id="F_4" sourceRef="Book" targetRef="End" />
+    <bpmn:sequenceFlow id="F_5" sourceRef="Timer" targetRef="Remind" />
+    <bpmn:sequenceFlow id="F_6" sourceRef="Remind" targetRef="ReminderEnd" />
+  </bpmn:process>
+  <bpmn:process id="Client" name="Client" isExecutable="false">
+    <bpmn:startEvent id="ClientStart" name="Proposal received">
+      <bpmn:outgoing>C_F_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Approve" name="Approve proposal">
+      <bpmn:incoming>C_F_1</bpmn:incoming>
+      <bpmn:outgoing>C_F_2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="ClientEnd" name="Acceptance sent">
+      <bpmn:incoming>C_F_2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="C_F_1" sourceRef="ClientStart" targetRef="Approve" />
+    <bpmn:sequenceFlow id="C_F_2" sourceRef="Approve" targetRef="ClientEnd" />
+  </bpmn:process>
+</bpmn:definitions>

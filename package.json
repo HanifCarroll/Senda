@@ -1,0 +1,25 @@
+{
+  "name": "process-scribe",
+  "version": "0.1.0",
+  "description": "Evidence-backed process discovery with an agent skill and Miragon BPMN editing",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=24.0.0 <25" },
+  "bin": { "process-scribe": "bin/process-scribe.js" },
+  "exports": "./src/index.js",
+  "files": ["bin", "src", "skills", "docs", "README.md", "LICENSE"],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node scripts/check-project.js",
+    "demo": "node scripts/demo.js",
+    "start": "node bin/process-scribe.js",
+    "install:skill": "node scripts/install-skill.js"
+  },
+  "dependencies": {
+    "@miragon/bpmn-cli": "0.8.0",
+    "bpmn-moddle": "10.3.1",
+    "commander": "15.0.0",
+    "zod": "4.6.7"
+  }
+}

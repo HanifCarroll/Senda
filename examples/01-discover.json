@@ -1,0 +1,19 @@
+{
+  "expectedRevision": 1,
+  "summary": "Record observed activities and clarify the order before drawing it",
+  "stage": "activities",
+  "context": {
+    "trigger": "Proposal accepted",
+    "scopeNotes": "Current booking process. Reminder automation is a possible future improvement. The ordering and final outcome still need confirmation."
+  },
+  "claims": [
+    { "id": "C_Trigger", "statement": "An accepted proposal triggers booking work", "kind": "boundary", "status": "supported", "evidence": [{ "sourceId": "Source_Transcript", "segmentId": "line-1", "quote": "Once the proposal is accepted" }] },
+    { "id": "C_Deposit", "statement": "The freelancer collects a deposit", "kind": "activity", "status": "supported", "evidence": [{ "sourceId": "Source_Transcript", "segmentId": "line-1", "quote": "I collect a deposit" }] },
+    { "id": "C_Schedule", "statement": "The freelancer schedules the work", "kind": "activity", "status": "supported", "evidence": [{ "sourceId": "Source_Transcript", "segmentId": "line-1", "quote": "schedule the work" }] },
+    { "id": "C_Order", "statement": "Whether deposit receipt must precede scheduling is unknown", "kind": "order", "status": "unknown" },
+    { "id": "C_Reminders", "statement": "Automated reminders are a possible future improvement", "kind": "activity", "status": "supported", "state": "proposed", "evidence": [{ "sourceId": "Source_Transcript", "segmentId": "line-2", "quote": "We should probably automate reminders someday." }] }
+  ],
+  "questions": [
+    { "id": "Q_Order", "question": "Must the deposit arrive before scheduling, and what marks booking as complete?", "why": "The conjunction does not establish sequence or the final outcome.", "claimIds": ["C_Order"] }
+  ]
+}

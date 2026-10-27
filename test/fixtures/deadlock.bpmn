@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_deadlock" targetNamespace="urn:experiment:bpmn">
+  <bpmn:process id="parallel" name="Parallel" isExecutable="false">
+    <bpmn:startEvent id="Start" name="Proposal approved">
+      <bpmn:outgoing>F_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="Split" name="">
+      <bpmn:incoming>F_1</bpmn:incoming>
+      <bpmn:outgoing>F_2</bpmn:outgoing>
+      <bpmn:outgoing>F_3</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="Invoice" name="Send invoice">
+      <bpmn:incoming>F_2</bpmn:incoming>
+      <bpmn:outgoing>F_4</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Workspace" name="Set up workspace">
+      <bpmn:incoming>F_3</bpmn:incoming>
+      <bpmn:outgoing>F_5</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:parallelGateway id="Join" name="">
+      <bpmn:incoming>F_4</bpmn:incoming>
+      <bpmn:incoming>F_5</bpmn:incoming>
+      <bpmn:outgoing>F_6</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:endEvent id="End" name="Setup complete">
+      <bpmn:incoming>F_6</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="F_1" sourceRef="Start" targetRef="Split" />
+    <bpmn:sequenceFlow id="F_2" sourceRef="Split" targetRef="Invoice" name="Approved">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">approved = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_3" sourceRef="Split" targetRef="Workspace" name="Declined">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">approved = false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_4" sourceRef="Invoice" targetRef="Join" />
+    <bpmn:sequenceFlow id="F_5" sourceRef="Workspace" targetRef="Join" />
+    <bpmn:sequenceFlow id="F_6" sourceRef="Join" targetRef="End" />
+  </bpmn:process>
+</bpmn:definitions>

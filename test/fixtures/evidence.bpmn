@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:audit="urn:experiment:evidence" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_evidence" targetNamespace="urn:experiment:bpmn">
+  <bpmn:process id="simple" name="Simple" isExecutable="false">
+    <bpmn:startEvent id="Start" name="Inquiry received">
+      <bpmn:outgoing>F_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Prepare" name="Prepare proposal" camunda:assignee="designer">
+      <bpmn:documentation>Supported by interview segment 4; keep this evidence.</bpmn:documentation>
+      <bpmn:extensionElements>
+        <audit:evidence source="transcript:segment-4" status="confirmed">The designer prepares the proposal.</audit:evidence>
+      </bpmn:extensionElements>
+      <bpmn:incoming>F_1</bpmn:incoming>
+      <bpmn:outgoing>F_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="End" name="Proposal sent">
+      <bpmn:incoming>F_2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="F_1" sourceRef="Start" targetRef="Prepare" />
+    <bpmn:sequenceFlow id="F_2" sourceRef="Prepare" targetRef="End" />
+  </bpmn:process>
+</bpmn:definitions>

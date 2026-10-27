@@ -1,0 +1,2 @@
+Once the proposal is accepted, I collect a deposit and schedule the work.
+We should probably automate reminders someday.

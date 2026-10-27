@@ -1,0 +1,6 @@
+interface:
+  display_name: "Process Scribe"
+  short_description: "Discover and review BPMN models with source evidence"
+  default_prompt: "Use $process-scribe to turn this process interview into an evidence-backed BPMN model and identify the questions we need to resolve."
+policy:
+  allow_implicit_invocation: true

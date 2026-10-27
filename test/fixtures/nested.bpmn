@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Definitions_nested" targetNamespace="urn:experiment:bpmn">
+  <bpmn:process id="nested" name="Nested" isExecutable="false">
+    <bpmn:startEvent id="Start" name="Engagement accepted">
+      <bpmn:outgoing>F_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:subProcess id="Prepare" name="Prepare engagement">
+      <bpmn:incoming>F_1</bpmn:incoming>
+      <bpmn:outgoing>F_2</bpmn:outgoing>
+      <bpmn:startEvent id="InnerStart" name="Preparation started">
+        <bpmn:outgoing>InnerF1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:task id="Draft" name="Draft agreement">
+        <bpmn:incoming>InnerF1</bpmn:incoming>
+        <bpmn:outgoing>InnerF2</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:endEvent id="InnerEnd" name="Preparation complete">
+        <bpmn:incoming>InnerF2</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="InnerF1" sourceRef="InnerStart" targetRef="Draft" />
+      <bpmn:sequenceFlow id="InnerF2" sourceRef="Draft" targetRef="InnerEnd" />
+    </bpmn:subProcess>
+    <bpmn:endEvent id="End" name="Engagement ready">
+      <bpmn:incoming>F_2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="F_1" sourceRef="Start" targetRef="Prepare" />
+    <bpmn:sequenceFlow id="F_2" sourceRef="Prepare" targetRef="End" />
+  </bpmn:process>
+</bpmn:definitions>

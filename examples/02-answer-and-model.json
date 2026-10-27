@@ -1,0 +1,28 @@
+{
+  "expectedRevision": 2,
+  "summary": "Use the process owner's answer to establish sequence and completion",
+  "stage": "quality-review",
+  "context": {
+    "outcomes": ["Work scheduled and booking complete"],
+    "scopeNotes": "From proposal acceptance through completed booking. Reminder automation is outside this current-state diagram."
+  },
+  "sources": [{ "id": "Source_Answer", "title": "Synthetic process owner clarification", "kind": "answer", "text": "The deposit must arrive before scheduling. Booking is complete once the work is scheduled." }],
+  "claims": [
+    { "id": "C_Trigger", "statement": "Proposal acceptance starts deposit collection", "kind": "boundary", "status": "supported", "elementIds": ["Event_Start", "Flow_StartDeposit"], "evidence": [{ "sourceId": "Source_Transcript", "segmentId": "line-1", "quote": "Once the proposal is accepted, I collect a deposit" }] },
+    { "id": "C_Deposit", "statement": "The freelancer collects a deposit", "kind": "activity", "status": "supported", "elementIds": ["Task_Deposit"], "evidence": [{ "sourceId": "Source_Transcript", "segmentId": "line-1", "quote": "I collect a deposit" }] },
+    { "id": "C_Schedule", "statement": "The freelancer schedules the work", "kind": "activity", "status": "supported", "elementIds": ["Task_Schedule"], "evidence": [{ "sourceId": "Source_Transcript", "segmentId": "line-1", "quote": "schedule the work" }] },
+    { "id": "C_Order", "statement": "Deposit receipt must precede scheduling", "kind": "order", "status": "supported", "elementIds": ["Flow_DepositSchedule"], "evidence": [{ "sourceId": "Source_Answer", "segmentId": "line-1", "quote": "The deposit must arrive before scheduling." }] },
+    { "id": "C_Outcome", "statement": "Scheduling the work completes booking", "kind": "boundary", "status": "supported", "elementIds": ["Event_End", "Flow_ScheduleEnd"], "evidence": [{ "sourceId": "Source_Answer", "segmentId": "line-1", "quote": "Booking is complete once the work is scheduled." }] }
+  ],
+  "questions": [{ "id": "Q_Order", "question": "Must the deposit arrive before scheduling, and what marks booking as complete?", "why": "The conjunction does not establish sequence or the final outcome.", "claimIds": ["C_Order"], "status": "answered", "answerSourceId": "Source_Answer" }],
+  "glossary": [{ "term": "Booking", "definition": "A project whose deposit has arrived and whose work has been scheduled." }],
+  "operations": [
+    { "op": "add", "kind": "start", "id": "Event_Start", "name": "Proposal accepted" },
+    { "op": "add", "kind": "task", "id": "Task_Deposit", "name": "Collect deposit" },
+    { "op": "add", "kind": "task", "id": "Task_Schedule", "name": "Schedule work" },
+    { "op": "add", "kind": "end", "id": "Event_End", "name": "Booking completed" },
+    { "op": "connect", "source": "Event_Start", "target": "Task_Deposit", "id": "Flow_StartDeposit" },
+    { "op": "connect", "source": "Task_Deposit", "target": "Task_Schedule", "id": "Flow_DepositSchedule" },
+    { "op": "connect", "source": "Task_Schedule", "target": "Event_End", "id": "Flow_ScheduleEnd" }
+  ]
+}

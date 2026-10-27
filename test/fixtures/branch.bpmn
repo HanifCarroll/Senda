@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_branch" targetNamespace="urn:experiment:bpmn">
+  <bpmn:process id="branch" name="Branch" isExecutable="false">
+    <bpmn:startEvent id="Start" name="Inquiry received">
+      <bpmn:outgoing>F_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Prepare" name="Prepare proposal">
+      <bpmn:incoming>F_1</bpmn:incoming>
+      <bpmn:incoming>F_6</bpmn:incoming>
+      <bpmn:outgoing>F_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:userTask id="Review" name="Review proposal">
+      <bpmn:incoming>F_2</bpmn:incoming>
+      <bpmn:outgoing>F_3</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Decision" name="Approved?">
+      <bpmn:incoming>F_3</bpmn:incoming>
+      <bpmn:outgoing>F_4</bpmn:outgoing>
+      <bpmn:outgoing>F_5</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="Revise" name="Revise proposal">
+      <bpmn:incoming>F_5</bpmn:incoming>
+      <bpmn:outgoing>F_6</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Book" name="Book engagement">
+      <bpmn:incoming>F_4</bpmn:incoming>
+      <bpmn:outgoing>F_7</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="End" name="Engagement booked">
+      <bpmn:incoming>F_7</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="F_1" sourceRef="Start" targetRef="Prepare" />
+    <bpmn:sequenceFlow id="F_2" sourceRef="Prepare" targetRef="Review" />
+    <bpmn:sequenceFlow id="F_3" sourceRef="Review" targetRef="Decision" />
+    <bpmn:sequenceFlow id="F_4" sourceRef="Decision" targetRef="Book" name="Approved">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">approved = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_5" sourceRef="Decision" targetRef="Revise" name="Changes requested">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">approved = false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_6" sourceRef="Revise" targetRef="Prepare" />
+    <bpmn:sequenceFlow id="F_7" sourceRef="Book" targetRef="End" />
+  </bpmn:process>
+</bpmn:definitions>
