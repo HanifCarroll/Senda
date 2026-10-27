@@ -26,7 +26,7 @@ Structural rules concern valid combinations and connections of modeling elements
 
 Behavioral rules concern what can happen when tokens move through the model. A diagram can be structurally acceptable while work deadlocks, repeats forever, never executes, or continues with unintended duplicate tokens. Soundness includes the possibility of completion, proper completion, and absence of dead activities. Control-flow analysis normally abstracts other aspects; data and communication need attention too.
 
-Process Scribe implements Miragon validation, parser diagnostics and selected additional checks. It detects two simple mismatched split/join patterns: exclusive alternatives meeting at a parallel join, and parallel branches meeting at an exclusive merge. These checks do **not** constitute a general soundness proof. No exhaustive state-space analysis or comprehensive XSD validation is implemented.
+Senda implements Miragon validation, parser diagnostics and selected additional checks. It detects two simple mismatched split/join patterns: exclusive alternatives meeting at a parallel join, and parallel branches meeting at an exclusive merge. These checks do **not** constitute a general soundness proof. No exhaustive state-space analysis or comprehensive XSD validation is implemented.
 
 The exclusive-to-parallel deadlock pattern blocks this profile's finalization. The parallel-to-exclusive pattern is advisory: repeated continuation may be intentional, so the reviewer must establish the intended behavior rather than automatically replacing the merge.
 
@@ -63,7 +63,7 @@ These are readable paraphrases of the seven guidelines discussed in the chapter,
 6. Name activities with a verb and an object.
 7. Consider decomposition when a model grows beyond roughly 30 elements, choosing meaningful subprocesses rather than arbitrary chunks.
 
-Process Scribe counts **flow nodes per process/subprocess scope**, excluding connectors and lane/pool frames, for its 30-element advisory. Chapter 3, p. 104 explicitly discusses roughly 30 flow objects (activities, events and gateways) per model level. This remains advice, not a standardized BPMN limit. Its warning for routing degree above four is an application heuristic; the book's degree guideline does not prescribe that number.
+Senda counts **flow nodes per process/subprocess scope**, excluding connectors and lane/pool frames, for its 30-element advisory. Chapter 3, p. 104 explicitly discusses roughly 30 flow objects (activities, events and gateways) per model level. This remains advice, not a standardized BPMN limit. Its warning for routing degree above four is an application heuristic; the book's degree guideline does not prescribe that number.
 
 The book distinguishes general recommendations from agreed modeling conventions. The versioned `dumas-conceptual-v2` profile accepts business-language conditions. It expects starts/ends and reachability in ordinary modeled scopes, exempts intentionally empty subprocesses only with an explicit abstraction contract, and checks compensation separately from ordinary sequence flow. Supported evidence and human review remain product requirements; readability suggestions remain advisory. See [modeling-patterns.md](modeling-patterns.md) for exceptions and limits.
 

@@ -1,13 +1,15 @@
 ---
 name: process-scribe
-description: Create and iteratively update evidence-backed BPMN diagrams from transcripts, interviews and clarification answers using the Process Scribe CLI. Use for process discovery, modeling questions and diagram review; requires the companion repository. Business improvement analysis and workflow execution are outside this skill's focus.
+description: Create and iteratively update separate As-is and To-be BPMN diagrams from transcripts, clarification answers and design briefs using connected Senda tools or the local CLI. Use for process discovery, future-process planning and diagram review. Workflow execution and quantitative improvement analysis are outside this skill's focus.
 ---
 
-# Process Scribe
+# Senda
 
-Use the companion CLI to persist discovery and edit BPMN. Read [methodology.md](references/methodology.md) for the five stages and quality rules, and [commands.md](references/commands.md) for operations and data contracts. For a new transcript or missing perspectives, use [interviewing.md](references/interviewing.md). For choices, repetition, messages or exceptions, consult [modeling-patterns.md](references/modeling-patterns.md). Before presenting an updated diagram, use [review-and-iteration.md](references/review-and-iteration.md). Load the references needed for the current work.
+When working with connected tools, use the [remote project workflow](references/remote.md). For local projects, use the companion CLI. The same discovery and readability method applies to both modes. Read [methodology.md](references/methodology.md) for the five stages and quality rules, and [commands.md](references/commands.md) for local operations and data contracts. For a new transcript or missing perspectives, use [interviewing.md](references/interviewing.md). For choices, repetition, messages or exceptions, consult [modeling-patterns.md](references/modeling-patterns.md). Before presenting an updated diagram, use [review-and-iteration.md](references/review-and-iteration.md). Load the references needed for the current work.
 
-Run `node <skill-directory>/scripts/run.mjs --help` to confirm availability. The installer symlinks this directory to the repository; if the checkout is missing, report that requirement rather than substituting a fabricated CLI.
+When the user requests a future process, follow [planning.md](references/planning.md). Keep As-is (current practice) and To-be (planned future) in separate models with separate revision histories. Reuse the five-stage method to clarify and revise the planned process.
+
+In local mode, run `node <skill-directory>/scripts/run.mjs --help` to confirm availability. The local installer symlinks this directory to the repository; if that checkout is missing, report the requirement rather than substituting a fabricated CLI. The remote ZIP contains the method and references; it does not install the local CLI.
 
 ## Establish the project
 
@@ -31,7 +33,7 @@ Inspect sources and the current revision before composing an `apply` proposal. U
 - Mark inference explicitly and explain it. Keep unknown or conflicting facts unresolved. Do not draw a made-up sequence to make an early diagram look complete; unmodeled claims and questions are valid discovery work.
 - Preserve who contributed, the period covered and the evidence basis when available. Current practice, written policy, observation and interpretation can differ. Record conflicting claims together, and cite the evidence for their resolution. Do not silently choose one speaker's account.
 - Link claims to relevant nodes **and flows**, including handoffs, conditions, triggers and outcomes. Capture supported context separately from the model's graphical scaffolding, and explain any modeling abstraction to the reviewer.
-- Keep future suggestions unlinked from a current-state diagram. Do not turn discovery into optimization or an automation project. The application's proposed-state support remains available only when explicitly requested.
+- Keep future suggestions unlinked from a current-state diagram. When future planning is requested, work in the separate To-be model; use `state: "proposed"` for its linked claims and identify prescribed design decisions. Planning a process does not authorize implementing or executing it.
 - Add clarification answers as new immutable answer sources. Update the affected claims, question status and model together. Do not treat the existence of an answer as proof that it resolves the question.
 - Write question reasons in ordinary language. Use `answerEvidence` when one answer source covers multiple questions, so the review page shows the relevant passages. Use business language in revision summaries.
 - If a stale revision is rejected, reread and reconcile; never change the revision number and blindly replay the same edits. A bad batch is atomic and leaves the current model intact.
@@ -43,7 +45,7 @@ Run `validate` after a modeling change. Read the four separate areas: structural
 
 Resolve structural errors and examine incomplete paths. Conceptual branches can use meaningful business-language conditions; executable expressions are not required. Never infer mutual exclusion or completeness just because conditions exist. Consult the pattern reference for exception-specific checks and unsupported constructs.
 
-Export a review bundle and inspect the actual SVG or rendered HTML. Apply readable activity/event labels, explicit branch conditions, shared vocabulary, a clear flow direction and low visual clutter. Consider meaningful decomposition for large models. Suggestions cannot justify changing behavior. Under this book-based convention, leave XOR/OR split gateways normally unlabeled and make their outgoing conditions explicit. The report explains why Miragon's question-name advisory is overridden.
+Export a review bundle and inspect every actual view at normal reading size and fitted to the screen, following the [visual readability checks](references/readability.md). Include child diagrams, external messages, rework and exception paths. Check text, pool/lane titles, event markers and condition placement, not just crossing counts. Apply readable activity/event labels, explicit branch conditions, shared vocabulary, a clear flow direction and low visual clutter. Consider meaningful decomposition for large models. Suggestions cannot justify changing behavior. Under this book-based convention, leave XOR/OR split gateways normally unlabeled and make their outgoing conditions explicit. The report explains why Miragon's question-name advisory is overridden.
 
 Add or refresh the plain-language `walkthrough` in the same proposal as a model update. Link its statements to claims and model elements; explain alternatives and parallel work without implying an invented linear order. The app marks an old walkthrough stale after relevant content changes. Save meaningful review `scenarios`, then walk them with an informed participant. Scenario feedback applies only to the current content and is not a simulated execution.
 

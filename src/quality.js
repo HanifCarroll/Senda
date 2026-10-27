@@ -122,7 +122,7 @@ export async function assess(snapshot) {
     if (typeOf(n) === 'StartEvent' && incoming.length) structural.push(issue('START_HAS_INCOMING', 'A start event cannot have incoming sequence flows.', [n.id]));
     if (typeOf(n) === 'EndEvent' && outgoing.length) structural.push(issue('END_HAS_OUTGOING', 'An end event cannot have outgoing sequence flows.', [n.id]));
     if (!isType(n, 'Gateway') && !n.name?.trim()) readability.push(issue('MISSING_LABEL', 'Give the activity or event a meaningful business label.', [n.id]));
-    if (Math.max(incoming.length, outgoing.length) > 4) readability.push(issue('HIGH_ROUTING_DEGREE', 'More than four flows meet here. Review legibility; four is an application heuristic, not a BPMN rule.', [n.id]));
+    if (incoming.length + outgoing.length > 4) readability.push(issue('HIGH_ROUTING_DEGREE', 'More than four incoming and outgoing flows meet here in total. Review legibility; four is an application heuristic, not a BPMN rule.', [n.id]));
     if (isType(n, 'Gateway') && incoming.length > 1 && outgoing.length > 1) readability.push(issue('MIXED_GATEWAY_ROLE', 'Consider separate joining and splitting gateways if that makes the same behavior clearer.', [n.id]));
     if (typeOf(n) === 'InclusiveGateway') readability.push(issue('INCLUSIVE_ROUTING', 'Check whether simpler routing can express exactly the same behavior.', [n.id]));
     if (['ExclusiveGateway', 'InclusiveGateway'].includes(typeOf(n)) && outgoing.length > 1) {

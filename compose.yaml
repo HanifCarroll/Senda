@@ -1,0 +1,31 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        PRODUCT_NAME: ${PRODUCT_NAME:-Senda}
+    environment:
+      APP_URL: https://${APP_HOSTNAME:?Set the chosen subdomain of hanifcarroll.com}
+      PRODUCT_NAME: ${PRODUCT_NAME:-Senda}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set a unique secret of at least 32 characters}
+    volumes:
+      - project-data:/data
+    restart: unless-stopped
+  proxy:
+    image: caddy:2.10
+    environment:
+      APP_HOSTNAME: ${APP_HOSTNAME:?Set the chosen subdomain}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - tls-data:/data
+      - tls-config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+volumes:
+  project-data:
+  tls-data:
+  tls-config:

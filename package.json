@@ -1,25 +1,73 @@
 {
   "name": "process-scribe",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Evidence-backed process discovery with an agent skill and Miragon BPMN editing",
   "private": true,
   "type": "module",
   "license": "MIT",
-  "engines": { "node": ">=24.0.0 <25" },
-  "bin": { "process-scribe": "bin/process-scribe.js" },
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "bin": {
+    "process-scribe": "bin/process-scribe.js"
+  },
   "exports": "./src/index.js",
-  "files": ["bin", "src", "skills", "docs", "README.md", "LICENSE"],
+  "files": [
+    "bin",
+    "src",
+    "skills",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node --test test/*.test.js",
+    "test:workflow": "node scripts/test-complex-workflow.js",
     "check": "node scripts/check-project.js",
     "demo": "node scripts/demo.js",
     "start": "node bin/process-scribe.js",
-    "install:skill": "node scripts/install-skill.js"
+    "install:skill": "node scripts/install-skill.js",
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "PROCESS_SCRIBE_LOCAL_REVIEW=1 node server/serve.js",
+    "serve": "node server/serve.js",
+    "dev:hosted": "PROCESS_SCRIBE_HOSTED=1 vite dev",
+    "browser:webmcp": "node scripts/open-webmcp-browser.js",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@better-auth/cimd": "1.7.14",
+    "@better-auth/mcp": "1.7.14",
+    "@better-auth/oauth-provider": "1.7.14",
     "@miragon/bpmn-cli": "0.8.0",
+    "@modelcontextprotocol/server": "2.4.0",
+    "@tanstack/react-router": "1.170.46",
+    "@tanstack/react-start": "1.169.4",
+    "better-auth": "1.7.14",
     "bpmn-moddle": "10.3.1",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
     "commander": "15.0.0",
+    "fflate": "0.8.3",
+    "lucide-react": "1.62.0",
+    "radix-ui": "1.8.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-resizable-panels": "^4.15.0",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "3.7.0",
     "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "tailwindcss": "4.3.3",
+    "tw-animate-css": "1.4.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
   }
 }

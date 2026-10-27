@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
-  return (await Promise.all(entries.filter(e => !['node_modules','.git','output','workspaces','.process-scribe','exports','coverage','tmp'].includes(e.name)).map(e => e.isDirectory() ? walk(path.join(directory, e.name)) : path.join(directory, e.name)))).flat();
+  return (await Promise.all(entries.filter(e => !['node_modules','.git','output','workspaces','.process-scribe','exports','coverage','tmp','dist','.tanstack','routeTree.gen.ts'].includes(e.name)).map(e => e.isDirectory() ? walk(path.join(directory, e.name)) : path.join(directory, e.name)))).flat();
 }
 const files = await walk(root);
 for (const file of files) {
@@ -17,6 +17,7 @@ for (const file of files) {
     const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
     assert.equal(result.status, 0, `${relative}: ${result.stderr}`);
   }
+  if (/\.(png|webp|jpg|jpeg|woff2)$/i.test(file)) continue;
   const text = await readFile(file, 'utf8');
   // A source-tree hygiene check, not a replacement for reviewing the staged files.
   assert.ok(!/\/Users\/[^/\s]+\//.test(text), `Machine-specific path in ${relative}`);

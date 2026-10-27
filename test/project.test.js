@@ -157,6 +157,17 @@ test('size guidance counts nodes per scope and remains advisory', async t => {
   assert.equal(q.structural.passed, true);
 });
 
+test('routing-degree advice counts incoming and outgoing flows together', async t => {
+  const { p } = await setup(t);
+  const operations = [{op:'add',kind:'exclusive',id:'Decision'}];
+  for (let i=0;i<3;i++) operations.push({op:'add',kind:'task',id:`Before_${i}`,name:'Receive request'}, {op:'connect',source:`Before_${i}`,target:'Decision'});
+  for (let i=0;i<2;i++) operations.push({op:'add',kind:'task',id:`After_${i}`,name:'Handle request'}, {op:'connect',source:'Decision',target:`After_${i}`,name:`Condition ${i}`});
+  await p.apply(proposal(p,{operations}));
+  const quality=await p.validate();
+  assert.ok(quality.readability.findings.some(f=>f.code==='HIGH_ROUTING_DEGREE' && f.elements.includes('Decision')));
+  assert.ok(!quality.blockers.some(f=>f.code==='HIGH_ROUTING_DEGREE'));
+});
+
 test('export is self-contained, escapes source markup and refuses to overwrite prior output', async t => {
   const { p, dir } = await setup(t, true);
   await p.apply(proposal(p, { sources: [{ id: 'Source_Untrusted', title: '<script>bad()</script>', kind: 'document', text: '<img src=x onerror=bad()> & "test"' }] }));
@@ -166,7 +177,7 @@ test('export is self-contained, escapes source markup and refuses to overwrite p
   assert.ok(html.includes('&lt;img src=x onerror=bad()&gt;'));
   assert.ok(!html.includes('<script>'));
   assert.ok(html.includes('Content-Security-Policy'));
-  assert.equal(await readFile(path.join(bundle.directory, 'model.bpmn'), 'utf8'), p.read().xml);
+  assert.equal(await readFile(path.join(bundle.directory, 'model-original.bpmn'), 'utf8'), p.read().xml);
   await assert.rejects(exportBundle(p, bundle.directory), { code: 'EXPORT_EXISTS' });
   assert.equal(await readFile(path.join(bundle.directory, 'review.html'), 'utf8'), html);
 });

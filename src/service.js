@@ -8,11 +8,12 @@ import { walkthroughHash } from './review-state.js';
 
 export class Project {
   constructor(directory) { this.store = new Store(directory); }
-  static async create(directory, input) {
+  static async create(directory, input, { baselineXml, summary = 'Initialize process discovery' } = {}) {
     const options = Init.parse(input);
+    requireThat(!baselineXml || options.mode === 'proposed', 'MIXED_PROCESS_STATE', 'Only a proposed model can start from a planning baseline.');
     const snapshot = {
       formatVersion: 2, name: options.name, mode: options.mode, status: 'draft',
-      xml: await createModel(options.name), reviews: {}, scenarioReviews: {},
+      xml: baselineXml ? await prepareImport(baselineXml) : await createModel(options.name), reviews: {}, scenarioReviews: {},
       discovery: {
         stage: 'boundaries', context: { purpose: options.purpose, perspective: options.perspective, trigger: '', outcomes: [], scopeNotes: '', profile: QUALITY_PROFILE },
         sources: addSources([], options.sources), claims: [], questions: [], glossary: [],
@@ -20,7 +21,7 @@ export class Project {
       },
     };
     const store = new Store(directory, { create: true });
-    try { store.append(0, snapshot, 'Initialize process discovery'); } finally { store.close(); }
+    try { store.append(0, snapshot, summary); } finally { store.close(); }
     return new Project(directory);
   }
   close() { this.store.close(); }

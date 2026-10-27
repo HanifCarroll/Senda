@@ -39,7 +39,7 @@ This table describes the companion application's conceptual profile. Generic nat
 | Compensation | Associated handler, same scope, no ordinary sequence flow through the handler; ordinary path checks exclude compensation elements | What triggers compensation, completed work, propagation and the outcome |
 | Boundary timers/messages, event choices and multi-instance work | Native representation and selected generic checks; ordinary paths where applicable | Interruption semantics, races, cardinality, completion conditions and all relevant cases |
 | Event or ad hoc subprocess | May be retained as a draft; finalization explicitly reports unsupported specialized validation | Do not replace the real behavior with a made-up sequence to make finalization pass |
-| Multiple diagram planes | Every available plane is rendered and linked in the review bundle | Inspect child diagrams as well as the overview; missing coordinates/content remain visible in drawing notes |
+| Multiple scopes and message exchanges | Review views show each scope with its local message endpoints and outside participants for context; subprocess navigation and message links connect the views | Inspect child diagrams, sender/recipient evidence and export message coverage. Context participants are view abstractions; the saved BPMN is unchanged. Layout metrics do not certify readability |
 
 Plain-language conditions are enough for conceptual modeling. No executable expression language, service binding, or workflow deployment is implemented. The application does not prove general behavioral soundness.
 

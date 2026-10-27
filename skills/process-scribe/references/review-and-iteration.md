@@ -4,6 +4,14 @@
 
 Export from a saved revision and inspect the actual diagram, including available child diagrams. Add a `walkthrough` with short business-language steps linked to claims and model elements. State conditions, parallel work, waiting and exceptional outcomes explicitly. An ordered list of paragraphs must not suggest sequential execution where work is parallel or alternative.
 
+Use [readability.md](readability.md) for the all-view visual sweep, the app's layout safeguards and their limits. In particular, a lower crossing count cannot justify text collisions, hidden messages or changed responsibility assignments. Repeat the sweep after a broad layout change.
+
+The offline review is interactive: open subprocesses, return with breadcrumbs, zoom/pan, search for steps, and select a task or connection to inspect its source evidence. Use the message list to jump to the detail containing an exchange. Each detail includes outside participants for context, while its evidence panel retains the original sender and recipient. Links to events on enclosing work preserve deadline/withdrawal context. These are read-only views, not model edits or execution traces.
+
+The TanStack Start web app offers the same review data with shadcn controls. Run `npm run dev` from the checkout, choose a process and a dated exported revision, and use its diagram, walkthrough, clarification, source and review-check tabs. The library defaults to `output/`; `PROCESS_SCRIBE_REVIEWS` selects another export root. After a clarification, export a fresh snapshot and refresh the library. Evidence starts collapsed; open it explicitly after selecting a step. The app preserves the view, selection, pan and zoom when following source passages. Answer and correction dialogs prepare editable requests that the reader can copy into the modeling chat. The app does not send the requests or record approval; continue to apply evidence and model changes atomically through the CLI. The shared layout pass reduces measured crossings without changing saved model behavior. The fixed Neutral palette affects presentation only.
+
+Check the export's message coverage and inspect both directions of each material exchange. The overview links to nested messages rather than moving their endpoints onto collapsed subprocess boxes. Do not treat a participant shown for context as a discovery claim about its internal process. The complete BPMN download preserves the process definitions and uses the improved layout. Its standard subprocess planes omit outside-pool context for editor compatibility. Use the separate standalone BPMN view when that context matters; it contains only the selected scope and documents original message endpoints. Do not import a standalone view as if it were the complete model. Fresh bundles also include `model-original.bpmn` with exact saved bytes. Inspect editor imports because fonts and subprocess support vary. Layout and coverage are reported separately in `quality.json`.
+
 Do not invent narrative details to make the account smoother. A model element link makes a statement traceable, not true. Claim links expose its supporting quotations. The app binds the walkthrough to the model and discovery content; after a change, refresh it in the same proposal or let it be visibly marked stale. A stale walkthrough blocks finalization, and can be explicitly removed with `walkthrough: null` when no longer wanted.
 
 ## Ask the reader to check cases
@@ -19,6 +27,7 @@ Record accuracy (`semantic`), behavior (`behavioral`), and clarity (`pragmatic`)
 1. Inspect the current revision and the affected source passages, claims, questions and model elements.
 2. Add the answer as a new immutable source. Use `answerEvidence` to select exact relevant excerpts when that source addresses several questions.
 3. Update claims and question/conflict status only as far as the answer supports. Update the corresponding diagram, scenario expectations and walkthrough in the same proposal when they change together.
+   Refresh earlier claim wording that still calls a now-resolved rule unknown. Preserve the earlier source and historical revision; do not overwrite evidence or leave the current inspector describing an obsolete gap.
 4. Validate and inspect the rendered result. Preserve stable IDs and prefer incremental layout unless the structure needs broader reorganization.
 5. Present the actual answer, what changed, the updated diagram, and remaining questions. Keep raw question/source/element identifiers inside supporting details.
 

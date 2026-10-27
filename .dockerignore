@@ -1,0 +1,16 @@
+node_modules
+.git
+.env
+.env.*
+!.env.example
+.process-scribe
+workspaces
+exports
+output
+tmp
+coverage
+dist
+.tanstack
+*.sqlite*
+*.pdf
+*.log

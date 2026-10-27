@@ -1,0 +1,66 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, rm, symlink, readFile, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { Project, exportBundle } from '../src/index.js';
+import { listReviews, loadReview } from '../src/review-library.js';
+import { processGroups } from '../web/lib/review-navigation.ts';
+
+test('web review loader exposes complete exports without changing project content', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'scribe-web-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const project = await Project.create(path.join(root, 'project'), { name: 'Review fixture', purpose: 'Read only', perspective: 'Example' });
+  t.after(() => project.close());
+  await project.apply({ expectedRevision: 1, summary: 'Add a task', operations: [{ op: 'add', id: 'Check', kind: 'task', name: 'Check request', in: 'Process_Main' }] });
+  const before = project.read();
+  await exportBundle(project, path.join(root, 'library', 'example'));
+  const reviews = await listReviews(path.join(root, 'library'));
+  assert.equal(reviews.length, 1); assert.equal(reviews[0].revision, before.revision);
+  const review = await loadReview(path.join(root, 'library'), reviews[0].id);
+  assert.equal(review.xml, before.xml); assert.equal(review.title, 'Review fixture');
+  assert.equal(review.exportXml, await readFile(path.join(root, 'library', 'example', 'model.bpmn'), 'utf8'));
+  assert.ok(review.elements.some(e => e.id === 'Check'));
+  assert.deepEqual(project.read(), before);
+  await exportBundle(project, path.join(root, 'library', 'duplicate'));
+  await project.apply({ expectedRevision: before.revision, summary: 'Clarify the task label', operations: [{ op: 'set', id: 'Check', values: { name: 'Check complete request' } }] });
+  await exportBundle(project, path.join(root, 'library', 'next'));
+  const groups = processGroups(await listReviews(path.join(root, 'library')));
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].title, 'Review fixture');
+  assert.equal(groups[0].versions.length, 2, 'Exact duplicate exports share one visible version.');
+  assert.equal(groups[0].versions[0].revision, before.revision + 1);
+  assert.equal(groups[0].versions[0].summary, 'Clarify the task label');
+  assert.ok(groups[0].versions[0].created);
+  assert.equal(project.read().revision, before.revision + 1);
+  // A pre-versioned export has no source backup; it still gets fresh portable DI.
+  const legacy=path.join(root,'library','duplicate');
+  const metadata=JSON.parse(await readFile(path.join(legacy,'discovery.json'),'utf8'));
+  delete metadata.exportVersion;
+  await writeFile(path.join(legacy,'discovery.json'),JSON.stringify(metadata));
+  await writeFile(path.join(legacy,'model.bpmn'),before.xml);
+  await rm(path.join(legacy,'model-original.bpmn'));
+  assert.equal((await loadReview(path.join(root,'library'),Buffer.from('duplicate').toString('base64url'))).xml,before.xml);
+  assert.equal(processGroups(await listReviews(path.join(root,'library')))[0].versions.length,2);
+  assert.deepEqual(await listReviews(path.join(root, 'missing')), []);
+});
+
+test('web review loader rejects traversal and symlink escapes, including individual export files', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'scribe-web-paths-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const library = path.join(root, 'library'); await mkdir(library);
+  await mkdir(path.join(root, 'outside'));
+  await symlink(path.join(root, 'outside'), path.join(library, 'linked'));
+  for (const name of ['../outside', '/etc', 'linked']) await assert.rejects(loadReview(library, Buffer.from(name).toString('base64url')));
+  await assert.rejects(loadReview(library, '../../etc'));
+  const project = await Project.create(path.join(root, 'project'), { name: 'Path fixture', purpose: 'Read only', perspective: 'Example' });
+  t.after(() => project.close());
+  await exportBundle(project, path.join(library, 'example'));
+  const reviews = await listReviews(library);
+  await rm(path.join(library, 'example', 'model-original.bpmn'));
+  await symlink(path.join(root, 'project'), path.join(library, 'example', 'model-original.bpmn'));
+  await assert.rejects(loadReview(library, reviews[0].id), /outside the review library/);
+  await rm(path.join(library, 'example', 'model.bpmn'));
+  await symlink(path.join(root, 'project'), path.join(library, 'example', 'model.bpmn'));
+  await assert.rejects(loadReview(library, reviews[0].id), /outside the review library/);
+});

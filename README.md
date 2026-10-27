@@ -1,8 +1,8 @@
-# Process Scribe
+# Senda
 
 Turn a discovery conversation into a BPMN model whose activities, decisions and sequence can be traced back to evidence.
 
-Process Scribe combines a reusable agent skill, a local CLI and a JavaScript library. The agent conducts discovery and interprets the source material. The application stores evidence and revisions, applies BPMN edits through [Miragon bpmn-cli](https://github.com/Miragon/bpmn-cli), and produces a review bundle. It does not make its own LLM calls or require an API key.
+Senda combines a reusable agent skill, a local CLI, a JavaScript library and a TanStack Start app with private shared projects and authenticated agent connections. The agent conducts discovery and interprets the source material. The application stores evidence and revisions, applies BPMN edits through [Miragon bpmn-cli](https://github.com/Miragon/bpmn-cli), and produces the review and portable diagram. It does not make its own LLM calls or require a model-provider API key. The `process-scribe` CLI, skill and repository identifiers remain compatible.
 
 The discovery method follows Chapter 5 of *Fundamentals of Business Process Management*, second edition: boundaries → activities and events → resources and handoffs → control flow → relevant additional detail, with iteration and review throughout. Chapters 1–4 inform interview preparation, abstraction and modeling patterns. [Read the methodology summary](skills/process-scribe/references/methodology.md).
 
@@ -19,7 +19,30 @@ npm run demo
 
 The demo creates a private workspace under the ignored `output/` directory and prints links to two local review pages. The first keeps ambiguous sequencing unresolved. The second uses a synthetic clarification to build the model, adds a written walkthrough and a case for review, then reopens the saved database before exporting. Human approvals and scenario confirmation remain pending.
 
-Open the printed `after` path in a browser to see the diagram, process explanation, actual clarification answer and cases to review. Supporting quotations and internal references are available in expandable details. Available child diagrams are included. The bundle contains BPMN, SVG and JSON files. Committed examples and tests are synthetic.
+Open the printed `after` path in a browser to explore the diagram, process explanation, actual clarification answer and cases to review. Click a subprocess to open its detail; use breadcrumbs or Parent to return. Zoom, pan, search for a step, or select a task/connection to see supporting quotations and questions. The message list jumps directly to the view containing an exchange. The bundle works offline and includes static SVG views and a BPMN download. Committed examples and tests are synthetic.
+
+For a larger interview with three clarification rounds, run `npm run test:workflow`. It replays a 1,365-word synthetic consultancy-onboarding interview, preserving four draft versions. It covers parallel Finance/Delivery work, repeated corrections, credit terms, reminders, cancellation/refunds and acknowledged handover. Each CLI command reopens the saved project; assertions check evidence, model changes, stale-edit rejection and the final BPMN structure. All eight message exchanges are drawn across six small views, including outside participants for context. See the [fixture notes](examples/complex-onboarding/README.md) for coverage and limitations.
+
+## Open the web app
+
+```sh
+npm run build
+npm run serve
+```
+
+Open `http://127.0.0.1:3000`. The homepage explains the workflow and links to a public synthetic example. Create an account and private project, paste or upload a text transcript, and use **Connect your agent** to authorize a compatible remote MCP client and download the skill. Agent revisions appear automatically. Save clarification answers, revisit revision history, inspect evidence and export improved BPMN. The app uses **TanStack Start + React**, **shadcn/ui (Radix)** and the chosen Neutral palette. [Hosted architecture, compatibility, limits and deployment](docs/hosted.md).
+
+Each project separates **As-is · Current process** from **To-be · Planned future**. Start a To-be draft from a selected As-is revision and a design brief, then clarify and revise it with your agent. Each model keeps its own sources, questions and revision history; future edits leave the As-is process intact. The plan retains its original baseline when the As-is process changes. [Future-process modeling method](skills/process-scribe/references/planning.md).
+
+For local exported snapshots, use `npm run preview` and open `/local`; the preview keeps those files on loopback and retains existing `/?review=…` links. `PROCESS_SCRIBE_REVIEWS` selects another local export root. Local snapshots use manual agent/CLI updates and exports; hosted projects use the authorized service and do not expose that filesystem library. Exact duplicate exports share one visible version.
+
+The diagram workspace uses the available screen height and can expand to fill the window. Evidence starts collapsed, including when a saved link selects a step. Open **Evidence** explicitly to inspect it; the desktop panel resizes, and the mobile view uses a bottom sheet. Source passages open in a drawer with a direct return to the diagram. The URL retains the selected review, section, view and step; session storage remembers the pan and zoom without saving transcript text.
+
+The walkthrough and source screens use narrower reading columns. Open questions appear before answer history; **Copy question**, **Prepare my answer** and **Request a correction** create a manual handoff to the modeling agent. Requests are editable and copied to the clipboard; the app does not send them or record invented approvals. Review checks prioritize the next question or case, with detailed diagram changes collapsed below the business summary.
+
+`npm run dev:hosted` runs the full app in Vite development; `npm run dev` retains local snapshot development. `npm run typecheck` checks the React app after generating the route tree with a build. Portable `review.html` bundles remain available for offline sharing and do not require running the app.
+
+The shared layout pass compares lane/pool display orders, reroutes connections through free space and keeps branch conditions near their decisions. It protects text and pool/lane titles, and never changes responsibility assignments, process behavior or saved project geometry. **Download BPMN** now includes the improved layout in standard BPMN DI. **Download this view** offers an SVG or a standalone BPMN view with the visible outside participants. Fresh bundles retain the exact saved XML as `model-original.bpmn`. Review checks identify views with remaining layout concerns. The complex fixture's crossings and text protection are checked in the regression suite; a cleaner drawing is not a proof of process correctness. See [portable exports and layout research](docs/portable-bpmn.md) and the skill's [all-view readability checklist](skills/process-scribe/references/readability.md).
 
 ## Use it with an agent
 
@@ -75,22 +98,24 @@ Use `review-scenario` to record actual human feedback on a saved case. A recorde
 
 Readability suggestions are advisory. They should never change real process behavior merely to improve appearance. The selected convention leaves split gateways unlabeled and labels outgoing conditions explicitly; Miragon's conflicting question-name advisory is retained in the report with an explanation of the override.
 
-## Scope of version 0.2
+## Scope of version 0.3
 
 - Transcript-to-diagram discovery and iterative clarification through a local CLI and JavaScript API, with durable revisions and portable review bundles.
 - Optional audience/owner context, stakeholder coverage, evidence basis and attribution, conflicts, intentional abstractions, written walkthroughs and concrete review cases.
 - Generic descriptive BPMN with the versioned `dumas-conceptual-v2` profile and incomplete drafts. Ordinary paths, accepted abstractions and compensation are assessed separately.
 - Imports with parser warnings are rejected to avoid silent data loss. Engine-specific extensions need explicit compatibility work; no promise of arbitrary vendor round trips.
-- Event and ad hoc subprocesses can remain drafts but need additional validation support before this profile will finalize them. Deployment configuration, collaboration servers, authentication and hosted MCP/HTTP services are not included.
-- Layout checking does not certify the diagram. Available diagram planes are exported and linked; the complete model remains in the BPMN export.
+- Event and ad hoc subprocesses can remain drafts but need additional validation support before this profile will finalize them.
+- Private account projects, source uploads, agent consent/revocation, authenticated MCP, a shared service API, revision history, automatic refresh and progressive WebMCP browser tools. Separate As-is and To-be models support iterative future-process planning with a pinned baseline. Docker deployment preparation is included; public hosting and account-recovery/email delivery remain external setup decisions.
+- The offline review includes scoped diagrams with outside message participants, subprocess navigation, zoom/pan, search, message links and evidence inspection. Empty subprocesses remain visible as discovery gaps without blank detail views. Static SVGs remain available when scripting is disabled.
+- Layout checking does not certify the diagram. The review derives fresh layouts without modifying the project or its evidence. Complete BPMN exports preserve process semantics and carry improved DI; standalone view files contain only their selected scope. Fonts and subprocess context support vary between editors. `quality.json` distinguishes saved-model checks from view geometry and message coverage.
 - Version 0.1 project history is preserved without rewriting snapshots. New content revisions use format 2; old profile approvals need fresh feedback under the updated checks.
-- Business issue analysis, redesign comparisons, simulation, process mining and workflow execution are outside this release.
+- Quantitative business analysis, simulation, process mining and workflow execution are outside this release. To-be support focuses on planning, clarifying and revising the future diagram.
 
 The automated suite exercises persistence, atomic failure, stale writes, evidence integrity, old-project compatibility, walkthrough/scenario invalidation, conceptual conditions, abstraction, compensation, hierarchy exports, selected event/repetition fixtures, the CLI and HTML escaping. It is **not an independent LLM evaluation**. Use a real transcript and a clarification round with a process owner to assess discovery quality.
 
 ## Data and publication
 
-Projects are local. Database files, `.env` files, workspaces, exports, output and PDFs are ignored by Git. Reports intentionally contain source quotations and full source text, so review the bundle before sharing it. An ignore file does not prevent someone from explicitly force-adding private material.
+Local projects remain local. Shared projects are stored in the configured service data directory and accessible to their owner and selected agent connections. Database files, `.env` files, workspaces, exports, output and PDFs are ignored by Git. Reports intentionally contain source quotations and full source text, so review the bundle before sharing it. An ignore file does not prevent someone from explicitly force-adding private material. The public example and marketing screenshots contain only synthetic data.
 
 The textbook PDF, extracts, figures and private experiment notes are not in this repository. The public skill contains an original methodological summary with attribution.
 

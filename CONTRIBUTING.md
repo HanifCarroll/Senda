@@ -1,6 +1,6 @@
 # Development
 
-Use Node.js 24. Install with `npm ci`, then run `npm test`, `npm run check` and `npm run demo` after changes that affect the discovery workflow. Inspect the generated review page when changing exports or layout behavior.
+Use Node.js 24. Install with `npm ci`, then run `npm test`, `npm run check` and `npm run demo` after changes that affect the discovery workflow. Inspect the generated review page when changing exports or layout behavior. For web changes, also run `npm run build` and `npm run typecheck`, then check `npm run preview` on desktop and mobile. The build generates the ignored route tree; build before typechecking a fresh checkout. Keep local servers on loopback.
 
 Keep committed fixtures synthetic. Do not add source interviews, database files, credentials, proprietary process descriptions, textbook pages or extracted copyrighted material. Project and export directories are ignored by default.
 
