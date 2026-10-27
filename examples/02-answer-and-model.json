@@ -14,7 +14,7 @@
     { "id": "C_Order", "statement": "Deposit receipt must precede scheduling", "kind": "order", "status": "supported", "elementIds": ["Flow_DepositSchedule"], "evidence": [{ "sourceId": "Source_Answer", "segmentId": "line-1", "quote": "The deposit must arrive before scheduling." }] },
     { "id": "C_Outcome", "statement": "Scheduling the work completes booking", "kind": "boundary", "status": "supported", "elementIds": ["Event_End", "Flow_ScheduleEnd"], "evidence": [{ "sourceId": "Source_Answer", "segmentId": "line-1", "quote": "Booking is complete once the work is scheduled." }] }
   ],
-  "questions": [{ "id": "Q_Order", "question": "Must the deposit arrive before scheduling, and what marks booking as complete?", "why": "The conjunction does not establish sequence or the final outcome.", "claimIds": ["C_Order"], "status": "answered", "answerSourceId": "Source_Answer" }],
+  "questions": [{ "id": "Q_Order", "question": "Must the deposit arrive before scheduling, and what marks booking as complete?", "why": "The transcript mentions both steps but does not say which comes first or what finishes booking.", "claimIds": ["C_Order"], "status": "answered", "answerSourceId": "Source_Answer" }],
   "glossary": [{ "term": "Booking", "definition": "A project whose deposit has arrived and whose work has been scheduled." }],
   "operations": [
     { "op": "add", "kind": "start", "id": "Event_Start", "name": "Proposal accepted" },

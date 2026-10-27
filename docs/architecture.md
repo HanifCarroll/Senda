@@ -28,16 +28,22 @@ The earlier comparison environments and exploratory output are not product depen
 
 ## Persistence and concurrency
 
-The project database has append-only revisions containing a complete JSON snapshot and its digest. The JSON contains standard BPMN XML, context, source text and segments, claims, questions, vocabulary, review records and status. Source IDs cannot be overwritten through the service. Revision triggers prevent accidental SQL updates/deletes; the digest detects ordinary corruption, not malicious modification by someone with full filesystem access.
+The project database has append-only revisions containing a complete JSON snapshot and its digest. The JSON contains standard BPMN XML, context, source passages and attribution, claims, questions, vocabulary, stakeholder coverage, conflicts, abstraction contracts, walkthroughs, scenarios, review records and status. Source IDs cannot be overwritten through the service. Revision triggers prevent accidental SQL updates/deletes; the digest detects ordinary corruption, not malicious modification by someone with full filesystem access.
+
+The SQLite schema remains version 1. Snapshot formats 1 and 2 are readable without rewriting prior rows. New content revisions use format 2. Optional discovery collections are absent or empty in old projects; an ordinary read/export does not migrate them or fabricate metadata. Newer snapshot versions are rejected.
 
 Each mutation requires `expectedRevision`. A write transaction takes a SQLite lock, rechecks that revision, and appends exactly one snapshot. Candidate generation happens outside the lock; the final compare-and-swap prevents competing writers from losing a newer revision. The application must reread after a stale request. There is no distributed service, identity provider or authorization boundary here.
 
-Model content and discovery data determine a content digest. Reviews refer to that digest. Adding a review does not invalidate other reviews; changing the model, evidence, context, questions, vocabulary or stage does. Finalization is a local reviewed state. It has no relation to deployment or process execution.
+Model content and discovery data determine a content digest. Overall and scenario reviews refer to that digest and the `dumas-conceptual-v2` quality profile. Adding feedback does not invalidate other feedback; changing the model or discovery content does. Legacy approvals without this profile binding are historical feedback, not current approval. Finalization is a local reviewed state with no relation to deployment or process execution.
+
+The written walkthrough has its own basis digest over the model and discovery inputs, excluding the walkthrough itself. An atomic proposal can update the model, evidence, scenarios and walkthrough together. Retaining an old walkthrough after changing its basis marks it stale; export labels and collapses that old text. Stale walkthrough references may point to historical elements, while newly supplied/current walkthroughs must reference current elements and claims. Refreshing identical text against an unchanged basis is a no-op.
+
+Scenario descriptions are content. Their feedback is separate revision-bound review data. Scenario confirmation is an explicit human attestation, not simulated execution, and does not grant overall review approval. Recorded scenarios must be confirmed before finalization; neither scenarios nor finalization are required for draft editing.
 
 ## Boundaries
 
 - **Miragon:** generic BPMN operations, XML handling, layout, structural diagnostics, SVG rendering.
-- **Process Scribe:** durable projects, evidence links, uncertainty, clarification state, revision concurrency, book-based profile, human review records and report generation.
+- **Process Scribe:** durable projects, evidence and conflict references, clarification state, explicit abstraction, revision concurrency, conceptual quality profile, scenario/walkthrough freshness, human feedback and report generation.
 - **Host agent:** interviewing, extraction, interpretation, useful questions, proposed changes and communication.
 - **Process owner / intended reader:** truth, completeness, scenario review and comprehensibility.
 
@@ -49,6 +55,6 @@ An MCP server or HTTP endpoint can wrap `Project` methods after the local workfl
 
 ## Verification scope
 
-The behavioral checks intentionally recognize only simple branch paths. They do not explore general token states or evaluate conditions. Graph reachability is a useful prerequisite, not proof that a node can execute. The finalization profile excludes event/ad hoc subprocesses until specialized checks are added.
+The behavioral checks intentionally recognize only simple branch paths. They do not explore general token states or evaluate conditions. Graph reachability is a useful prerequisite, not proof that a node can execute. Business-language branch labels satisfy conceptual condition presence; executable expression validation is outside the product. A deliberately empty ordinary subprocess needs an explicit abstraction contract to omit internal path requirements. Compensation handlers are associated with their boundary events and checked outside ordinary sequence flow. The finalization profile excludes event/ad hoc subprocesses until specialized checks are added.
 
-Readability metrics are indicators. Missing names, generic branch labels, high routing degree and large scopes receive suggestions, while wording and audience comprehension remain human review. Source quotes are escaped in the HTML; the diagram is embedded as an SVG image rather than executable inline markup, with a restrictive content policy and no remote resources.
+Readability metrics are indicators. Missing names, generic branch labels, high routing degree and large scopes receive suggestions, while wording and audience comprehension remain human review. The review bundle presents actual answers, written explanations, readable changes and available child diagram planes before technical details. Source content is escaped in HTML; diagrams are embedded as SVG images rather than executable inline markup, with a restrictive content policy and no remote resources. The renderer's drawing notes remain available when a plane omits or cannot draw content.

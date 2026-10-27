@@ -9,7 +9,7 @@ const integer = value => {
   return Number(value);
 };
 const print = result => process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-const program = new Command().name('process-scribe').description('Evidence-backed BPMN discovery').version('0.1.0')
+const program = new Command().name('process-scribe').description('Evidence-backed BPMN discovery').version('0.2.0')
   .option('-p, --project <directory>', 'Directory containing the process project', '.process-scribe');
 program.exitOverride();
 program.configureOutput({ writeErr: () => {} });
@@ -46,6 +46,10 @@ program.command('review').description('Record explicit human feedback; the agent
   .requiredOption('--expected-revision <n>', 'Current revision', integer).requiredOption('--aspect <aspect>', 'semantic, behavioral or pragmatic')
   .requiredOption('--outcome <outcome>', 'approved or needs_changes').requiredOption('--reviewer <name>').requiredOption('--notes <text>')
   .action(run((p, o) => p.review(o)));
+program.command('review-scenario').description('Record a human walkthrough of one saved scenario')
+  .requiredOption('--expected-revision <n>', 'Current revision', integer).requiredOption('--scenario <id>', 'Scenario to review')
+  .requiredOption('--outcome <outcome>', 'confirmed or needs_changes').requiredOption('--reviewer <name>').requiredOption('--notes <text>')
+  .action(run((p, { scenario, ...o }) => p.reviewScenario({ ...o, scenarioId: scenario })));
 program.command('finalize').description('Mark a fully reviewed snapshot as reviewed; does not prove soundness')
   .requiredOption('--expected-revision <n>', 'Current revision', integer).action(run((p, o) => p.finalize(o.expectedRevision)));
 program.command('export').description('Write a new self-contained review bundle containing source evidence').option('--out <directory>')

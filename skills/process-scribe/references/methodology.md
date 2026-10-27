@@ -63,9 +63,9 @@ These are readable paraphrases of the seven guidelines discussed in the chapter,
 6. Name activities with a verb and an object.
 7. Consider decomposition when a model grows beyond roughly 30 elements, choosing meaningful subprocesses rather than arbitrary chunks.
 
-Process Scribe counts **flow nodes per process/subprocess scope**, excluding connectors and lane/pool frames, for its 30-element advisory. That count is an operational interpretation of the size guideline, not a standardized BPMN limit. Its warning for routing degree above four is an application heuristic; the book's degree guideline does not prescribe that number.
+Process Scribe counts **flow nodes per process/subprocess scope**, excluding connectors and lane/pool frames, for its 30-element advisory. Chapter 3, p. 104 explicitly discusses roughly 30 flow objects (activities, events and gateways) per model level. This remains advice, not a standardized BPMN limit. Its warning for routing degree above four is an application heuristic; the book's degree guideline does not prescribe that number.
 
-The book distinguishes general recommendations from agreed modeling conventions. For this application, the five stages guide discovery; explicit starts/ends and reachability are finalization-profile prerequisites; supported evidence and explicit human review are product requirements; readability suggestions remain advisory and can involve reasonable tradeoffs.
+The book distinguishes general recommendations from agreed modeling conventions. The versioned `dumas-conceptual-v2` profile accepts business-language conditions. It expects starts/ends and reachability in ordinary modeled scopes, exempts intentionally empty subprocesses only with an explicit abstraction contract, and checks compensation separately from ordinary sequence flow. Supported evidence and human review remain product requirements; readability suggestions remain advisory. See [modeling-patterns.md](modeling-patterns.md) for exceptions and limits.
 
 ## Review scenarios and limits
 
@@ -80,7 +80,7 @@ Before approving a version, discuss at least:
 - Whether source evidence supports the control flow, not just the activity names.
 - Whether the intended reader can explain the diagram without its author narrating every symbol.
 
-This local profile is conservative. Event and ad hoc subprocesses need additional validation support before finalization. A human walkthrough is valuable evidence, but does not transform the implemented checks into a formal proof.
+This local profile is conservative. Event and ad hoc subprocesses need additional validation support before finalization. [Review and iteration](review-and-iteration.md) explains how to retain concrete scenarios and revision-bound feedback. A human walkthrough does not transform the implemented checks into a formal proof.
 
 ## Reference
 

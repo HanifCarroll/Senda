@@ -46,6 +46,16 @@ export async function diagramSvg(xml) {
   const r = await renderSvg(xml);
   return r.images?.[0]?.svg || r.svg || null;
 }
+export async function diagramSvgs(xml) {
+  const elements = (await parseModel(xml)).elements;
+  if (!elements.some(e => e.$instanceOf?.('bpmn:FlowNode'))) return [];
+  const first = await renderSvg(xml);
+  const rest = await Promise.all((first.planes || []).map(plane => renderSvg(xml, { plane })));
+  return [first, ...rest].filter(r => r.svg).map((r, index) => ({
+    elementId: r.plane, title: elements.find(e => e.id === r.plane)?.name || (index ? `Process detail ${index}` : 'Process overview'),
+    file: index ? `diagram-${index + 1}.svg` : 'diagram.svg', svg: r.svg, notes: r.notes || [],
+  }));
+}
 function signature(e) {
   function plain(node) {
     if (!node || typeof node !== 'object') return node;
@@ -61,12 +71,31 @@ function signature(e) {
   return JSON.stringify({ parent: e.$parent?.id, ...plain(e) });
 }
 export async function modelChanges(before, after) {
-  const a = new Map((await parseModel(before)).elements.map(e => [e.id, signature(e)]));
-  const b = new Map((await parseModel(after)).elements.map(e => [e.id, signature(e)]));
-  return {
+  const oldElements = (await parseModel(before)).elements, newElements = (await parseModel(after)).elements;
+  const a = new Map(oldElements.map(e => [e.id, signature(e)]));
+  const b = new Map(newElements.map(e => [e.id, signature(e)]));
+  const changes = {
     created: [...b.keys()].filter(id => !a.has(id)),
     removed: [...a.keys()].filter(id => !b.has(id)),
     changed: [...b.keys()].filter(id => a.has(id) && a.get(id) !== b.get(id)),
     xmlChanged: before !== after,
   };
+  const label = e => e?.name || `unnamed ${typeOf(e || {}).replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase() || 'element'}`;
+  const describe = e => ['SequenceFlow', 'MessageFlow'].includes(typeOf(e))
+    ? `${typeOf(e) === 'MessageFlow' ? 'message' : 'connection'} from “${label(e.sourceRef)}” to “${label(e.targetRef)}”${e.name || e.conditionExpression?.body ? ` when ${e.name || e.conditionExpression.body}` : ''}`
+    : `“${label(e)}”`;
+  const descriptions = [];
+  for (const [key, prefix, elements] of [['created', 'Added', newElements], ['removed', 'Removed', oldElements]])
+    for (const id of changes[key]) {
+      const e = elements.find(e => e.id === id);
+      if (BUSINESS_TYPES.has(typeOf(e)) || e.$instanceOf?.('bpmn:FlowNode')) descriptions.push(`${prefix} ${describe(e)}.`);
+    }
+  for (const id of changes.changed) {
+    const previous = oldElements.find(e => e.id === id), next = newElements.find(e => e.id === id);
+    if (!BUSINESS_TYPES.has(typeOf(next)) && !next.$instanceOf?.('bpmn:FlowNode')) continue;
+    if (['SequenceFlow', 'MessageFlow'].includes(typeOf(next))) descriptions.push(`Changed ${describe(previous)} to ${describe(next)}.`);
+    else if (previous.name !== next.name) descriptions.push(`Renamed “${label(previous)}” to “${label(next)}”.`);
+    else descriptions.push(`Updated the details of “${label(next)}”.`);
+  }
+  return { ...changes, descriptions };
 }

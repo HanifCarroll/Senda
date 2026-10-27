@@ -38,7 +38,9 @@ export class Store {
       : this.db.prepare('SELECT * FROM revisions WHERE revision = ?').get(revision);
     requireThat(row, 'REVISION_NOT_FOUND', 'The requested revision does not exist.');
     requireThat(hash(row.snapshot) === row.digest, 'CORRUPT_REVISION', 'The saved revision failed its integrity check.');
-    return JSON.parse(row.snapshot);
+    const snapshot = JSON.parse(row.snapshot);
+    requireThat([1, 2].includes(snapshot.formatVersion), 'UNSUPPORTED_PROJECT', 'Unsupported project snapshot version.');
+    return snapshot;
   }
 
   append(expectedRevision, candidate, summary) {

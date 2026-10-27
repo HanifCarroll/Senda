@@ -1,20 +1,22 @@
 import { Store, contentHash } from './store.js';
-import { Init, Proposal, ReviewInput, ImportInput, Revision, proposalSchema } from './schema.js';
+import { Init, Proposal, ReviewInput, ScenarioReviewInput, ImportInput, Revision, proposalSchema, QUALITY_PROFILE } from './schema.js';
 import { createModel, editModel, prepareImport, parseModel, modelChanges, OPS_SCHEMA } from './model.js';
 import { addSources, updateDiscovery, validateReferences } from './discovery.js';
 import { assess } from './quality.js';
 import { requireThat } from './errors.js';
+import { walkthroughHash } from './review-state.js';
 
 export class Project {
   constructor(directory) { this.store = new Store(directory); }
   static async create(directory, input) {
     const options = Init.parse(input);
     const snapshot = {
-      formatVersion: 1, name: options.name, mode: options.mode, status: 'draft',
-      xml: await createModel(options.name), reviews: {},
+      formatVersion: 2, name: options.name, mode: options.mode, status: 'draft',
+      xml: await createModel(options.name), reviews: {}, scenarioReviews: {},
       discovery: {
-        stage: 'boundaries', context: { purpose: options.purpose, perspective: options.perspective, trigger: '', outcomes: [], scopeNotes: '' },
+        stage: 'boundaries', context: { purpose: options.purpose, perspective: options.perspective, trigger: '', outcomes: [], scopeNotes: '', profile: QUALITY_PROFILE },
         sources: addSources([], options.sources), claims: [], questions: [], glossary: [],
+        abstractions: [], stakeholders: [], conflicts: [], scenarios: [],
       },
     };
     const store = new Store(directory, { create: true });
@@ -39,7 +41,7 @@ export class Project {
     const quality = await assess(candidate);
     requireThat(quality.structural.passed, 'INVALID_MODEL', 'The candidate failed structural checks; the current revision was kept.', { findings: quality.structural.findings });
     if (contentHash(previous) === contentHash(candidate)) return { revision: previous.revision, unchanged: true, quality };
-    const saved = this.store.append(previous.revision, { ...candidate, status: 'draft', reviews: {} }, summary);
+    const saved = this.store.append(previous.revision, { ...candidate, formatVersion: 2, status: 'draft', reviews: {}, scenarioReviews: {} }, summary);
     return { revision: saved.revision, unchanged: false, quality: await assess(saved) };
   }
   async apply(input) {
@@ -47,6 +49,11 @@ export class Project {
     const previous = this.current(proposal.expectedRevision);
     const edit = await editModel(previous.xml, proposal.operations, proposal.layout);
     const candidate = { ...previous, xml: edit.xml, discovery: updateDiscovery(previous.discovery, proposal, edit.aliases) };
+    if (proposal.walkthrough) {
+      const basisHash = walkthroughHash(candidate), old = previous.discovery.walkthrough;
+      candidate.discovery.walkthrough = old?.basisHash === basisHash && JSON.stringify(old.steps) === JSON.stringify(candidate.discovery.walkthrough.steps)
+        ? old : { ...candidate.discovery.walkthrough, basisHash, basedOnRevision: previous.revision };
+    }
     const result = await this.saveContent(previous, candidate, proposal.summary);
     return { ...result, aliases: edit.aliases, backend: edit.report };
   }
@@ -58,9 +65,17 @@ export class Project {
   async validate(revision) { return assess(this.read(revision)); }
   async review(input) {
     const request = ReviewInput.parse(input), previous = this.current(request.expectedRevision);
-    const review = { aspect: request.aspect, outcome: request.outcome, reviewer: request.reviewer, notes: request.notes, contentHash: contentHash(previous), reviewedRevision: previous.revision, recordedAt: new Date().toISOString() };
+    const review = { aspect: request.aspect, outcome: request.outcome, reviewer: request.reviewer, notes: request.notes, profile: QUALITY_PROFILE, contentHash: contentHash(previous), reviewedRevision: previous.revision, recordedAt: new Date().toISOString() };
     const candidate = { ...previous, status: 'draft', reviews: { ...previous.reviews, [request.aspect]: review } };
     const saved = this.store.append(previous.revision, candidate, `Record ${request.aspect} review: ${request.outcome}`);
+    return { revision: saved.revision, review, quality: await assess(saved) };
+  }
+  async reviewScenario(input) {
+    const request = ScenarioReviewInput.parse(input), previous = this.current(request.expectedRevision);
+    requireThat(previous.discovery.scenarios?.some(s => s.id === request.scenarioId), 'SCENARIO_NOT_FOUND', 'Read the recorded scenarios before reviewing one.');
+    const { expectedRevision, ...feedback } = request;
+    const review = { ...feedback, profile: QUALITY_PROFILE, contentHash: contentHash(previous), reviewedRevision: previous.revision, recordedAt: new Date().toISOString() };
+    const saved = this.store.append(previous.revision, { ...previous, status: 'draft', scenarioReviews: { ...previous.scenarioReviews, [request.scenarioId]: review } }, `Record scenario feedback: ${request.outcome}`);
     return { revision: saved.revision, review, quality: await assess(saved) };
   }
   async finalize(expectedRevision) {

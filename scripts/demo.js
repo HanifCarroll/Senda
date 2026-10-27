@@ -9,12 +9,14 @@ const directory = await mkdtemp(path.join(root, 'output', 'demo-'));
 const readExample = name => readFile(path.join(root, 'examples', name), 'utf8');
 let project = await Project.create(path.join(directory, 'project'), {
   name: 'Freelance project booking', purpose: 'Document how an accepted proposal becomes a confirmed booking.', perspective: 'Freelancer',
-  sources: [{ id: 'Source_Transcript', title: 'Synthetic discovery interview', kind: 'transcript', text: await readExample('transcript.txt') }],
+  sources: [{ id: 'Source_Transcript', title: 'Synthetic discovery interview', kind: 'transcript', contributor: 'Synthetic freelancer', origin: 'Demonstration transcript', text: await readExample('transcript.txt') }],
 });
 try {
   await project.apply(JSON.parse(await readExample('01-discover.json')));
   const before = await exportBundle(project, path.join(directory, 'before-clarification'));
-  await project.apply(JSON.parse(await readExample('02-answer-and-model.json')));
+  const answer = JSON.parse(await readExample('02-answer-and-model.json'));
+  const reviewContext = JSON.parse(await readExample('03-review-context.json'));
+  await project.apply({ ...answer, context: { ...answer.context, ...reviewContext.context }, stakeholders: reviewContext.stakeholders, scenarios: reviewContext.scenarios, walkthrough: reviewContext.walkthrough });
   project.close();
   project = new Project(path.join(directory, 'project'));
   const after = await exportBundle(project, path.join(directory, 'after-clarification'));

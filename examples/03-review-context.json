@@ -1,0 +1,28 @@
+{
+  "expectedRevision": 3,
+  "summary": "Explain the confirmed booking sequence and prepare a case to review",
+  "context": {
+    "audience": "The freelancer reviewing how bookings work",
+    "owner": "Freelancer",
+    "customer": "Client",
+    "detailLevel": "overview"
+  },
+  "stakeholders": [{
+    "id": "Freelancer", "role": "Freelancer",
+    "scope": "Deposit collection, scheduling and the meaning of a completed booking",
+    "status": "consulted", "sourceIds": ["Source_Transcript", "Source_Answer"],
+    "notes": "Synthetic demonstration; no real process owner has approved this model."
+  }],
+  "scenarios": [{
+    "id": "Case_Booking", "title": "An accepted proposal becomes a booking", "kind": "normal",
+    "given": "The client has accepted the proposal.",
+    "expectedOutcome": "The deposit arrives before scheduling; scheduling the work completes the booking.",
+    "elementIds": ["Event_Start", "Task_Deposit", "Task_Schedule", "Event_End"],
+    "evidence": [{ "sourceId": "Source_Answer", "segmentId": "line-1", "quote": "The deposit must arrive before scheduling. Booking is complete once the work is scheduled.", "basis": "reported" }]
+  }],
+  "walkthrough": { "steps": [
+    { "id": "Step_Start", "text": "The client accepts the proposal, starting the booking process.", "elementIds": ["Event_Start"], "claimIds": ["C_Trigger"] },
+    { "id": "Step_Deposit", "text": "The freelancer collects the deposit. Scheduling waits until the deposit has arrived.", "elementIds": ["Task_Deposit", "Flow_DepositSchedule"], "claimIds": ["C_Deposit", "C_Order"] },
+    { "id": "Step_Schedule", "text": "The freelancer schedules the work. The booking is then complete.", "elementIds": ["Task_Schedule", "Event_End"], "claimIds": ["C_Schedule", "C_Outcome"] }
+  ] }
+}

@@ -34,19 +34,24 @@ Optional fields:
 
 | Field | Meaning |
 | --- | --- |
-| `context` | Patch `purpose`, `perspective`, `trigger`, `outcomes`, or `scopeNotes` |
+| `context` | Patch `purpose`, `perspective`, `trigger`, `outcomes`, `scopeNotes`, or optional `audience`, `owner`, `customer`, `detailLevel` (`overview`/`operational`). The only profile is `dumas-conceptual-v2`. |
 | `stage` | `boundaries`, `activities`, `responsibilities`, `control-flow`, `additional-detail`, `quality-review` |
-| `sources` | Append immutable `{id,title,kind,text}` records; kind is `transcript`, `answer`, or `document` |
+| `sources` | Append immutable `{id,title,kind,text}` records; kind is `transcript`, `answer`, `document` or `observation`. Optional `origin`, `contributor`, `collectedOn` (YYYY-MM-DD), `period`, `coverage`. |
 | `claims` | Upsert complete claim records by ID |
 | `questions` | Upsert complete question records by ID |
 | `removeClaimIds`, `removeQuestionIds` | Explicitly remove obsolete records from the current view; prior revisions retain them |
 | `glossary` | Replace the current list of `{term,definition,aliases}` entries |
+| `abstractions` / `removeAbstractionIds` | Upsert/remove `{id,elementId,reason,inputs,outcomes}`. Inputs/outcomes are nonempty text arrays; target must be an empty ordinary subprocess. |
+| `stakeholders` / `removeStakeholderIds` | Upsert/remove `{id,role,scope,status,sourceIds,notes}`. Status: `not-consulted`, `consulted` (needs sources), `not-needed` (needs a reason in notes). |
+| `conflicts` / `removeConflictIds` | Upsert/remove `{id,description,claimIds,status,resolution,evidence}`. At least two distinct claims; status `open` or `resolved`. Resolution needs an explanation and exact source evidence. |
+| `scenarios` / `removeScenarioIds` | Upsert/remove `{id,title,kind,given,expectedOutcome,elementIds,evidence}`. Kind: `normal`, `alternative`, `parallel`, `rework`, `exception`, `message`, `other`. At least one model element; evidence is optional. |
+| `walkthrough` | Replace with `{steps:[{id,text,elementIds,claimIds}]}`; every step needs a model or claim link. Use `null` to remove. Omit to retain it, possibly stale after edits. Its binding fields are application-owned. |
 | `operations` | Native Miragon operations; use the emitted operation schema |
 | `layout` | `incremental` (default) or `full`, applied when operations are present |
 
-A claim contains `id`, `statement`, `kind`, `status`, `state`, `evidence`, `elementIds` and optional `rationale`. Kinds: `boundary`, `activity`, `event`, `responsibility`, `handoff`, `order`, `condition`, `exception`, `artifact`. Status is `supported`, `inferred`, `disputed`, or `unknown`. State defaults to `current`; explicitly set `proposed` in proposed-state projects. Each evidence entry is `{sourceId,segmentId,quote}`. Supported and inferred claims require evidence; inferred claims also require a rationale. Multiple claims can cite the same segment. All linked BPMN IDs must exist after the edits, and linked claims must match the project state.
+A claim contains `id`, `statement`, `kind`, `status`, `state`, `evidence`, `elementIds` and optional `rationale`. Kinds: `boundary`, `activity`, `event`, `responsibility`, `handoff`, `order`, `condition`, `exception`, `artifact`. Status is `supported`, `inferred`, `disputed`, or `unknown`. State defaults to `current`; explicitly set `proposed` in proposed-state projects. Each evidence entry is `{sourceId,segmentId,quote}` with optional `basis`: `reported`, `observed`, `prescribed`, or `derived`. Supported and inferred claims require evidence; inferred claims also require a rationale. Multiple claims can cite the same segment. All linked BPMN IDs must exist after the edits, and linked claims must match the project state.
 
-A question contains `id`, `question`, `why`, `blocking` (default true), `status` (default `open`), `claimIds` and `elementIds`. Status can be `open`, `answered` or `deferred`. An answered question requires `answerSourceId`, pointing to a source of kind `answer`. A deferred blocking question still blocks finalization. Updating a claim or question replaces that complete record; omitted optional arrays receive their default empty value.
+A question contains `id`, `question`, `why`, `blocking` (default true), `status` (default `open`), `claimIds` and `elementIds`. Status can be `open`, `answered` or `deferred`. An answered question requires `answerSourceId`, pointing to a source of kind `answer`. Optional `answerEvidence` selects exact excerpts from that same answer source; otherwise the page shows the source's full text. A deferred blocking question still blocks finalization. Upserting any record replaces that complete record; omitted arrays receive their defaults. Omit the collection itself to preserve existing entries.
 
 Example activity operation with evidence:
 
@@ -66,7 +71,9 @@ Example activity operation with evidence:
 
 This example assumes the cited source exists. It produces an incomplete draft and does not fabricate an ordering or completion. For a complete runnable fixture, use `examples/01-discover.json` and `examples/02-answer-and-model.json` in the companion repository.
 
-Claims can use operation aliases in `elementIds`; the application resolves the aliases returned by Miragon before saving. Explicit stable IDs are easier to inspect. No API key or network LLM is called by `apply`.
+Claims, questions, scenarios and walkthrough steps can use operation aliases in `elementIds`; abstractions can use one in `elementId`. Explicit stable IDs are easier to inspect. No API key or network LLM is called by `apply`. See `examples/03-review-context.json` for a complete walkthrough, stakeholder record and scenario applied after the two modeling examples.
+
+Walkthroughs are bound to the model and discovery content excluding the walkthrough itself. Changing those inputs without supplying a refreshed walkthrough marks it stale; the old text is retained as explicitly outdated. Scenario reviews and overall reviews do not change that binding. Live claims, questions, scenarios and abstraction references must remain valid after edits. A stale walkthrough can retain historical references while it waits to be replaced.
 
 ## Validate, review and export
 
@@ -74,14 +81,17 @@ Claims can use operation aliases in `elementIds`; the application resolves the a
 --project /private/path/booking validate
 --project /private/path/booking export --out /private/path/review-v3
 --project /private/path/booking review --expected-revision 3 --aspect semantic --outcome approved --reviewer "Process owner" --notes "Actual feedback and its scope"
+--project /private/path/booking review-scenario --expected-revision 4 --scenario Case_Booking --outcome confirmed --reviewer "Process owner" --notes "Actual case walkthrough feedback"
 --project /private/path/booking finalize --expected-revision 6
 ```
 
-The review command is an example of syntax, not permission to fabricate approval. Use the actual current revision. Each review appends a revision; review aspects are `semantic`, `behavioral` and `pragmatic`, and outcomes are `approved` or `needs_changes`. Approvals bind to a digest of the model plus discovery records, so subsequent changes invalidate all three.
+These commands illustrate syntax, not permission to fabricate approval. Use the actual current revision, not the illustrative numbers. Each review appends a revision; review aspects are `semantic`, `behavioral` and `pragmatic`, and outcomes are `approved` or `needs_changes`. Scenario outcomes are `confirmed` or `needs_changes`. Feedback binds to the content digest and quality profile; subsequent content changes invalidate both kinds of feedback. Scenario confirmation does not approve the three overall aspects.
 
-Finalization requires structural checks and the blocking deadlock-pattern check to pass; complete boundaries and graph paths; supported claims for business nodes and flows; no in-scope uncertain claims or unanswered blocking questions; and approval of all three review aspects. Parallel-to-exclusive merging and readability advice remain advisory because the intended behavior matters. Finalization records `reviewed`, not formal soundness or execution readiness.
+Finalization requires structural checks and the blocking deadlock-pattern check to pass; complete boundaries and appropriate paths; supported claims for business nodes and flows; no in-scope uncertainty, open conflicts or unanswered blocking questions; no stale walkthrough; confirmation of any recorded scenarios; and approval of all three review aspects. Conceptual branch labels can supply conditions. Explicit abstractions and compensation use specialized checks. Scenario records and a written walkthrough are optional during discovery. Parallel-to-exclusive merging and readability advice remain advisory. Finalization records `reviewed`, not formal soundness or execution readiness.
 
-An export is an immutable bundle in a new directory containing `review.html`, `model.bpmn`, `diagram.svg`, `discovery.json`, `quality.json` and `history.json`. Source text is included. Existing output directories are not overwritten. Export after each important revision rather than editing generated files in place.
+An export is an immutable bundle in a new directory containing `review.html`, `model.bpmn`, `diagram.svg`, `diagrams.json`, `discovery.json`, `quality.json`, `history.json` and `changes.json`, plus numbered SVG files for additional diagram planes. Source text is included. The page shows the latest content change and expandable child diagrams. `diff` includes readable `model.descriptions` alongside element IDs. Existing output directories are not overwritten. Export after each important revision rather than editing generated files in place.
+
+Version 0.1 projects open without rewriting historical snapshots or source records. New content revisions use snapshot format 2 in the same database. Legacy reviews without the new quality-profile binding need fresh feedback before finalization. Use version 0.2 or later for projects once new format-2 revisions have been saved.
 
 Import an external editor's result with:
 
@@ -108,4 +118,4 @@ try {
 }
 ```
 
-`Project.create(directory, options)` returns an open project; close it when done. The same service could support future MCP or HTTP adapters, but those transports are not part of version 0.1.
+`Project.create(directory, options)` returns an open project; close it when done. `project.reviewScenario({expectedRevision,scenarioId,outcome,reviewer,notes})` records human case feedback. The same service could support future MCP or HTTP adapters; those transports are outside this release.

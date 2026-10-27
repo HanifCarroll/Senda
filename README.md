@@ -4,7 +4,7 @@ Turn a discovery conversation into a BPMN model whose activities, decisions and 
 
 Process Scribe combines a reusable agent skill, a local CLI and a JavaScript library. The agent conducts discovery and interprets the source material. The application stores evidence and revisions, applies BPMN edits through [Miragon bpmn-cli](https://github.com/Miragon/bpmn-cli), and produces a review bundle. It does not make its own LLM calls or require an API key.
 
-The discovery method follows Chapter 5 of *Fundamentals of Business Process Management*, second edition: boundaries → activities and events → resources and handoffs → control flow → relevant additional detail, with iteration and review throughout. [Read the original methodology summary](skills/process-scribe/references/methodology.md).
+The discovery method follows Chapter 5 of *Fundamentals of Business Process Management*, second edition: boundaries → activities and events → resources and handoffs → control flow → relevant additional detail, with iteration and review throughout. Chapters 1–4 inform interview preparation, abstraction and modeling patterns. [Read the methodology summary](skills/process-scribe/references/methodology.md).
 
 ## Try the complete example
 
@@ -17,9 +17,9 @@ npm run check
 npm run demo
 ```
 
-The demo creates a private workspace under the ignored `output/` directory and prints links to two local review pages. The first keeps ambiguous sequencing unresolved. The second uses a synthetic clarification to build the model. It reopens the saved database before exporting, demonstrating persistence across sessions. Human approvals remain pending.
+The demo creates a private workspace under the ignored `output/` directory and prints links to two local review pages. The first keeps ambiguous sequencing unresolved. The second uses a synthetic clarification to build the model, adds a written walkthrough and a case for review, then reopens the saved database before exporting. Human approvals and scenario confirmation remain pending.
 
-Open the printed `after` path in a browser to see the diagram, questions, claims, source quotations and quality checks. The bundle includes BPMN, SVG and JSON files. All committed examples and tests are synthetic.
+Open the printed `after` path in a browser to see the diagram, process explanation, actual clarification answer and cases to review. Supporting quotations and internal references are available in expandable details. Available child diagrams are included. The bundle contains BPMN, SVG and JSON files. Committed examples and tests are synthetic.
 
 ## Use it with an agent
 
@@ -49,11 +49,12 @@ node bin/process-scribe.js --project workspaces/booking init \
 node bin/process-scribe.js --project workspaces/booking apply --file examples/01-discover.json
 node bin/process-scribe.js --project workspaces/booking inspect
 node bin/process-scribe.js --project workspaces/booking apply --file examples/02-answer-and-model.json
+node bin/process-scribe.js --project workspaces/booking apply --file examples/03-review-context.json
 node bin/process-scribe.js --project workspaces/booking validate
 node bin/process-scribe.js --project workspaces/booking export
 ```
 
-Every edit names the revision it was based on. A failed operation, invalid quote or stale revision leaves the previous snapshot intact. Sources cannot be overwritten. Changes to the model or discovery records invalidate prior reviews. Use `history` and `diff --from 1` to inspect the evolution.
+Every edit names the revision it was based on. A failed operation, invalid quote or stale revision leaves the previous snapshot intact. Sources cannot be overwritten. Changes to the model or discovery records invalidate prior reviews and scenario feedback; a retained written walkthrough becomes visibly stale until refreshed. Use `history` and `diff --from 1` to inspect the evolution, including readable descriptions of diagram changes.
 
 `schema` prints the proposal schema and Miragon's operation schema; `--help` lists commands. [Command and proposal reference](skills/process-scribe/references/commands.md).
 
@@ -61,24 +62,31 @@ Every edit names the revision it was based on. A failed operation, invalid quote
 
 | Area | Implemented checks | Still requires judgment |
 | --- | --- | --- |
-| Structural verification | Miragon validation, parser diagnostics, scope and reference checks | Comprehensive BPMN XSD conformance is not claimed |
+| Structural verification | Miragon validation, parser diagnostics, scope/reference rules and selected compensation checks | Comprehensive BPMN XSD conformance is not claimed |
 | Behavioral verification | Two narrow split/join mismatch patterns, including the negative deadlock fixture | General soundness, loops, events, message interactions, condition coverage |
-| Semantic validation | Exact source quote existence, stable evidence links, open questions, current/proposed separation | Whether the evidence supports the claims and the model matches the real process completely |
+| Semantic validation | Exact quotes and references, open questions/conflicts, source context, abstraction contracts, current/proposed separation | Whether the evidence supports the claims and the model matches the real process completely |
 | Readability | Layout metrics, branch labels, routing degree, decomposition suggestions | Wording, vocabulary, granularity, clear handoffs and comprehension by the intended reader |
 
 **A structurally valid model can still be wrong.** Review records cover semantic, behavioral and pragmatic review separately. A human can record approval or request changes; the agent must not invent approval. Approvals are local records, not authenticated identities. `finalize` marks the exact content as **reviewed**, not proven sound, deployment-ready or executable.
 
+The conceptual profile accepts meaningful business-language branch conditions without requiring executable expressions. Intentionally unspecified subprocesses need an explicit reason and input/outcome contract. Compensation handlers use their own association checks rather than ordinary start/end paths. Genuine missing paths and incomplete decisions still prevent finalization.
+
+Use `review-scenario` to record actual human feedback on a saved case. A recorded case must be confirmed before finalization, but creating cases and finalizing the model are optional during draft iteration. A human walkthrough is not an execution simulation.
+
 Readability suggestions are advisory. They should never change real process behavior merely to improve appearance. The selected convention leaves split gateways unlabeled and labels outgoing conditions explicitly; Miragon's conflicting question-name advisory is retained in the report with an explanation of the override.
 
-## Scope of version 0.1
+## Scope of version 0.2
 
-- Local CLI, exported JavaScript API, durable revisions, evidence ledger, clarification workflow, review records and portable review bundles.
-- Generic descriptive BPMN, with structural checks that allow incomplete drafts. Explicit starts, ends and graph paths are required by this application's finalization profile.
+- Transcript-to-diagram discovery and iterative clarification through a local CLI and JavaScript API, with durable revisions and portable review bundles.
+- Optional audience/owner context, stakeholder coverage, evidence basis and attribution, conflicts, intentional abstractions, written walkthroughs and concrete review cases.
+- Generic descriptive BPMN with the versioned `dumas-conceptual-v2` profile and incomplete drafts. Ordinary paths, accepted abstractions and compensation are assessed separately.
 - Imports with parser warnings are rejected to avoid silent data loss. Engine-specific extensions need explicit compatibility work; no promise of arbitrary vendor round trips.
 - Event and ad hoc subprocesses can remain drafts but need additional validation support before this profile will finalize them. Deployment configuration, collaboration servers, authentication and hosted MCP/HTTP services are not included.
-- Layout checking does not certify the diagram. The renderer displays the first diagram in an imported multi-diagram file; the complete model remains in the BPMN export.
+- Layout checking does not certify the diagram. Available diagram planes are exported and linked; the complete model remains in the BPMN export.
+- Version 0.1 project history is preserved without rewriting snapshots. New content revisions use format 2; old profile approvals need fresh feedback under the updated checks.
+- Business issue analysis, redesign comparisons, simulation, process mining and workflow execution are outside this release.
 
-The automated suite exercises persistence, transactional failure, stale writes, evidence integrity, review invalidation, selected BPMN fixtures, the CLI and escaping in exported HTML. It is **not an independent LLM evaluation**. The next useful evaluation is a real discovery interview with a process owner and a subsequent revision round.
+The automated suite exercises persistence, atomic failure, stale writes, evidence integrity, old-project compatibility, walkthrough/scenario invalidation, conceptual conditions, abstraction, compensation, hierarchy exports, selected event/repetition fixtures, the CLI and HTML escaping. It is **not an independent LLM evaluation**. Use a real transcript and a clarification round with a process owner to assess discovery quality.
 
 ## Data and publication
 

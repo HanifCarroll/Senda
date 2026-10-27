@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Definitions_Compensation" targetNamespace="urn:process-scribe:test">
+  <bpmn:process id="Reservation" name="Reservation cancellation" isExecutable="false">
+    <bpmn:startEvent id="Start" name="Reservation requested"><bpmn:outgoing>F_1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:task id="Reserve" name="Reserve capacity"><bpmn:incoming>F_1</bpmn:incoming><bpmn:outgoing>F_2</bpmn:outgoing></bpmn:task>
+    <bpmn:boundaryEvent id="Compensate" name="Undo reservation" attachedToRef="Reserve"><bpmn:compensateEventDefinition id="CompensateDef" /></bpmn:boundaryEvent>
+    <bpmn:task id="UndoReserve" name="Release capacity" isForCompensation="true" />
+    <bpmn:intermediateThrowEvent id="Trigger" name="Cancellation requested"><bpmn:incoming>F_2</bpmn:incoming><bpmn:outgoing>F_3</bpmn:outgoing><bpmn:compensateEventDefinition id="TriggerDef" activityRef="Reserve" /></bpmn:intermediateThrowEvent>
+    <bpmn:endEvent id="End" name="Reservation canceled"><bpmn:incoming>F_3</bpmn:incoming></bpmn:endEvent>
+    <bpmn:association id="CompensationAssociation" sourceRef="Compensate" targetRef="UndoReserve" associationDirection="One" />
+    <bpmn:sequenceFlow id="F_1" sourceRef="Start" targetRef="Reserve" />
+    <bpmn:sequenceFlow id="F_2" sourceRef="Reserve" targetRef="Trigger" />
+    <bpmn:sequenceFlow id="F_3" sourceRef="Trigger" targetRef="End" />
+  </bpmn:process>
+</bpmn:definitions>
