@@ -1,4 +1,4 @@
-import { markBounds, wordmarkBounds, markPaths, wordmarkPath } from "../branding/artwork.js";
+import { markBounds, wordmarkBounds, wordmarkOffset, markPaths, wordmarkPath } from "../branding/artwork.js";
 
 /** Ink + Teal: brand color is separate from validation and process-state color. */
 export const brandColors = Object.freeze({
@@ -17,17 +17,16 @@ export const brandCssVariables = Object.entries(brandColors).map(([key, value]) 
 
 // Restored outlines preserve the selected mark and lettering, rather than redrawing them.
 export const brandLogoHeight = 72;
-export const brandAssetVersion = "selected-18-2";
-const markHeight = 56, markWidth = markHeight * markBounds.width / markBounds.height;
-const wordHeight = 44, wordWidth = wordHeight * wordmarkBounds.width / wordmarkBounds.height;
-export const brandLogoWidth = Math.ceil(markWidth + 16 + wordWidth);
+export const brandAssetVersion = "selected-18-3";
+const logoScale = brandLogoHeight / markBounds.height;
+export const brandLogoWidth = Math.ceil((wordmarkOffset.x + wordmarkBounds.width) * logoScale);
 
 function markBody(inverse = false) {
   const fills = inverse ? [brandColors.lightTeal, brandColors.lightInk] : [brandColors.teal, brandColors.ink];
   return markPaths.map((d, i) => `<path d="${d}" fill="${fills[i]}"/>`).join("");
 }
 export function brandLogoSvg({ inverse = false } = {}) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${brandLogoWidth} ${brandLogoHeight}"><g transform="translate(0 ${(brandLogoHeight - markHeight) / 2}) scale(${markHeight / markBounds.height})">${markBody(inverse)}</g><g transform="translate(${markWidth + 16} ${(brandLogoHeight - wordHeight) / 2}) scale(${wordHeight / wordmarkBounds.height})"><path d="${wordmarkPath}" fill="${inverse ? "#F5F8F9" : brandColors.text}"/></g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${brandLogoWidth} ${brandLogoHeight}"><g transform="scale(${logoScale})">${markBody(inverse)}<g transform="translate(${wordmarkOffset.x} ${wordmarkOffset.y})"><path d="${wordmarkPath}" fill="${inverse ? "#F5F8F9" : brandColors.text}"/></g></g></svg>`;
 }
 export function brandMarkSvg({ inverse = false, tile = false } = {}) {
   if (!tile) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${markBounds.width} ${markBounds.height}">${markBody(inverse)}</svg>`;

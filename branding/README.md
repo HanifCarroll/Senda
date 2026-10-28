@@ -8,12 +8,17 @@ Libre Caslon lettering. Do not reuse it. The selected design has two broad pages
 one smooth flowing S-shaped opening, a swept inner tip, and substantial classic
 serif lettering.
 
-[restored-logo-source.png](restored-logo-source.png) was restored with the built-in
-image tool using the original logo sheet and palette sheet as references. Its
-outlines were mechanically traced with Potrace 2.1.8 (threshold 128, speckle limit
-5, curve tolerance 0.35). The temporary authoring tool is not a runtime dependency.
-[artwork.js](artwork.js) contains the traced contours used by the asset generator.
-The generator applies the canonical flat colors from src/brand.js.
+The production outlines in [artwork.js](artwork.js) are traced directly from the
+actual selected reference, including its lettering and relative symbol/text
+sizes. Potrace 2.1.8 was used with threshold 128, no speckle removal, and curve
+tolerance 0.15. A 0.7 px smoothing pass removes color-fringing noise around the
+page silhouettes; the lettering is traced without a substitute font. Potrace is
+an authoring tool, not a runtime dependency. The generator
+applies the canonical flat colors from src/brand.js.
+
+A transparent image-tool restoration was used as an intermediate comparison.
+The final vector contours use the selected reference itself so regeneration
+cannot silently substitute a different typeface, shape, or proportions.
 
 ## Restoration prompt
 
