@@ -16,15 +16,20 @@ export function createNodeHandler(application, origin, fallback) {
       }
       if (
         target !== "/health" &&
-        String(req.headers.host || "").toLowerCase() !== expected.host.toLowerCase()
+        String(req.headers.host || "").toLowerCase() !==
+          expected.host.toLowerCase()
       ) {
         const localAlias =
-          expected.hostname === "127.0.0.1" && req.headers.host === `localhost:${expected.port}`;
+          expected.hostname === "127.0.0.1" &&
+          req.headers.host === `localhost:${expected.port}`;
         if (localAlias && ["GET", "HEAD"].includes(req.method)) {
           res.writeHead(307, { location: new URL(target, origin).href });
           return res.end();
         }
-        res.writeHead(403, { "content-type": "application/json", "cache-control": "no-store" });
+        res.writeHead(403, {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+        });
         return res.end(
           JSON.stringify({
             code: "FORBIDDEN",
@@ -43,7 +48,8 @@ export function createNodeHandler(application, origin, fallback) {
         const ip = req.socket.remoteAddress || "unknown",
           now = Date.now();
         if (buckets.size > 5000)
-          for (const [key, value] of buckets) if (now - value.start > 60000) buckets.delete(key);
+          for (const [key, value] of buckets)
+            if (now - value.start > 60000) buckets.delete(key);
         const bucket = buckets.get(ip) || { start: now, count: 0 };
         if (now - bucket.start > 60000) {
           bucket.start = now;
@@ -58,7 +64,10 @@ export function createNodeHandler(application, origin, fallback) {
             "cache-control": "no-store",
           });
           return res.end(
-            JSON.stringify({ code: "RATE_LIMIT", message: "Please try again in a minute." }),
+            JSON.stringify({
+              code: "RATE_LIMIT",
+              message: "Please try again in a minute.",
+            }),
           );
         }
       }
@@ -69,7 +78,10 @@ export function createNodeHandler(application, origin, fallback) {
         if (size > MAX_BODY) {
           req.resume();
           res.setHeader("connection", "close");
-          res.writeHead(413, { "content-type": "application/json", "cache-control": "no-store" });
+          res.writeHead(413, {
+            "content-type": "application/json",
+            "cache-control": "no-store",
+          });
           return res.end(
             JSON.stringify({
               code: "LIMIT",
@@ -82,12 +94,18 @@ export function createNodeHandler(application, origin, fallback) {
       }
       const headers = new Headers();
       for (const [key, value] of Object.entries(req.headers))
-        if (value !== undefined) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
-      headers.set("x-scribe-client-ip", req.socket.remoteAddress || "127.0.0.1");
+        if (value !== undefined)
+          headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+      headers.set(
+        "x-scribe-client-ip",
+        req.socket.remoteAddress || "127.0.0.1",
+      );
       const request = new Request(new URL(req.url, origin), {
         method: req.method,
         headers,
-        body: ["GET", "HEAD"].includes(req.method) ? undefined : Buffer.concat(chunks),
+        body: ["GET", "HEAD"].includes(req.method)
+          ? undefined
+          : Buffer.concat(chunks),
         signal: controller.signal,
       });
       const response =
@@ -115,8 +133,11 @@ export function createNodeHandler(application, origin, fallback) {
     } catch (error) {
       if (controller.signal.aborted) return;
       console.error("Request failed:", error.name);
-      if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" });
-      res.end('{"code":"FAILED","message":"The request could not be completed."}');
+      if (!res.headersSent)
+        res.writeHead(500, { "content-type": "application/json" });
+      res.end(
+        '{"code":"FAILED","message":"The request could not be completed."}',
+      );
     }
   };
 }

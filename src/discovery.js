@@ -1,4 +1,4 @@
-import { hash } from './store.js';
+import { hash } from './hash.js';
 import { requireThat } from './errors.js';
 import { parseModel, typeOf } from './model.js';
 import { currentWalkthrough } from './review-state.js';

@@ -1,11 +1,10 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, existsSync, closeSync, openSync } from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
+import { hash } from './hash.js';
+export { hash, contentHash } from './hash.js';
 import { requireThat, ScribeError } from './errors.js';
 
-export const hash = (value) => createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
-export const contentHash = (s) => hash({ name: s.name, mode: s.mode, xml: s.xml, discovery: s.discovery });
 
 export class Store {
   constructor(directory, { create = false } = {}) {

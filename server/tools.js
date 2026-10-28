@@ -1,11 +1,10 @@
-import { readFile } from "node:fs/promises";
 import { McpServer, createMcpHandler } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { schema } from "../src/service.js";
+import { schema } from "../src/project-core.js";
 import { SourceInput, Proposal } from "../src/schema.js";
 import { publicError } from "../src/errors.js";
 import { skillBundle } from "./skill.js";
-import { ModelKind } from "./projects.js";
+import { ModelKind } from "./contracts.js";
 
 const project = z
   .uuid()
@@ -251,10 +250,7 @@ export function createAgentHandler(projects, actor, origin) {
               uri: uri.href,
               mimeType: "text/markdown",
               text:
-                (await readFile(
-                  new URL("../skills/process-scribe/SKILL.md", import.meta.url),
-                  "utf8",
-                )) +
+                (await skillBundle())["SKILL.md"] +
                 `\n\nRemote reference bundle: ${origin}/api/skill\nUse list_projects to select a granted project, read_project/read_sources, get_model_schema, and apply_revision. Keep expectedRevision and exact evidence quotes. No tool records human approvals.\n`,
             },
           ],

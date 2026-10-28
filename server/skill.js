@@ -8,6 +8,8 @@ export async function skillBundle() {
       .map((n) => `references/${n}`),
   ];
   return Object.fromEntries(
-    await Promise.all(names.map(async (n) => [n, await readFile(new URL(n, base), "utf8")])),
+    await Promise.all(
+      names.map(async (n) => [n, await readFile(new URL(n, base), "utf8")]),
+    ),
   );
 }

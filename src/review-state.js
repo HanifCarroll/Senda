@@ -1,4 +1,4 @@
-import { hash, contentHash } from './store.js';
+import { hash, contentHash } from './hash.js';
 import { QUALITY_PROFILE } from './schema.js';
 
 // The walkthrough cannot include its own digest in the material it describes.

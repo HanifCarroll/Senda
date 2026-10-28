@@ -10,6 +10,9 @@ output
 tmp
 coverage
 dist
+dist-cloudflare
+.wrangler
+.dev.vars*
 .tanstack
 *.sqlite*
 *.pdf

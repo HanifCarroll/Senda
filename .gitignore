@@ -15,5 +15,8 @@ tmp/
 coverage/
 *.log
 dist/
+dist-cloudflare/
+.wrangler/
+.dev.vars*
 .tanstack/
 web/routeTree.gen.ts

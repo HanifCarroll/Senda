@@ -85,12 +85,14 @@ function Workspace() {
     [text, setText] = useState(""),
     [question, setQuestion] = useState("");
   const latest = useRef(0),
-    requestId = useRef(0);
+    requestId = useRef(0),
+    refreshing = useRef(0);
   const activeProject = useRef(projectId);
   activeProject.current = projectId;
   const refresh = useCallback(async () => {
     if (activeProject.current !== projectId) return;
     const id = ++requestId.current;
+    refreshing.current++;
     try {
       const list = await api<Models>(`/api/projects/${projectId}/models`);
       const exists = location.model === "as-is" || !!list.toBe;
@@ -106,9 +108,13 @@ function Workspace() {
       setReview(value);
       setError("");
     } catch (e: any) {
+      if (id !== requestId.current || activeProject.current !== projectId)
+        return;
       if (e instanceof ApiError && e.status === 401)
         window.location.assign("/sign-in");
       else setError(e.message);
+    } finally {
+      refreshing.current--;
     }
   }, [projectId, location.revision, location.model]);
   useEffect(() => {
@@ -120,8 +126,12 @@ function Workspace() {
   useEffect(() => {
     if (location.revision) return;
     const controller = new AbortController();
+    let polling = false;
     const timer = setInterval(async () => {
-      if (document.hidden) return;
+      // A cold diagram can take longer than the polling interval. Starting
+      // another refresh would invalidate that result and starve the first load.
+      if (document.hidden || polling || refreshing.current > 0) return;
+      polling = true;
       try {
         const list = await api<Models>(`/api/projects/${projectId}/models`, {
           signal: controller.signal,
@@ -130,13 +140,15 @@ function Workspace() {
         const revision =
           (location.model === "as-is" ? list.asIs : list.toBe)?.revision || 0;
         setModels(list);
-        if (revision !== latest.current) {
+        if (revision !== latest.current && refreshing.current === 0) {
           await refresh();
           setNotice("The latest revision is ready.");
         }
       } catch (e: any) {
         if (e.name !== "AbortError")
           setNotice("Updates paused. Use Refresh to reconnect.");
+      } finally {
+        polling = false;
       }
     }, 5000);
     return () => {

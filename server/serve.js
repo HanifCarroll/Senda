@@ -10,7 +10,9 @@ const port = Number(process.env.PORT || 3000);
 const origin = process.env.APP_URL || `http://127.0.0.1:${port}`;
 const parsed = new URL(origin);
 if (parsed.origin !== origin || !["http:", "https:"].includes(parsed.protocol))
-  throw new Error("APP_URL must be an origin without a path or trailing slash.");
+  throw new Error(
+    "APP_URL must be an origin without a path or trailing slash.",
+  );
 if (
   process.env.NODE_ENV === "production" &&
   parsed.protocol !== "https:" &&
@@ -23,7 +25,9 @@ if (
     !["127.0.0.1", "::1"].includes(process.env.HOST || "127.0.0.1"))
 )
   throw new Error("Local export reviews must run on a loopback-only server.");
-const directory = path.resolve(process.env.PROCESS_SCRIBE_DATA || ".process-scribe/hosted");
+const directory = path.resolve(
+  process.env.PROCESS_SCRIBE_DATA || ".process-scribe/hosted",
+);
 const application = await createApplication({ origin, directory });
 const root = fileURLToPath(new URL("../dist/client/", import.meta.url));
 const render = (await import("../dist/server/server.js")).default;
@@ -46,12 +50,15 @@ const server = createServer(
       url.pathname === "/favicon.svg"
     ) {
       try {
-        const filename = await realpath(path.join(root, decodeURIComponent(url.pathname)));
+        const filename = await realpath(
+          path.join(root, decodeURIComponent(url.pathname)),
+        );
         if (!filename.startsWith(root + path.sep) && !filename.startsWith(root))
           return new Response(null, { status: 404 });
         return new Response(await readFile(filename), {
           headers: {
-            "content-type": types[path.extname(filename)] || "application/octet-stream",
+            "content-type":
+              types[path.extname(filename)] || "application/octet-stream",
             "cache-control": url.pathname.startsWith("/assets/")
               ? "public, max-age=31536000, immutable"
               : "public, max-age=3600",
@@ -64,7 +71,9 @@ const server = createServer(
     return render.fetch(request);
   }),
 );
-server.listen(port, process.env.HOST || "127.0.0.1", () => console.log(`Senda: ${origin}`));
+server.listen(port, process.env.HOST || "127.0.0.1", () =>
+  console.log(`Senda: ${origin}`),
+);
 for (const signal of ["SIGINT", "SIGTERM"])
   process.on(signal, () =>
     server.close(() => {

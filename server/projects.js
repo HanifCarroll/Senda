@@ -1,30 +1,17 @@
+import { renderReview } from "./review.js";
 import { DatabaseSync } from "node:sqlite";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { Project, schema } from "../src/service.js";
-import { assess } from "../src/quality.js";
-import { diagramViews } from "../src/diagram-views.js";
-import { reviewData } from "../src/review-viewer.js";
 import { contentHash } from "../src/store.js";
 import { parseModel } from "../src/model.js";
 import { SourceInput, Proposal } from "../src/schema.js";
 import { ScribeError, requireThat } from "../src/errors.js";
 
-const UUID = z.uuid();
-export const ModelKind = z.enum(["as-is", "to-be"]);
-const Plan = z.strictObject({
-  baselineRevision: z.number().int().positive(),
-  brief: z.string().trim().min(1).max(50000),
-});
-const Create = z.strictObject({
-  name: z.string().trim().min(1).max(160),
-  purpose: z.string().trim().min(1).max(2000),
-  perspective: z.string().trim().min(1).max(2000),
-  source: SourceInput.optional(),
-});
-const caches = new Map();
+import { UUID, ModelKind, Plan, Create } from "./contracts.js";
+export { ModelKind } from "./contracts.js";
 
 /** All transports resolve an authenticated actor here before opening a project. */
 export class HostedProjects {
@@ -320,68 +307,7 @@ export class HostedProjects {
     return this.withProject(
       actor,
       id,
-      async (p) => {
-        const snapshot = p.read(revision),
-          key = `${id}:${model}:${snapshot.revision}`;
-        let drawing = caches.get(key);
-        if (!drawing) {
-          const projection = await diagramViews(snapshot.xml);
-          drawing = {
-            ...projection,
-            model: await parseModel(snapshot.xml),
-            quality: {
-              ...(await assess(snapshot)),
-              rendering: projection.rendering,
-            },
-          };
-          if (caches.size >= 20) caches.delete(caches.keys().next().value);
-          caches.set(key, drawing);
-        }
-        const { diagrams, bpmnXml, quality } = drawing;
-        const history = p.history();
-        let previous;
-        for (const h of [...history]
-          .reverse()
-          .filter((h) => h.revision < snapshot.revision)) {
-          const candidate = p.read(h.revision);
-          if (contentHash(candidate) !== contentHash(snapshot)) {
-            previous = candidate;
-            break;
-          }
-        }
-        return {
-          id: `${id}:${model}`,
-          projectId: id,
-          modelKind: model,
-          exportFilename: `${model}-revision-${snapshot.revision}.bpmn`,
-          title: snapshot.name,
-          revision: snapshot.revision,
-          mode: snapshot.mode,
-          exportXml: bpmnXml,
-          ...reviewData(snapshot, diagrams, drawing.model.elements),
-          discovery: snapshot.discovery,
-          quality,
-          changes: previous
-            ? {
-                ...(await p.diff(previous.revision, snapshot.revision)),
-                summary: history.find((h) => h.revision === snapshot.revision)
-                  ?.summary,
-              }
-            : null,
-          history: history.map((h) => ({
-            id: String(h.revision),
-            processKey: `${id}:${model}`,
-            contentKey: `${id}:${model}:${h.revision}`,
-            title: `${snapshot.name} · ${model === "as-is" ? "As-is" : "To-be"}`,
-            label: `Revision ${h.revision}`,
-            revision: h.revision,
-            created: h.createdAt,
-            modified: Date.parse(h.createdAt),
-            summary: h.summary,
-            perspective: snapshot.discovery.context.perspective,
-          })),
-        };
-      },
+      (p) => renderReview(p, id, revision, model),
       model,
     );
   }
