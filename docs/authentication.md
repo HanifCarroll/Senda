@@ -34,9 +34,18 @@ Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Workers secrets. An ignored
 owner-only template is prepared at `.process-scribe/google-oauth.json`. Fill it
 privately, then apply it with `npx wrangler secret bulk <private-file.json>`.
 Never commit a downloaded Google credential file or paste its secret into chat.
-The Google button appears only when both values are configured. Local browser
-tests use dummy credentials and verify the real OAuth start and callback URI;
-they do not prove a completed Google sign-in with a production client.
+The Google button appears only when both values are configured. The production
+client lives in the dedicated Google Cloud project `senda-513001`; its credentials
+are stored as Workers secrets. Its audience is External and its publishing status
+is In production. Its home page is the app root and its privacy page is `/privacy`,
+linked from both the home page and sign-in screen. No sensitive or restricted
+Google scopes are requested.
+
+Local browser tests use dummy credentials and verify the OAuth start and callback
+URI. Production sign-in has also been exercised with a real Google account,
+including the verified email and basic identity scopes. Console publishing and
+brand verification are separate from a successful sign-in; check the Google
+project's Audience and Branding screens when changing public availability.
 
 ## Agent connections
 

@@ -286,12 +286,15 @@ export function Marketing() {
             Hanif Carroll
           </a>
         </span>
-        <a
-          className="underline underline-offset-4"
-          href="https://github.com/HanifCarroll/process-scribe"
-        >
-          Source code
-        </a>
+        <div className="flex gap-5">
+          <a className="underline underline-offset-4" href="/privacy">Privacy</a>
+          <a
+            className="underline underline-offset-4"
+            href="https://github.com/HanifCarroll/process-scribe"
+          >
+            Source code
+          </a>
+        </div>
       </footer>
     </div>
   );
