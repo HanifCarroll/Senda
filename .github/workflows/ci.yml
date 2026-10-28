@@ -26,7 +26,7 @@ jobs:
         run: |
           export SENDA_TEST_STATE="$(mktemp -d)"
           npx wrangler d1 migrations apply senda --local --persist-to "$SENDA_TEST_STATE"
-          npx wrangler dev --config dist-cloudflare/server/wrangler.json --ip 127.0.0.1 --port 8788 --infer-origin-from-routes=false --persist-to "$SENDA_TEST_STATE" --var LOCAL_EMAIL_OUTBOX:1 --var BETTER_AUTH_SECRET:senda-ci-test-secret-not-used-in-production > "$SENDA_TEST_STATE/worker.log" 2>&1 &
+          npx wrangler dev --config dist-cloudflare/server/wrangler.json --ip 127.0.0.1 --port 8788 --infer-origin-from-routes=false --persist-to "$SENDA_TEST_STATE" --var LOCAL_EMAIL_OUTBOX:1 --var GOOGLE_CLIENT_ID:senda-local-test-client --var GOOGLE_CLIENT_SECRET:senda-local-test-client-secret --var BETTER_AUTH_SECRET:senda-ci-test-secret-not-used-in-production > "$SENDA_TEST_STATE/worker.log" 2>&1 &
           worker_pid=$!
           trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 40); do

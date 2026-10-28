@@ -22,6 +22,7 @@ export async function createRequestHandler({
   features = {
     accountEmail: false,
     agentClientDiscovery: "cimd-and-dynamic-registration",
+    loginMethods: { magicLink: false, google: false, password: true },
   },
 }) {
   const resource = `${origin}/mcp`;
@@ -38,8 +39,7 @@ export async function createRequestHandler({
       )
         return json(
           {
-            error:
-              "This connection was revoked. Reconnect and choose a project.",
+            error: "This connection was revoked. Reconnect and choose a project.",
           },
           401,
         );
@@ -106,14 +106,11 @@ export async function createRequestHandler({
     const url = new URL(request.url),
       pathname = url.pathname;
     if (pathname === "/health") return json({ status: "ok" });
-    if (pathname === "/api/config" && request.method === "GET")
-      return json(features);
+    if (pathname === "/api/config" && request.method === "GET") return json(features);
     if (pathname.startsWith("/.well-known/")) {
       const response = await auth.handler(request);
       if (response.status !== 404) return response;
-      return auth.handler(
-        new Request(`${origin}/api/auth${pathname}`, request),
-      );
+      return auth.handler(new Request(`${origin}/api/auth${pathname}`, request));
     }
     if (pathname.startsWith("/api/auth/")) return auth.handler(request);
     if (pathname === "/mcp") {
@@ -121,10 +118,7 @@ export async function createRequestHandler({
         return new Response(null, { status: 405, headers: { Allow: "POST" } });
       const sentOrigin = request.headers.get("origin");
       if (sentOrigin && sentOrigin !== origin)
-        return json(
-          { error: "This origin is not enabled for agent connections." },
-          403,
-        );
+        return json({ error: "This origin is not enabled for agent connections." }, 403);
       return mcp(request);
     }
     if (!pathname.startsWith("/api/")) return null;
@@ -143,8 +137,7 @@ export async function createRequestHandler({
           {
             headers: {
               "content-type": "application/zip",
-              "content-disposition":
-                'attachment; filename="process-scribe-skill.zip"',
+              "content-disposition": 'attachment; filename="process-scribe-skill.zip"',
             },
           },
         );
@@ -225,14 +218,12 @@ export async function createRequestHandler({
           const tool = available.find((t) => t.name === input.name);
           requireThat(tool, "NOT_FOUND", "This browser tool is not available.");
           requireThat(
-            input.arguments.projectId === undefined ||
-              input.arguments.projectId === projectId,
+            input.arguments.projectId === undefined || input.arguments.projectId === projectId,
             "FORBIDDEN",
             "Browser tools are limited to the open project. Read the visible project context before editing.",
           );
           requireThat(
-            input.arguments.model === undefined ||
-              input.arguments.model === model,
+            input.arguments.model === undefined || input.arguments.model === model,
             "FORBIDDEN",
             "Browser tools are limited to the active model. Read the visible project context before editing.",
           );
@@ -246,8 +237,7 @@ export async function createRequestHandler({
       }
       if (pathname === "/api/projects") {
         if (request.method === "GET") return json(await projects.list(actor));
-        if (request.method === "POST")
-          return json(await projects.create(actor, await body()), 201);
+        if (request.method === "POST") return json(await projects.create(actor, await body()), 201);
       }
       if (pathname === "/api/connections") {
         if (request.method === "GET")
@@ -271,10 +261,7 @@ export async function createRequestHandler({
       if (pathname === "/api/consent") {
         if (request.method === "GET")
           return json({
-            ...(await signedConsent(
-              url.searchParams.get("query"),
-              request.headers,
-            )),
+            ...(await signedConsent(url.searchParams.get("query"), request.headers)),
             projects: await projects.list(actor),
           });
         if (request.method === "POST") {
@@ -317,38 +304,24 @@ export async function createRequestHandler({
         const [, id, action = "read"] = match;
         const model = ModelKind.parse(url.searchParams.get("model") || "as-is");
         const revision = url.searchParams.has("revision")
-          ? z.coerce
-              .number()
-              .int()
-              .positive()
-              .parse(url.searchParams.get("revision"))
+          ? z.coerce.number().int().positive().parse(url.searchParams.get("revision"))
           : undefined;
         if (request.method === "GET") {
-          if (action === "models")
-            return json(await projects.models(actor, id));
-          if (action === "head")
-            return json(await projects.head(actor, id, model));
-          if (action === "read")
-            return json(await projects.read(actor, id, revision, model));
-          if (action === "review")
-            return json(await projects.review(actor, id, revision, model));
-          if (action === "sources")
-            return json(await projects.sources(actor, id, model));
-          if (action === "questions")
-            return json(await projects.questions(actor, id, model));
-          if (action === "checks")
-            return json(await projects.checks(actor, id, model));
+          if (action === "models") return json(await projects.models(actor, id));
+          if (action === "head") return json(await projects.head(actor, id, model));
+          if (action === "read") return json(await projects.read(actor, id, revision, model));
+          if (action === "review") return json(await projects.review(actor, id, revision, model));
+          if (action === "sources") return json(await projects.sources(actor, id, model));
+          if (action === "questions") return json(await projects.questions(actor, id, model));
+          if (action === "checks") return json(await projects.checks(actor, id, model));
           if (action === "bpmn")
-            return new Response(
-              (await projects.review(actor, id, revision, model)).exportXml,
-              {
-                headers: {
-                  "content-type": "application/xml",
-                  "content-disposition": `attachment; filename="${model}${revision ? `-revision-${revision}` : ""}.bpmn"`,
-                  "cache-control": "private, no-store",
-                },
+            return new Response((await projects.review(actor, id, revision, model)).exportXml, {
+              headers: {
+                "content-type": "application/xml",
+                "content-disposition": `attachment; filename="${model}${revision ? `-revision-${revision}` : ""}.bpmn"`,
+                "cache-control": "private, no-store",
               },
-            );
+            });
         }
         if (request.method === "POST" && action === "models")
           return json(await projects.createToBe(actor, id, await body()), 201);
@@ -391,10 +364,7 @@ export async function createRequestHandler({
         if (request.method === "POST" && action === "read")
           return json(await projects.apply(actor, id, await body(), model));
       }
-      return json(
-        { code: "NOT_FOUND", message: "This endpoint is not available." },
-        404,
-      );
+      return json({ code: "NOT_FOUND", message: "This endpoint is not available." }, 404);
     } catch (error) {
       const e = publicError(error),
         status =
@@ -411,8 +381,7 @@ export async function createRequestHandler({
         status === 500
           ? {
               code: "FAILED",
-              message:
-                "The operation could not be completed. Please try again.",
+              message: "The operation could not be completed. Please try again.",
             }
           : e,
         status,

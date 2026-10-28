@@ -16,7 +16,12 @@ async function application(env, origin) {
     localJwks: true,
     features: {
       accountEmail: true,
-      agentClientDiscovery: "dynamic-registration",
+      agentClientDiscovery: "cimd-and-dynamic-registration",
+      loginMethods: {
+        magicLink: true,
+        google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+        password: false,
+      },
     },
   });
 }
@@ -24,8 +29,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const local =
-      env.LOCAL_EMAIL_OUTBOX === "1" &&
-      ["127.0.0.1", "localhost"].includes(url.hostname);
+      env.LOCAL_EMAIL_OUTBOX === "1" && ["127.0.0.1", "localhost"].includes(url.hostname);
     const origin = local ? url.origin : env.APP_URL;
     if (url.pathname === "/health")
       return Response.json({ status: "ok", storage: "cloudflare-d1-r2" });
@@ -79,27 +83,20 @@ export default {
     }
     // Trust the Cloudflare-provided peer address, never a browser's internal header.
     const headers = new Headers(request.headers);
-    headers.set(
-      "x-scribe-client-ip",
-      headers.get("cf-connecting-ip") || "local",
-    );
+    headers.set("x-scribe-client-ip", headers.get("cf-connecting-ip") || "local");
     request = new Request(request, { headers });
     const app = await application(env, origin);
-    const response =
-      (await app.handle(request)) || (await start.fetch(request));
+    const response = (await app.handle(request)) || (await start.fetch(request));
     const result = new Response(response.body, response);
     result.headers.set("x-content-type-options", "nosniff");
     result.headers.set("referrer-policy", "same-origin");
-    result.headers.set(
-      "permissions-policy",
-      "camera=(), microphone=(), geolocation=()",
-    );
+    result.headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
     if (
       url.pathname.startsWith("/api/") ||
       url.pathname.startsWith("/app") ||
       url.pathname === "/mcp" ||
       url.pathname === "/consent" ||
-      url.pathname === "/sign-in" ||
+      url.pathname.startsWith("/sign-in") ||
       url.pathname === "/reset-password"
     )
       result.headers.set("cache-control", "private, no-store");

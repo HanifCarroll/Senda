@@ -1,4 +1,4 @@
-import { jwt } from "better-auth/plugins";
+import { jwt, magicLink } from "better-auth/plugins";
 import { mcp } from "@better-auth/mcp";
 import { cimd } from "@better-auth/cimd";
 export function authOptions({
@@ -9,6 +9,8 @@ export function authOptions({
   appName = "Senda",
   sendEmail,
   cimdTransport,
+  passwordless = false,
+  google,
 }) {
   return {
     appName: appName,
@@ -17,7 +19,7 @@ export function authOptions({
     database,
     trustedOrigins: [origin],
     emailAndPassword: {
-      enabled: true,
+      enabled: !passwordless,
       minPasswordLength: 12,
       maxPasswordLength: 128,
       requireEmailVerification: !!sendEmail,
@@ -29,11 +31,13 @@ export function authOptions({
           }
         : {}),
     },
+    ...(google
+      ? { socialProviders: { google: { ...google, requireEmailVerification: true } } }
+      : {}),
     ...(sendEmail
       ? {
           emailVerification: {
-            sendVerificationEmail: ({ user, url }) =>
-              sendEmail(user, url, "verify"),
+            sendVerificationEmail: ({ user, url }) => sendEmail(user, url, "verify"),
             sendOnSignUp: true,
             sendOnSignIn: false,
             autoSignInAfterVerification: false,
@@ -49,17 +53,21 @@ export function authOptions({
     rateLimit: { enabled: true, storage: "database", window: 60, max: 40 },
     plugins: [
       jwt(),
+      ...(sendEmail
+        ? [
+            magicLink({
+              expiresIn: 600,
+              rateLimit: { window: 60, max: 10 },
+              storeToken: "hashed",
+              sendMagicLink: ({ email, url }) => sendEmail({ email }, url, "magic"),
+            }),
+          ]
+        : []),
       mcp({
         loginPage: "/sign-in",
         consentPage: "/consent",
         resource: `${origin}/mcp`,
-        scopes: [
-          "openid",
-          "profile",
-          "offline_access",
-          "projects:read",
-          "projects:write",
-        ],
+        scopes: ["openid", "profile", "offline_access", "projects:read", "projects:write"],
         accessTokenExpiresIn: 900,
         customAccessTokenClaims: async ({ user }) => ({
           scribe_epoch: user ? await projects.epoch(user.id) : -1,

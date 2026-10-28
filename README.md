@@ -6,7 +6,7 @@ Senda combines a reusable agent skill, a local CLI, a JavaScript library and a T
 
 The discovery method follows Chapter 5 of *Fundamentals of Business Process Management*, second edition: boundaries → activities and events → resources and handoffs → control flow → relevant additional detail, with iteration and review throughout. Chapters 1–4 inform interview preparation, abstraction and modeling patterns. [Read the methodology summary](skills/process-scribe/references/methodology.md).
 
-The application is live at **[senda.hanifcarroll.com](https://senda.hanifcarroll.com)** on Cloudflare Workers, with D1 accounts/revision records, private R2 snapshots and verification/reset emails through Cloudflare Email Service. [Cloudflare deployment and compatibility](docs/cloudflare.md).
+The application is live at **[senda.hanifcarroll.com](https://senda.hanifcarroll.com)** on Cloudflare Workers, with D1 accounts/revision records, private R2 snapshots and passwordless sign-in emails through Cloudflare Email Service. [Cloudflare deployment and compatibility](docs/cloudflare.md).
 
 ## Try the complete example
 
@@ -107,7 +107,7 @@ Readability suggestions are advisory. They should never change real process beha
 - Generic descriptive BPMN with the versioned `dumas-conceptual-v2` profile and incomplete drafts. Ordinary paths, accepted abstractions and compensation are assessed separately.
 - Imports with parser warnings are rejected to avoid silent data loss. Engine-specific extensions need explicit compatibility work; no promise of arbitrary vendor round trips.
 - Event and ad hoc subprocesses can remain drafts but need additional validation support before this profile will finalize them.
-- Private account projects, source uploads, agent consent/revocation, authenticated MCP, a shared service API, revision history, automatic refresh and progressive WebMCP browser tools. Separate As-is and To-be models support iterative future-process planning with a pinned baseline. The public deployment uses Cloudflare Workers, D1, private R2 storage and account verification/reset emails. A Node deployment remains available for local use and clients requiring CIMD registration.
+- Private account projects, source uploads, agent consent/revocation, authenticated MCP, a shared service API, revision history, automatic refresh and progressive WebMCP browser tools. Separate As-is and To-be models support iterative future-process planning with a pinned baseline. The public deployment uses Cloudflare Workers, D1, private R2 storage and passwordless sign-in emails and optional Google sign-in. Both the Worker and Node adapters support CIMD and dynamic OAuth registration.
 - The offline review includes scoped diagrams with outside message participants, subprocess navigation, zoom/pan, search, message links and evidence inspection. Empty subprocesses remain visible as discovery gaps without blank detail views. Static SVGs remain available when scripting is disabled.
 - Layout checking does not certify the diagram. The review derives fresh layouts without modifying the project or its evidence. Complete BPMN exports preserve process semantics and carry improved DI; standalone view files contain only their selected scope. Fonts and subprocess context support vary between editors. `quality.json` distinguishes saved-model checks from view geometry and message coverage.
 - Version 0.1 project history is preserved without rewriting snapshots. New content revisions use format 2; old profile approvals need fresh feedback under the updated checks.

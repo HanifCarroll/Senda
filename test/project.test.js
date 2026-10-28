@@ -6,6 +6,7 @@ import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { Project, exportBundle } from '../src/index.js';
 import { parseModel } from '../src/model.js';
+import { renderReview } from '../server/review.js';
 
 const fixture = name => readFile(new URL(`fixtures/${name}.bpmn`, import.meta.url), 'utf8');
 const example = async name => JSON.parse(await readFile(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
@@ -18,6 +19,22 @@ async function setup(t, modeled = false) {
   return { p, dir };
 }
 const proposal = (p, extra = {}) => ({ expectedRevision: p.read().revision, summary: 'Test change', ...extra });
+
+test('shared drawing geometry keeps evidence and quality bound to each revision', async t => {
+  const { p, dir } = await setup(t, true);
+  const before = await renderReview(p, dir, 3, 'as-is');
+  const xml = p.read().xml;
+  await p.apply(proposal(p, { questions: [{ id: 'Q_Extra', question: 'Who confirms the booking?', why: 'Confirm the final responsibility.' }] }));
+  assert.equal(p.read().xml, xml);
+  const after = await renderReview(p, dir, 4, 'as-is');
+  assert.equal(before.quality.revision, 3);
+  assert.equal(after.quality.revision, 4);
+  assert.deepEqual(before.quality.evidence.unresolvedQuestions, []);
+  assert.ok(after.quality.evidence.unresolvedQuestions.includes('Q_Extra'));
+  assert.equal(after.exportXml, before.exportXml);
+  const historical = await renderReview(p, dir, 3, 'as-is');
+  assert.deepEqual(historical.quality.evidence.unresolvedQuestions, []);
+});
 
 test('ambiguity remains unmodeled until the answer; all evidence survives reopening', async t => {
   const { p, dir } = await setup(t);

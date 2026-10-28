@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { Mail } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api";
+import { PasswordSignIn } from "@/components/password-sign-in";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
+import { Field, FieldLabel, FieldGroup, FieldSeparator } from "@/components/ui/field";
 import {
   Card,
   CardHeader,
@@ -16,89 +18,74 @@ import {
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export const Route = createFileRoute("/sign-in")({ component: SignIn });
+type Capabilities = { loginMethods?: { magicLink: boolean; google: boolean; password: boolean } };
+
 function SignIn() {
-  const [register, setRegister] = useState(false),
-    [ready, setReady] = useState(false),
-    [busy, setBusy] = useState(false),
+  const [config, setConfig] = useState<Capabilities | null>(null),
     [error, setError] = useState(""),
-    [reset, setReset] = useState(false),
-    [notice, setNotice] = useState(""),
-    [accountEmail, setAccountEmail] = useState(false),
-    [verifyEmail, setVerifyEmail] = useState("");
+    [email, setEmail] = useState(""),
+    [sent, setSent] = useState(false),
+    [busy, setBusy] = useState(false);
   useEffect(() => {
-    setReady(true);
-    void api<{ accountEmail: boolean }>("/api/config")
-      .then((x) => setAccountEmail(x.accountEmail))
-      .catch(() => {});
+    const abort = new AbortController();
+    void api<Capabilities>("/api/config", { signal: abort.signal })
+      .then(setConfig)
+      .catch((e) => {
+        if (!abort.signal.aborted) setError(e.message);
+      });
+    const issue = new URLSearchParams(window.location.search).get("error");
+    if (issue)
+      setError(
+        issue === "access_denied"
+          ? "Sign-in was cancelled. You can try again."
+          : issue === "account_not_linked" || issue === "email_not_verified"
+            ? "Use an email sign-in link to access this account."
+            : ["INVALID_TOKEN", "TOKEN_EXPIRED", "EXPIRED_TOKEN"].includes(issue)
+              ? "This sign-in link is unavailable or has expired. Request a new link below."
+              : "Sign-in could not be completed. Please try again.",
+      );
+    return () => abort.abort();
   }, []);
-  async function resend() {
+  if (config?.loginMethods?.password && !config.loginMethods.magicLink) return <PasswordSignIn />;
+  function returnTo() {
+    const query = new URLSearchParams(window.location.search);
+    // Consent verifies the signed query. Never accept an arbitrary return URL.
+    return (
+      window.location.origin +
+      (query.has("sig") && query.has("client_id") ? `/consent${window.location.search}` : "/app")
+    );
+  }
+  async function send(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setBusy(true);
     setError("");
     try {
-      const result = await authClient.sendVerificationEmail({
-        email: verifyEmail,
-        callbackURL: window.location.origin + "/sign-in",
+      const r = await authClient.signIn.magicLink({
+        email: email.trim(),
+        callbackURL: returnTo(),
+        errorCallbackURL: window.location.origin + "/sign-in",
       });
-      if (result.error)
-        setError(result.error.message || "Try again in a moment.");
-      else
-        setNotice(
-          "If this address needs verification, a new link is on its way. Check your inbox and spam folder.",
-        );
+      if (r.error) setError(r.error.message || "The sign-in link could not be sent. Try again.");
+      else setSent(true);
     } catch {
-      setError("The email service could not be reached. Try again.");
+      setError("The sign-in service could not be reached. Try again.");
     } finally {
       setBusy(false);
     }
   }
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setNotice("");
+  async function google() {
     setBusy(true);
-    const fields = new FormData(event.currentTarget),
-      data = {
-        email: String(fields.get("email")),
-        password: String(fields.get("password")),
-        name: String(fields.get("name") || ""),
-      };
+    setError("");
     try {
-      if (reset) {
-        const result = await authClient.requestPasswordReset({
-          email: data.email,
-          redirectTo: window.location.origin + "/reset-password",
-        });
-        if (result.error)
-          setError(result.error.message || "Try again in a moment.");
-        else
-          setNotice(
-            "If an account uses this email address, a password-reset link is on its way. Check your inbox and spam folder.",
-          );
-        return;
-      }
-      const result = register
-        ? await authClient.signUp.email({
-            ...data,
-            callbackURL:
-              window.location.origin + "/sign-in" + window.location.search,
-          })
-        : await authClient.signIn.email(data);
-      if (result.error) {
-        setError(result.error.message || "Check your email and password.");
-        if (result.error.code === "EMAIL_NOT_VERIFIED")
-          setVerifyEmail(data.email);
-      } else {
-        const value = result.data as any;
-        if (register && !value?.token) {
-          setVerifyEmail(data.email);
-          setNotice(
-            "Check your inbox for a verification link. Once your email is verified, return here to sign in.",
-          );
-          setRegister(false);
-        } else window.location.assign(value?.url || "/app");
-      }
+      const r = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: returnTo(),
+        errorCallbackURL: window.location.origin + "/sign-in",
+      });
+      if (r.error) setError(r.error.message || "Google sign-in could not be started. Try again.");
+      else if (r.data?.url) window.location.assign(r.data.url);
     } catch {
-      setError("The account service could not be reached. Try again.");
+      setError("Google sign-in could not be reached. Try again.");
     } finally {
       setBusy(false);
     }
@@ -110,56 +97,45 @@ function SignIn() {
       </a>
       <Card>
         <CardHeader>
-          <CardTitle>
-            {reset
-              ? "Reset your password"
-              : register
-                ? "Create your account"
-                : "Welcome back"}
-          </CardTitle>
+          <CardTitle>{sent ? "Check your email" : "Sign in to Senda"}</CardTitle>
           <CardDescription>
-            Keep your process, its sources and each revision in one private
-            project.
+            Keep your process, its sources and each revision in one private project.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {notice && (
-            <Alert className="mb-5">
-              <AlertTitle>Check your email</AlertTitle>
-              <AlertDescription>{notice}</AlertDescription>
+        <CardContent className="flex flex-col gap-5">
+          {error && (
+            <Alert variant="destructive">
+              <AlertTitle>Sign-in needs attention</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          {accountEmail && verifyEmail && (
-            <Button
-              variant="outline"
-              className="mb-5 w-full"
-              disabled={busy}
-              onClick={resend}
-            >
-              Resend verification email
-            </Button>
+          {sent && (
+            <Alert>
+              <Mail />
+              <AlertTitle>Your sign-in link is on its way</AlertTitle>
+              <AlertDescription>
+                Open the email sent to {email.trim()} and confirm to sign in. The link expires in 10
+                minutes. Check your spam folder if it does not arrive.
+              </AlertDescription>
+            </Alert>
           )}
-          <form method="post" onSubmit={submit} className="flex flex-col gap-5">
-            {error && (
-              <Alert variant="destructive">
-                <AlertTitle>Sign-in needs attention</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+          {config?.loginMethods?.google && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={busy}
+                onClick={google}
+              >
+                Continue with Google
+              </Button>
+              <FieldSeparator>or continue with email</FieldSeparator>
+            </>
+          )}
+          <form method="post" onSubmit={send} className="flex flex-col gap-5">
             <FieldGroup>
-              {register && (
-                <Field>
-                  <FieldLabel htmlFor="name">Name</FieldLabel>
-                  <Input
-                    id="name"
-                    name="name"
-                    autoComplete="name"
-                    required
-                    maxLength={120}
-                  />
-                </Field>
-              )}
-              <Field>
+              <Field data-disabled={!config || busy}>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input
                   id="email"
@@ -168,77 +144,28 @@ function SignIn() {
                   autoComplete="email"
                   required
                   maxLength={254}
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setSent(false);
+                  }}
+                  disabled={!config || busy}
                 />
               </Field>
-              {!reset && (
-                <Field>
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete={
-                      register ? "new-password" : "current-password"
-                    }
-                    required
-                    minLength={12}
-                    maxLength={128}
-                  />
-                  {register && (
-                    <p className="text-xs text-muted-foreground">
-                      Use at least 12 characters.
-                    </p>
-                  )}
-                </Field>
-              )}
             </FieldGroup>
-            <Button type="submit" disabled={!ready || busy}>
-              {busy
-                ? "Please wait…"
-                : reset
-                  ? "Send reset link"
-                  : register
-                    ? "Create account"
-                    : "Sign in"}
+            <Button type="submit" disabled={!config?.loginMethods?.magicLink || busy}>
+              {busy ? "Please wait…" : sent ? "Send another link" : "Send sign-in link"}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col items-start gap-2">
-          <Button
-            variant="link"
-            className="px-0"
-            disabled={!ready || busy}
-            onClick={() => {
-              setRegister(reset ? false : !register);
-              setReset(false);
-              setNotice("");
-              setVerifyEmail("");
-              setError("");
-            }}
-          >
-            {reset || register
-              ? "Back to sign in"
-              : "New here? Create an account"}
-          </Button>
-          {accountEmail && !register && !reset && (
-            <Button
-              variant="link"
-              className="px-0"
-              onClick={() => {
-                setReset(true);
-                setError("");
-                setNotice("");
-                setVerifyEmail("");
-              }}
-            >
-              Forgot password?
-            </Button>
-          )}
+        <CardFooter>
+          <p className="text-sm text-muted-foreground">
+            New here? Confirming your email creates your account. No password needed.
+          </p>
         </CardFooter>
       </Card>
       <p className="text-sm leading-relaxed text-muted-foreground">
-        Use your own agent for the discovery work. Senda makes no model calls of
-        its own.
+        Use your own agent for the discovery work. Senda makes no model calls of its own.
       </p>
     </main>
   );

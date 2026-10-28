@@ -1,9 +1,10 @@
 import { assess } from "../src/quality.js";
 import { diagramViews } from "../src/diagram-views.js";
 import { reviewData } from "../src/review-viewer.js";
-import { contentHash } from "../src/hash.js";
+import { contentHash, hash } from "../src/hash.js";
 import { parseModel } from "../src/model.js";
 const caches = new Map();
+const assessments = new Map();
 export async function renderReview(
   p,
   id,
@@ -12,22 +13,28 @@ export async function renderReview(
   { previousRevision } = {},
 ) {
   const snapshot = p.read(revision),
-    key = `${id}:${model}:${snapshot.revision}`;
+    // A clarification can change the revision without changing the diagram.
+    // Keep geometry separate from revision-bound evidence and quality checks.
+    key = `${id}:${hash(snapshot.xml)}`;
   let drawing = caches.get(key);
   if (!drawing) {
     const projection = await diagramViews(snapshot.xml);
     drawing = {
       ...projection,
       model: await parseModel(snapshot.xml),
-      quality: {
-        ...(await assess(snapshot)),
-        rendering: projection.rendering,
-      },
     };
     if (caches.size >= 4) caches.delete(caches.keys().next().value);
     caches.set(key, drawing);
   }
-  const { diagrams, bpmnXml, quality } = drawing;
+  const { diagrams, bpmnXml } = drawing;
+  const assessmentKey = `${id}:${model}:${snapshot.revision}`;
+  let assessment = assessments.get(assessmentKey);
+  if (!assessment) {
+    assessment = await assess(snapshot);
+    if (assessments.size >= 4) assessments.delete(assessments.keys().next().value);
+    assessments.set(assessmentKey, assessment);
+  }
+  const quality = { ...assessment, rendering: drawing.rendering };
   const history = p.history();
   let previous;
   if (previousRevision !== undefined) {
