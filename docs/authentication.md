@@ -17,6 +17,32 @@ its password fallback because no local email transport is configured. Existing
 session, ownership, consent and revocation checks remain in the shared handler.
 Email messages go through the sender-restricted Cloudflare Email Service binding.
 
+### Email copy and design
+
+All three account messages share [one template](../server/account-email.js):
+sign-in, email confirmation and password reset. Production currently sends sign-in
+links. Keep the subject specific, the heading short, the main action prominent,
+the expiry near the button, and the unsolicited-message note in the footer.
+Sign-in messages also offer a link to request a replacement. The confirmation
+page explains its own action; email copy does not narrate the clicks ahead.
+
+The template uses the app's neutral colors, a text wordmark, system fonts and a
+single-column layout. Essential styles are inline, with responsive spacing and
+explicit dark colors for supporting clients. It includes a plain-text version
+and an Outlook button fallback. No remote images, fonts or tracking resources
+are loaded. Email clients can still override colors; browser previews are not
+proof of rendering in every version of Mail, Gmail or Outlook.
+
+Run `npm run preview:emails` to generate HTML and text examples in the ignored
+`output/account-emails` folder, or pass an output directory after `--`. Preview
+links use a reserved example domain and cannot sign anyone in. Real signed
+queries must remain intact and sign-in links must keep the scanner-safe
+confirmation route. Tests cover both the normal and Outlook destinations.
+
+Implementation references: [Gmail CSS support](https://developers.google.com/workspace/gmail/design/css),
+[Litmus email buttons](https://www.litmus.com/blog/a-guide-to-bulletproof-buttons-in-email-design),
+and [Microsoft's light and dark email guidance](https://learn.microsoft.com/en-us/dynamics365/customer-insights/journeys/email-dark-mode).
+
 ## Google setup
 
 Create a dedicated OAuth client for Senda in [Google Cloud Console](https://console.cloud.google.com/auth/clients).
