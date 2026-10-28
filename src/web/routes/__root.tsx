@@ -8,11 +8,11 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: 'utf-8' }, { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: `${productName} · Turn process interviews into BPMN diagrams` },
-      { name: 'description', content: 'Free, open-source process mapping for consultants, analysts and operations teams. Use your own AI agent to turn interview transcripts into BPMN diagrams, with every step traced to what people said.' },
+      { title: `${productName} · Turn interviews into BPMN process diagrams` },
+      { name: 'description', content: 'Free, open-source process mapping for consultants, analysts and operations teams. Use your own AI agent to turn interview transcripts into BPMN process diagrams, with every step linked back to the interview.' },
       { name: 'theme-color', content: brandColors.ink },
-      { property: 'og:title', content: `${productName} · Turn process interviews into BPMN diagrams` },
-      { property: 'og:description', content: 'Use your own AI agent to map interviews in BPMN, settle open questions, and trace every step to what people said.' },
+      { property: 'og:title', content: `${productName} · Turn interviews into BPMN process diagrams` },
+      { property: 'og:description', content: 'Use your own AI agent to turn interviews into BPMN process diagrams, settle open questions, and link every step back to the interview.' },
       { property: 'og:image', content: `https://senda.hanifcarroll.com/brand/social-card.png?v=${brandAssetVersion}` },
       { property: 'og:image:width', content: '1200' }, { property: 'og:image:height', content: '630' },
       { property: 'og:image:alt', content: 'Senda · From process interviews to clear diagrams' },

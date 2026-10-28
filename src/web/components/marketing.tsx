@@ -1,176 +1,105 @@
-import type { ReactNode } from "react";
-import {
-  ArrowRight,
-  BookOpen,
-  Briefcase,
-  Check,
-  ClipboardList,
-  Download,
-  GitBranch,
-  History,
-  ShieldCheck,
-  Users,
-  Code,
-} from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { ArrowRight } from "lucide-react";
 import { productName } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
-import { Brand, BrandMark } from "./brand";
+import { Brand } from "./brand";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui/accordion";
 import { InterviewToModel } from "./interview-to-model";
+import { PathArt } from "./path-art";
 
 const preview = (name: string) => `/marketing/${name}.svg?v=vector-3`;
 const repository = "https://github.com/HanifCarroll/Senda";
 const methodology = `${repository}/blob/main/skills/process-scribe/references/methodology.md`;
 
-const navLink = "hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:block";
-const heading = "text-3xl leading-[1.1] font-semibold tracking-[-0.03em] text-balance sm:text-[2.6rem]";
-const lead = "text-lg leading-relaxed text-muted-foreground text-pretty";
 const container = "mx-auto w-full max-w-6xl px-5 sm:px-8";
-const frame =
-  "overflow-hidden rounded-xl border bg-card shadow-[0_1px_2px_rgb(20_61_77/6%),0_18px_44px_-18px_rgb(20_61_77/24%)]";
-const textLink = "font-medium text-primary underline decoration-[var(--brand-teal)]/40 underline-offset-4 hover:decoration-[var(--brand-teal)]";
+const display = "font-display tracking-[-0.02em] text-balance";
+const h2 = cn(display, "text-[2.4rem] leading-[1.05] sm:text-[3.4rem]");
+const h3 = cn(display, "text-[1.6rem] leading-tight sm:text-[1.9rem]");
+const lead = "text-[1.05rem] leading-relaxed text-muted-foreground text-pretty sm:text-lg";
+const pill = "h-11 rounded-full px-6 text-[0.95rem]";
+const textLink =
+  "font-medium text-foreground underline decoration-foreground/25 underline-offset-4 transition-colors hover:decoration-foreground";
+const windowFrame = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgb(9_30_38/10%),0_24px_60px_-28px_rgb(9_30_38/35%)]";
+const panel = "rounded-[1.75rem] bg-muted";
 
-function SectionHeading({
-  title,
-  children,
-  className,
-}: {
-  title: ReactNode;
-  children?: ReactNode;
-  className?: string;
-}) {
+function StartButtons() {
   return (
-    <div className={cn("flex max-w-2xl flex-col gap-4", className)}>
-      <h2 className={heading}>{title}</h2>
-      {children && <p className={lead}>{children}</p>}
-    </div>
-  );
-}
-
-function StartButtons({ inverse = false }: { inverse?: boolean }) {
-  return (
-    <div className="flex flex-wrap gap-3">
-      <Button size="lg" variant={inverse ? "secondary" : "default"} className="h-11 px-5 text-[0.95rem]" asChild>
+    <div className="flex flex-wrap justify-center gap-3">
+      <Button size="lg" className={pill} asChild>
         <a href="/app">
           Start free
           <ArrowRight data-icon="inline-end" />
         </a>
       </Button>
-      <Button
-        size="lg"
-        variant={inverse ? "ghost-inverse" : "outline"}
-        className={cn("h-11 px-5 text-[0.95rem]", !inverse && "bg-card")}
-        asChild
-      >
+      <Button size="lg" variant="outline" className={cn(pill, "bg-transparent")} asChild>
         <a href="/example">Explore the example</a>
       </Button>
     </div>
   );
 }
 
+function WindowBar({ title }: { title: string }) {
+  return (
+    <div className="flex items-center gap-4 border-b px-4 py-3">
+      <span className="flex gap-1.5" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="size-2.5 rounded-full bg-border" />
+        ))}
+      </span>
+      <span className="text-[0.8rem] text-muted-foreground">{title}</span>
+    </div>
+  );
+}
+
 const audiences = [
   {
-    Icon: Briefcase,
     title: "Process consultants",
-    text: "Turn discovery interviews into a model your client can check, step by step, against what their people said.",
+    text: "Show your client a model they can check against what their own people said.",
   },
   {
-    Icon: ClipboardList,
     title: "Business analysts",
-    text: "Document the current state before requirements, system changes or automation work begin.",
+    text: "Document how the work runs today before anyone writes requirements or automates it.",
   },
   {
-    Icon: Users,
     title: "Operations teams",
-    text: "Capture how work actually runs across roles, then agree on how it should run next.",
-  },
-];
-
-const workflow = [
-  {
-    title: "Add the interview",
-    text: "Create a private project, paste or upload the transcript, and name the process you want to understand.",
-  },
-  {
-    title: "Map how it works today",
-    text: "Your agent drafts the As-is model, links each step to its passage, and flags what the interview left unclear.",
-  },
-  {
-    title: "Settle the open questions",
-    text: "Take the questions back to the people who do the work. Save their answers and revise the same model.",
-  },
-  {
-    title: "Plan how it should work",
-    text: "Start a To-be model from a saved As-is revision, describe the changes, and revise it on its own track.",
-  },
-];
-
-const comparison = [
-  {
-    topic: "Where each step comes from",
-    chat: "Whatever the model inferred from the conversation",
-    senda: "Linked to the exact transcript passage that supports it",
-  },
-  {
-    topic: "What the interview left out",
-    chat: "Often filled with a plausible guess",
-    senda: "Raised as a question for the people who know the answer",
-  },
-  {
-    topic: "What you take away",
-    chat: "XML or a picture you check and redraw by hand",
-    senda: "Validated BPMN 2.0 with layout, ready for your modeling tool",
-  },
-  {
-    topic: "The next round of changes",
-    chat: "A new answer, with no record of what changed",
-    senda: "The same model revised, with every revision saved and compared",
-  },
-  {
-    topic: "Today versus the plan",
-    chat: "One diagram",
-    senda: "Separate As-is and To-be models, each with its own history",
+    text: "See how work actually passes between roles, then decide how it should run.",
   },
 ];
 
 const asIs = [
-  { label: "Revision 2", text: "First draft, seven questions open" },
-  { label: "Revision 3", text: "Parallel readiness work clarified" },
-  { label: "Revision 4", text: "Reminder and cancellation paths" },
-  { label: "Revision 5", text: "Credit-terms rule resolved" },
+  ["Revision 2", "First draft, seven questions open"],
+  ["Revision 3", "Parallel readiness work clarified"],
+  ["Revision 4", "Reminder and cancellation paths"],
+  ["Revision 5", "Credit-terms rule resolved"],
 ];
 
 const toBe = [
-  { label: "To-be 1", text: "Drafted from your design brief" },
-  { label: "To-be 2", text: "Revised after stakeholder answers" },
+  ["To-be 1", "Drafted from your design brief"],
+  ["To-be 2", "Revised after stakeholder answers"],
 ];
 
-function RevisionTrack({
-  name,
-  items,
-  tone,
-}: {
-  name: string;
-  items: { label: string; text: string }[];
-  tone: "current" | "planned";
-}) {
+function RevisionTrack({ name, items, planned = false }: { name: string; items: string[][]; planned?: boolean }) {
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm font-semibold">{name}</p>
-      <ol className="relative flex flex-col gap-4 border-l-2 border-dashed border-border pl-6 sm:flex-row sm:gap-0 sm:border-t-2 sm:border-l-0 sm:pt-6 sm:pl-0">
-        {items.map((item, i) => (
-          <li key={item.label} className="relative flex flex-1 flex-col gap-0.5 sm:pr-4">
+      <p className="text-sm font-medium">{name}</p>
+      <ol className="flex flex-col">
+        {items.map(([label, text], i) => (
+          <li key={label} className="relative flex gap-4 pb-5 last:pb-0">
+            {i < items.length - 1 && (
+              <span aria-hidden="true" className="absolute top-4 left-[5px] h-full w-px bg-border" />
+            )}
             <span
               aria-hidden="true"
               className={cn(
-                "absolute top-1 -left-[1.95rem] size-3.5 rounded-full border-2 sm:-top-[2.05rem] sm:left-0",
-                tone === "current" ? "border-primary bg-primary" : "border-[var(--brand-teal)] bg-card",
-                i === items.length - 1 && tone === "current" && "ring-4 ring-[var(--brand-tint)]",
+                "relative mt-1.5 size-[11px] shrink-0 rounded-full border-2",
+                planned ? "border-[var(--brand-teal)] bg-card" : "border-primary bg-primary",
               )}
             />
-            <span className="text-xs font-medium text-muted-foreground tabular-nums">{item.label}</span>
-            <span className="text-sm leading-snug">{item.text}</span>
+            <span className="flex flex-col">
+              <span className="text-xs text-muted-foreground tabular-nums">{label}</span>
+              <span className="text-[0.95rem] leading-snug">{text}</span>
+            </span>
           </li>
         ))}
       </ol>
@@ -178,426 +107,393 @@ function RevisionTrack({
   );
 }
 
-export function Marketing() {
+const stories = [
+  {
+    id: "map",
+    nav: "Map today’s process",
+    title: "Map the process as it runs today",
+    text: "Add the transcript to a private project and ask your agent for a first draft. Every step links to the passage it came from, so anyone can check the draft against the interview.",
+    visual: (
+      <div className={cn(panel, "px-4 pt-8 sm:px-10 sm:pt-12")}>
+        <a
+          href="/example?view=FinanceWork&element=Invoice"
+          className={cn(windowFrame, "mx-auto block max-w-sm rounded-b-none sm:max-w-none")}
+        >
+          <picture>
+            <source media="(max-width: 640px)" srcSet={preview("evidence-mobile")} width="390" height="718" />
+            <img
+              src={preview("evidence")}
+              width="1200"
+              height="800"
+              loading="lazy"
+              alt="A deposit invoice step selected in a client onboarding diagram, with the transcript passage that supports it."
+              className="w-full"
+            />
+          </picture>
+        </a>
+      </div>
+    ),
+  },
+  {
+    id: "clarify",
+    nav: "Ask about the gaps",
+    title: "Ask about what the interview missed",
+    text: "People usually describe their own part of the work and skip how it connects to the next team. When the transcript doesn’t say whether Finance waits for Delivery, your agent records that as a question instead of guessing.",
+    quote: "I would want them to confirm whether one is supposed to wait for the other.",
+    visual: (
+      <div className={cn(panel, "px-4 py-10 sm:px-12 sm:py-16")}>
+        <a href="/example?draft=true&section=questions" className={cn(windowFrame, "mx-auto block max-w-xl p-4 sm:p-6")}>
+          <img
+            src={preview("clarification")}
+            width="544"
+            height="309"
+            loading="lazy"
+            alt="An open question asking whether Finance and Delivery start together and what must finish before setup starts."
+            className="w-full"
+          />
+        </a>
+      </div>
+    ),
+  },
+  {
+    id: "plan",
+    nav: "Plan the change",
+    title: "Plan the process you want",
+    text: "Save each answer, and your agent revises the same model instead of starting over. Senda keeps every revision. Once everyone agrees on the current process, start a To-be plan for the future process and leave the original alone. When you’re done, download standard BPMN.",
+    visual: (
+      <div className={cn(panel, "px-4 py-10 sm:px-12 sm:py-16")}>
+        <div className={cn(windowFrame, "mx-auto max-w-xl")}>
+          <WindowBar title="Brightline client onboarding · History" />
+          <div className="grid gap-8 p-6 sm:grid-cols-2 sm:p-8">
+            <RevisionTrack name="As-is · Current process" items={asIs} />
+            <div className="flex flex-col gap-6">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Started from As-is revision 5 and a design brief.
+              </p>
+              <RevisionTrack name="To-be · Planned future" items={toBe} planned />
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+  },
+];
+
+function useActiveStory() {
+  const [active, setActive] = useState(stories[0].id);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length) setActive(visible[0].target.id);
+      },
+      { rootMargin: "-45% 0px -50% 0px" },
+    );
+    stories.forEach(({ id }) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, []);
+  return active;
+}
+
+function Section({ id, className, children }: { id?: string; className?: string; children: ReactNode }) {
   return (
-    <div className="bg-background">
-      <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
-        <nav aria-label="Main navigation" className={cn(container, "flex items-center gap-2 py-3.5 sm:gap-5")}>
+    <section id={id} className={cn("scroll-mt-24", className)}>
+      <div className={cn(container, "py-20 sm:py-28")}>{children}</div>
+    </section>
+  );
+}
+
+export function Marketing() {
+  const activeStory = useActiveStory();
+  return (
+    <div className="marketing min-h-dvh">
+      <header className="sticky top-0 z-40 px-3 pt-3">
+        <nav
+          aria-label="Main navigation"
+          className="mx-auto flex max-w-6xl items-center gap-2 rounded-full border bg-card/85 py-2 pr-2 pl-5 shadow-[0_1px_2px_rgb(9_30_38/6%),0_8px_24px_-12px_rgb(9_30_38/18%)] backdrop-blur-md sm:gap-6"
+        >
           <a href="/" className="mr-auto flex items-center">
-            <Brand className="h-8 sm:h-9" />
+            <Brand className="h-7 sm:h-8" />
           </a>
-          <a href="#how-it-works" className={navLink}>
-            How it works
-          </a>
-          <a href="#why-senda" className={navLink}>
-            Why {productName}
-          </a>
-          <a href="#your-agent" className={navLink}>
-            Your agent
-          </a>
-          <a href="#questions" className={navLink}>
-            FAQ
-          </a>
-          <Button variant="ghost" className="px-2 sm:px-3" asChild>
+          {[
+            ["How it works", "#how-it-works"],
+            [`Why ${productName}`, "#why-senda"],
+            ["Your agent", "#your-agent"],
+            ["FAQ", "#questions"],
+          ].map(([label, href]) => (
+            <a key={href} href={href} className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:block">
+              {label}
+            </a>
+          ))}
+          <Button variant="ghost" className="rounded-full px-3 md:ml-2" asChild>
             <a href="/sign-in">Sign in</a>
           </Button>
-          <Button asChild>
+          <Button className="rounded-full px-4" asChild>
             <a href="/app">Start free</a>
           </Button>
         </nav>
       </header>
 
       <main>
-        <section className="marketing-hero">
-          <div className={cn(container, "flex flex-col items-center gap-7 pt-16 pb-16 text-center sm:pt-24 sm:pb-24")}>
-            <h1 className="max-w-4xl text-[2.6rem] leading-[1.04] font-semibold tracking-[-0.045em] text-balance sm:text-6xl lg:text-[4.25rem]">
-              Turn process interviews into diagrams people can agree on.
-            </h1>
-            <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground text-pretty sm:text-xl">
-              For consultants, analysts and operations teams who map processes from interviews. Bring a
-              transcript and your own AI agent. Every step stays tied to what people said, gaps become
-              questions, and you export standard BPMN.
-            </p>
-            <StartButtons />
-            <figure className="mt-6 w-full sm:mt-10">
-              <InterviewToModel />
-              <figcaption className="mt-4 text-sm text-muted-foreground">
-                From the onboarding example, with its Finance subprocess simplified.{" "}
-                <a href="/example?view=FinanceWork&element=Invoice" className={textLink}>
-                  Open the full model
-                </a>
-              </figcaption>
-            </figure>
-          </div>
+        <section className={cn(container, "flex flex-col items-center gap-7 pt-20 pb-14 text-center sm:pt-32 sm:pb-20")}>
+          <h1 className={cn(display, "max-w-5xl text-[2.9rem] leading-[1.02] sm:text-6xl lg:text-[4.6rem]")}>
+            Turn interviews into process diagrams people can agree on.
+          </h1>
+          <p className={cn(lead, "max-w-xl sm:text-xl")}>
+            Bring a transcript and the AI agent you already use. Every step links back to the interview, and
+            anything it leaves unclear becomes a question.
+          </p>
+          <StartButtons />
         </section>
 
-        <section aria-labelledby="audience-heading" className="border-y bg-card">
-          <div className={cn(container, "grid gap-10 py-12 sm:py-14 lg:grid-cols-[0.75fr_2fr] lg:gap-12")}>
-            <h2 id="audience-heading" className="text-xl leading-snug font-semibold tracking-tight text-balance">
-              Built for people who map processes from conversations.
-            </h2>
-            <ul className="grid gap-8 sm:grid-cols-3">
-              {audiences.map(({ Icon, title, text }) => (
-                <li key={title} className="flex flex-col gap-2">
-                  <Icon className="size-5 text-[var(--brand-teal)]" aria-hidden="true" />
-                  <h3 className="font-semibold">{title}</h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{text}</p>
+        <div className={container}>
+          <PathArt className="px-3 py-6 sm:px-12 sm:py-16 lg:px-20 lg:py-20">
+            <InterviewToModel />
+          </PathArt>
+        </div>
+
+        <Section>
+          <div className="grid gap-12 lg:grid-cols-[1fr_1fr] lg:gap-20">
+            <h2 className={h2}>For people who map processes by interviewing the team.</h2>
+            <ul className="flex flex-col gap-8">
+              {audiences.map(({ title, text }) => (
+                <li key={title} className="flex flex-col gap-1.5">
+                  <h3 className={cn(display, "text-[1.45rem]")}>{title}</h3>
+                  <p className="leading-relaxed text-muted-foreground">{text}</p>
                 </li>
               ))}
             </ul>
           </div>
-        </section>
+        </Section>
 
-        <section id="how-it-works" className="scroll-mt-16">
-          <div className={cn(container, "flex flex-col gap-12 py-20 sm:py-24")}>
-            <SectionHeading title="From one conversation to the process you want next." />
-            <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {workflow.map((step, i) => (
-                <li key={step.title} className="flex flex-col gap-3 rounded-xl border bg-card p-6">
-                  <span className="flex size-8 items-center justify-center rounded-full bg-[var(--brand-tint)] text-sm font-semibold text-primary tabular-nums">
-                    {i + 1}
-                  </span>
-                  <h3 className="mt-2 text-lg font-semibold">{step.title}</h3>
-                  <p className="leading-relaxed text-muted-foreground">{step.text}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        <section className="border-t bg-card">
-          <div className={cn(container, "flex flex-col gap-12 py-20 sm:py-24")}>
-            <div className="grid gap-6 md:grid-cols-2 md:items-end md:gap-12">
-              <SectionHeading title="Every step shows where it came from." />
-              <p className={lead}>
-                Select a step to read its supporting quotes and the source passage in context. When
-                someone asks “who said that?”, the answer is one click away.
-              </p>
-            </div>
-            <figure className="mx-auto w-full max-w-sm sm:max-w-none">
-              <a href="/example?view=FinanceWork&element=Invoice" className={cn(frame, "block bg-muted p-1.5 sm:p-2.5")}>
-                <picture>
-                  <source media="(max-width: 640px)" srcSet={preview("evidence-mobile")} width="390" height="718" />
-                  <img
-                    src={preview("evidence")}
-                    width="1200"
-                    height="800"
-                    loading="lazy"
-                    alt="A deposit invoice step selected in a client onboarding diagram, with the transcript passage that supports it."
-                    className="w-full rounded-lg"
-                  />
-                </picture>
-              </a>
-              <figcaption className="mt-4 text-center text-sm text-muted-foreground">
-                Every step links to the interview passage behind it.
-              </figcaption>
-            </figure>
-          </div>
-        </section>
-
-        <section className="border-t">
-          <div className={cn(container, "grid gap-12 py-20 sm:py-24 md:grid-cols-[0.9fr_1.1fr] md:items-center md:gap-16")}>
-            <div className="flex flex-col gap-6">
-              <SectionHeading title="Find the decisions the interview skipped.">
-                An interview can describe two teams’ work without saying whether one waits for the other.
-                Gaps like that become specific questions in the project, so the answer goes into the next
-                revision instead of a guess.
-              </SectionHeading>
-              <blockquote className="border-l-2 border-[var(--brand-teal)] pl-5 text-lg leading-relaxed">
-                “I would want them to confirm whether one is supposed to wait for the other.”
-                <footer className="mt-2 text-sm text-muted-foreground">Maya, onboarding coordinator</footer>
-              </blockquote>
-            </div>
-            <figure>
-              <a href="/example?draft=true&section=questions" className={cn(frame, "block p-4 sm:p-6")}>
-                <img
-                  src={preview("clarification")}
-                  width="544"
-                  height="309"
-                  loading="lazy"
-                  alt="An open question asking whether Finance and Delivery start together and what must finish before setup starts."
-                  className="w-full"
-                />
-              </a>
-              <figcaption className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Copy the question for your next conversation, or prepare the answer once you have it.
-              </figcaption>
-            </figure>
-          </div>
-        </section>
-
-        <section className="border-t bg-card">
-          <div className={cn(container, "grid gap-12 py-20 sm:py-24 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16")}>
-            <div className="flex flex-col gap-8">
-              <SectionHeading title="One model that improves with every answer.">
-                Save an answer and ask your agent to revise the same diagram. When the current process is
-                settled, start a separate To-be plan from it without touching the original.
-              </SectionHeading>
-              <ul className="flex flex-col gap-4">
-                {[
-                  { Icon: History, text: "Revisit any revision and read what changed in plain language." },
-                  { Icon: GitBranch, text: "Keep the current process and the future plan on separate tracks." },
-                  { Icon: Download, text: "Download a .bpmn file with layout for your modeling tool." },
-                ].map(({ Icon, text }) => (
-                  <li key={text} className="flex gap-3 leading-relaxed">
-                    <Icon className="mt-1 size-5 shrink-0 text-[var(--brand-teal)]" aria-hidden="true" />
-                    {text}
+        <Section id="how-it-works">
+          <h2 className={cn(h2, "max-w-3xl")}>Draft today’s process, fill the gaps, then plan the next one.</h2>
+          <div className="mt-16 grid gap-16 lg:mt-20 lg:grid-cols-[200px_1fr] lg:gap-20">
+            <nav aria-label="How it works" className="hidden lg:block">
+              <ol className="sticky top-32 flex flex-col">
+                {stories.map((story) => (
+                  <li key={story.id}>
+                    <a
+                      href={`#${story.id}`}
+                      className={cn(
+                        "block border-b-2 py-2.5 text-sm transition-colors",
+                        activeStory === story.id
+                          ? "border-foreground text-foreground"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {story.nav}
+                    </a>
                   </li>
                 ))}
-              </ul>
+              </ol>
+            </nav>
+            <div className="flex flex-col gap-24 sm:gap-32">
+              {stories.map((story) => (
+                <article key={story.id} id={story.id} className="flex scroll-mt-28 flex-col gap-8">
+                  <div className="flex max-w-2xl flex-col gap-4">
+                    <h3 className={h3}>{story.title}</h3>
+                    <p className={lead}>{story.text}</p>
+                    {story.quote && (
+                      <blockquote className="mt-2 border-l-2 border-[var(--brand-teal)] pl-5">
+                        <p className={cn(display, "text-[1.35rem] leading-snug")}>“{story.quote}”</p>
+                        <footer className="mt-2 text-sm text-muted-foreground">From the onboarding interview</footer>
+                      </blockquote>
+                    )}
+                  </div>
+                  {story.visual}
+                </article>
+              ))}
             </div>
-            <div className="flex flex-col gap-8 rounded-2xl border bg-background p-6 sm:p-8">
-              <RevisionTrack name="As-is · Current process" items={asIs} tone="current" />
-              <p className="flex items-center gap-2 rounded-lg bg-[var(--brand-tint)]/60 px-3.5 py-2.5 text-sm">
-                <GitBranch className="size-4 shrink-0 text-[var(--brand-teal)]" aria-hidden="true" />
-                Start a To-be plan from As-is revision 5 and a design brief
+          </div>
+        </Section>
+
+        <section id="why-senda" className="scroll-mt-24 bg-primary text-primary-foreground">
+          <div className={cn(container, "grid gap-10 py-24 sm:py-32 lg:grid-cols-[1fr_1.1fr] lg:gap-20")}>
+            <h2 className={h2}>Why not just ask your AI for a diagram?</h2>
+            <div className="flex flex-col gap-6 text-lg leading-relaxed text-primary-foreground/80 sm:text-xl">
+              <p>
+                Your agent can draw a process from a transcript on its own. It won’t show you which steps it
+                guessed, though, and when someone corrects it, you get a new diagram with no record of what
+                changed.
               </p>
-              <RevisionTrack name="To-be · Planned future" items={toBe} tone="planned" />
+              <p className="text-primary-foreground">
+                With Senda, your agent still does the drafting. Senda links each step to its source, keeps the
+                gaps as open questions, and saves every revision.
+              </p>
             </div>
           </div>
         </section>
 
-        <section id="why-senda" className="scroll-mt-16 border-t">
-          <div className={cn(container, "flex flex-col gap-12 py-20 sm:py-24")}>
-            <SectionHeading title="Why not just ask a chatbot for a diagram?">
-              A chat can draw a plausible process. Getting people to agree on it takes evidence, follow-up
-              questions and a record of what changed.
-            </SectionHeading>
-            <div className="overflow-hidden rounded-2xl border bg-card" role="table" aria-label={`A single chat compared with ${productName}`}>
-              <div role="row" className="hidden grid-cols-[0.9fr_1fr_1fr] border-b bg-muted/60 text-sm font-semibold md:grid">
-                <span role="columnheader" className="px-6 py-4">
-                  <span className="sr-only">Topic</span>
-                </span>
-                <span role="columnheader" className="px-6 py-4 text-muted-foreground">
-                  A diagram from a single chat
-                </span>
-                <span role="columnheader" className="flex items-center gap-2 px-6 py-4 text-primary">
-                  <BrandMark className="h-4" />
-                  {productName}
-                </span>
-              </div>
-              {comparison.map((row) => (
-                <div
-                  role="row"
-                  key={row.topic}
-                  className="grid gap-3 border-b px-5 py-5 last:border-b-0 md:grid-cols-[0.9fr_1fr_1fr] md:gap-0 md:p-0"
-                >
-                  <span role="rowheader" className="font-semibold md:px-6 md:py-5">
-                    {row.topic}
-                  </span>
-                  <span role="cell" className="text-muted-foreground md:px-6 md:py-5">
-                    <span className="mb-0.5 block text-xs font-medium tracking-wide uppercase md:hidden">Single chat</span>
-                    {row.chat}
-                  </span>
-                  <span role="cell" className="flex gap-2.5 md:bg-[var(--brand-tint)]/30 md:px-6 md:py-5">
-                    <Check className="mt-1 size-4 shrink-0 text-[var(--brand-teal)]" aria-hidden="true" />
-                    <span>
-                      <span className="mb-0.5 block text-xs font-medium tracking-wide text-primary uppercase md:hidden">
-                        {productName}
-                      </span>
-                      {row.senda}
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
-            <ul className="grid gap-4 md:grid-cols-3">
-              {[
-                {
-                  Icon: BookOpen,
-                  title: "Built on an established method",
-                  text: (
-                    <>
-                      Discovery follows Chapter 5 of <cite>Fundamentals of Business Process Management</cite>:
-                      boundaries, activities, handoffs, then control flow, with review throughout.
-                    </>
-                  ),
-                  link: { href: methodology, label: "Read the method summary" },
-                },
-                {
-                  Icon: ShieldCheck,
-                  title: "Your transcripts, your agent",
-                  text: "Senda doesn’t send your transcripts to an AI model. Only the agent you authorize reads them, for the projects you choose, and you can revoke access at any time.",
-                  link: { href: "/privacy", label: "Read the privacy notice" },
-                },
-                {
-                  Icon: Code,
-                  title: "Free and open source",
-                  text: "Use the hosted app at no cost, or run it yourself. The app, command-line tool and agent skill are MIT-licensed.",
-                  link: { href: repository, label: "View the source" },
-                },
-              ].map(({ Icon, title, text, link }) => (
-                <li key={title} className="flex flex-col gap-3 rounded-xl border bg-card p-6">
-                  <Icon className="size-5 text-[var(--brand-teal)]" aria-hidden="true" />
-                  <h3 className="font-semibold">{title}</h3>
-                  <p className="flex-1 text-sm leading-relaxed text-muted-foreground">{text}</p>
-                  <a href={link.href} className={cn(textLink, "text-sm")}>
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
+        <Section>
+          <ul className="grid gap-12 md:grid-cols-3 md:gap-12">
+            {[
+              {
+                title: "Follows the textbook method for process discovery",
+                text: (
+                  <>
+                    The method comes from chapter 5 of <cite>Fundamentals of Business Process Management</cite>.
+                    You start with the process boundaries, then the activities, handoffs and decisions.
+                  </>
+                ),
+                link: { href: methodology, label: "Read the method summary" },
+              },
+              {
+                title: "Senda never sends your transcripts to an AI model",
+                text: "Only the agent you connect can read them, and only in the projects you choose. You can disconnect it at any time.",
+                link: { href: "/privacy", label: "Read the privacy notice" },
+              },
+              {
+                title: "Free and open source",
+                text: "The hosted app is free. You can also run it yourself, since the app, command-line tool and agent skill are MIT-licensed.",
+                link: { href: repository, label: "View the source" },
+              },
+            ].map(({ title, text, link }) => (
+              <li key={title} className="flex flex-col gap-3">
+                <h3 className={cn(display, "text-[1.45rem]")}>{title}</h3>
+                <p className="flex-1 leading-relaxed text-muted-foreground">{text}</p>
+                <a href={link.href} className={cn(textLink, "text-sm")}>
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Section>
 
-        <section id="your-agent" className="scroll-mt-16 border-t bg-card">
-          <div className={cn(container, "grid gap-12 py-20 sm:py-24 lg:grid-cols-2 lg:gap-16")}>
+        <Section id="your-agent">
+          <div className="grid gap-14 lg:grid-cols-[1fr_1.05fr] lg:gap-20">
             <div className="flex flex-col gap-8">
-              <SectionHeading title="Keep working with the agent you already use.">
-                Your agent reads the transcript, drafts the model and revises it from your answers. Senda
-                keeps the diagram, sources and history together so nothing lives only in a chat.
-              </SectionHeading>
+              <h2 className={h2}>Connect the AI agent you already use.</h2>
+              <p className={lead}>
+                Your agent reads the transcript, drafts the model and revises it from your answers. Senda keeps
+                the diagram, the transcripts and every revision in one project, so the work doesn’t disappear
+                when the chat ends.
+              </p>
               <ol className="flex flex-col gap-5">
                 {[
-                  {
-                    title: "Connect",
-                    text: "In a project, open Connect your agent and add the server URL to your agent’s connector settings.",
-                  },
-                  {
-                    title: "Authorize",
-                    text: "Sign in when your agent asks, and choose the projects it may open.",
-                  },
-                  {
-                    title: "Ask",
-                    text: "Give it the discovery method from the same screen and ask it to model the interview.",
-                  },
-                ].map((step, i) => (
-                  <li key={step.title} className="flex gap-4">
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-[var(--brand-teal)] text-xs font-semibold text-primary tabular-nums">
-                      {i + 1}
-                    </span>
+                  ["Connect", "Open a project, choose Connect your agent, and paste the server URL into your agent’s connector settings."],
+                  ["Authorize", "Sign in when your agent asks, then pick the projects it can open."],
+                  ["Ask", "Download the discovery skill from the same screen, give it to your agent, and ask it to model the interview."],
+                ].map(([title, text], i) => (
+                  <li key={title} className="flex gap-5">
+                    <span className={cn(display, "w-5 text-[1.45rem] leading-none text-muted-foreground tabular-nums")}>{i + 1}</span>
                     <p className="leading-relaxed">
-                      <span className="font-semibold">{step.title}.</span>{" "}
-                      <span className="text-muted-foreground">{step.text}</span>
+                      <span className="font-medium">{title}.</span>{" "}
+                      <span className="text-muted-foreground">{text}</span>
                     </p>
                   </li>
                 ))}
               </ol>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Works with AI agents that can add a remote MCP server and sign in with OAuth. Prefer to work
-                from a terminal? Use the{" "}
+                Works with any AI agent that can connect to a remote MCP server with OAuth sign-in (many assistants
+                call this a custom connector). If you prefer
+                a terminal, the{" "}
                 <a href={`${repository}#cli-quickstart`} className={textLink}>
                   command-line tool and skill
                 </a>{" "}
-                with local projects.
+                work with local projects.
               </p>
             </div>
-            <figure className="flex flex-col gap-3 self-center">
-              <div className="flex flex-col gap-4 rounded-2xl border bg-background p-5 sm:p-6">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Example conversation</p>
-                <div className="ml-8 rounded-2xl rounded-br-md bg-primary px-4 py-3 text-[0.95rem] leading-relaxed text-primary-foreground">
-                  Model the Brightline onboarding interview as the current process. Ask me about missing
-                  decisions and keep the evidence attached.
+            <div className={cn(panel, "flex items-center px-4 py-10 sm:px-10 sm:py-14")}>
+              <div className={cn(windowFrame, "w-full")}>
+                <WindowBar title="Your agent" />
+                <div className="flex flex-col gap-4 p-5 sm:p-6">
+                  <div className="ml-8 rounded-2xl rounded-br-md bg-primary px-4 py-3 text-[0.95rem] leading-relaxed text-primary-foreground">
+                    Model the Brightline onboarding interview as the current process. Ask me about missing
+                    decisions and keep the evidence attached.
+                  </div>
+                  <div className="mr-6 flex flex-col gap-3 rounded-2xl rounded-bl-md bg-muted px-4 py-3 text-[0.95rem] leading-relaxed">
+                    <p>
+                      I saved revision 2, a first draft with each step linked to its passage. Seven questions are
+                      open. The first one decides the shape of the diagram:
+                    </p>
+                    <p className="border-l-2 border-[var(--brand-teal)] pl-3 font-medium">
+                      Can Finance and Delivery start together, and what must finish before setup starts?
+                    </p>
+                  </div>
                 </div>
-                <div className="mr-8 flex flex-col gap-3 rounded-2xl rounded-bl-md border bg-card px-4 py-3 text-[0.95rem] leading-relaxed">
-                  <p>
-                    I saved revision 2, a first draft with each step linked to its passage. Seven questions are
-                    open. The first one decides the shape of the diagram:
-                  </p>
-                  <p className="border-l-2 border-[var(--brand-teal)] pl-3 font-medium">
-                    Can Finance and Delivery start together, and what must finish before setup starts?
-                  </p>
-                </div>
-                <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1.5 font-medium text-foreground">
-                    <BrandMark className="h-3.5" />
-                    Brightline client onboarding
-                  </span>
-                  <span>Revision 2 saved</span>
-                  <span>7 open questions</span>
-                </p>
               </div>
-              <figcaption className="text-sm text-muted-foreground">
-                Based on the first draft in the{" "}
-                <a href="/example?draft=true" className={textLink}>
-                  onboarding example
-                </a>
-                .
-              </figcaption>
-            </figure>
-          </div>
-        </section>
-
-        <section id="questions" className={cn(container, "grid scroll-mt-16 gap-10 py-20 sm:py-24 md:grid-cols-[0.7fr_1.3fr]")}>
-          <h2 className={heading}>Questions</h2>
-          <Accordion type="single" collapsible>
-            {[
-              [
-                "What kind of diagram do I get?",
-                "A BPMN 2.0 process model, the standard notation for activities, decisions, responsibilities and handoffs. Explore it in Senda, or download a .bpmn file with its layout. Exports are tested with bpmn-js, the open-source modeler behind bpmn.io.",
-              ],
-              [
-                "Which AI agents can connect?",
-                "Any agent that can add a remote MCP server and sign in with OAuth. Some assistants call this a custom connector. Add Senda’s server URL, sign in, and choose the projects it may open. Coding agents can also use the command-line tool with the downloadable skill.",
-              ],
-              [
-                "Does Senda run AI on my transcripts?",
-                "No. Senda stores your transcripts, model and history, and checks each revision. The agent you connect does the reading and drafting.",
-              ],
-              [
-                "Who can read my transcripts?",
-                "Projects are private to your account. A connected agent can read the sources only in the projects you share with it, and you can revoke that access at any time.",
-              ],
-              [
-                "Is it free?",
-                "Yes. The hosted app is free to use and the source is MIT-licensed. Each project holds up to 40 sources and 1 MB of transcript text.",
-              ],
-              [
-                "How do I plan a future process?",
-                "Keep the current process as As-is, then start a To-be model from a saved As-is revision. Describe the changes you want and revise it with your agent. Each model keeps its own history.",
-              ],
-              [
-                "How do I review the model with my team?",
-                "Run Review checks to find structural issues and unanswered questions. Walk through the diagram with the people who do the work, show them the source passages, and save their feedback for the next revision.",
-              ],
-              [
-                "Can I work locally?",
-                "Yes. The command-line tool creates and revises local projects, and exports diagrams and offline review bundles.",
-              ],
-            ].map(([question, answer], i) => (
-              <AccordionItem key={question} value={String(i)}>
-                <AccordionTrigger className="py-4 text-base">{question}</AccordionTrigger>
-                <AccordionContent className="pb-4 text-base leading-relaxed text-muted-foreground">
-                  {answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </section>
-
-        <section className="bg-primary text-primary-foreground">
-          <div className={cn(container, "flex flex-col items-start gap-8 py-16 sm:py-20 md:flex-row md:items-center md:justify-between")}>
-            <div className="flex max-w-2xl flex-col gap-3">
-              <h2 className="text-3xl leading-tight font-semibold tracking-[-0.03em] text-balance sm:text-[2.6rem]">
-                Bring your next interview.
-              </h2>
-              <p className="text-lg leading-relaxed text-primary-foreground/80">
-                Map the process as it runs today, then plan the one you want.
-              </p>
             </div>
-            <StartButtons inverse />
           </div>
+        </Section>
+
+        <Section id="questions">
+          <div className="grid gap-10 md:grid-cols-[0.75fr_1.25fr] md:gap-16">
+            <h2 className={h2}>Questions</h2>
+            <Accordion type="single" collapsible className="border-t">
+              {[
+                [
+                  "What kind of diagram do I get?",
+                  "A BPMN 2.0 process model, the standard notation for activities, decisions, responsibilities and handoffs. You can explore it in Senda or download a .bpmn file with its layout. Exports are tested with bpmn-js, the open-source modeler behind bpmn.io.",
+                ],
+                [
+                  "Which AI agents can connect?",
+                  "Any agent that can add a remote MCP server and sign in with OAuth. Some assistants call this a custom connector. Add Senda’s server URL, sign in, and choose the projects it can open. Coding agents can also use the command-line tool with the downloadable skill.",
+                ],
+                [
+                  "Does Senda run AI on my transcripts?",
+                  "No. Senda stores your transcripts, model and history, and checks each revision. The agent you connect does the reading and drafting.",
+                ],
+                [
+                  "Who can read my transcripts?",
+                  "Projects are private to your account. A connected agent can read the sources only in the projects you share with it, and you can disconnect it at any time.",
+                ],
+                [
+                  "Is it free?",
+                  "Yes. The hosted app is free to use and the source is MIT-licensed. Each project holds up to 40 sources and 1 MB of transcript text.",
+                ],
+                [
+                  "How do I plan a future process?",
+                  "Keep the current process as As-is, then start a To-be model from a saved As-is revision. Describe the changes you want and revise it with your agent. Each model keeps its own history.",
+                ],
+                [
+                  "How do I review the model with my team?",
+                  "Run Review checks to find structural problems and unanswered questions. Then walk through the diagram with the people who do the work, show them the source passages, and save their feedback for the next revision.",
+                ],
+                [
+                  "Can I work locally?",
+                  "Yes. The command-line tool creates and revises local projects, and exports diagrams and offline review bundles.",
+                ],
+              ].map(([question, answer], i) => (
+                <AccordionItem key={question} value={String(i)}>
+                  <AccordionTrigger className="py-5 text-base font-normal sm:text-[1.05rem]">{question}</AccordionTrigger>
+                  <AccordionContent className="pb-5 text-base leading-relaxed text-muted-foreground">{answer}</AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </Section>
+
+        <section className={cn(container, "flex flex-col items-center gap-6 pt-8 pb-28 text-center sm:pb-36")}>
+          <h2 className={cn(display, "text-[2.8rem] leading-[1.02] sm:text-[4.2rem]")}>Bring your next interview.</h2>
+          <p className={cn(lead, "max-w-md")}>Map how the process runs today, then plan the one you want.</p>
+          <StartButtons />
         </section>
       </main>
 
-      <footer className={cn(container, "flex flex-wrap items-center justify-between gap-4 py-8 text-sm text-muted-foreground")}>
-        <span>
-          {productName} · Built by{" "}
-          <a className="underline underline-offset-4 hover:text-foreground" href="https://hanifcarroll.com">
-            Hanif Carroll
-          </a>
-        </span>
-        <div className="flex flex-wrap gap-x-5 gap-y-2">
-          {[
-            ["Example", "/example"],
-            ["Method", methodology],
-            ["Privacy", "/privacy"],
-            ["Source code", repository],
-          ].map(([label, href]) => (
-            <a key={label} className="underline underline-offset-4 hover:text-foreground" href={href}>
-              {label}
+      <footer>
+        <div className={cn(container, "flex flex-wrap items-center justify-between gap-4 py-8 text-sm text-muted-foreground")}>
+          <span>
+            {productName} · Built by{" "}
+            <a className="underline underline-offset-4 hover:text-foreground" href="https://hanifcarroll.com">
+              Hanif Carroll
             </a>
-          ))}
+          </span>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {[
+              ["Example", "/example"],
+              ["Method", methodology],
+              ["Privacy", "/privacy"],
+              ["Source code", repository],
+            ].map(([label, href]) => (
+              <a key={label} className="underline underline-offset-4 hover:text-foreground" href={href}>
+                {label}
+              </a>
+            ))}
+          </div>
         </div>
       </footer>
     </div>

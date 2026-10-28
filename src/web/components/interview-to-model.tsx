@@ -1,16 +1,16 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowRight, CircleHelp, FileText, Workflow } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Hero illustration: the Finance passage of the public onboarding example beside a
-// simplified drawing of the Finance subprocess it produced (revision 5). Step names,
-// quotes and the answered question match public/examples/onboarding-final.json.
+// Hero illustration: the Finance passage of the public onboarding example above a
+// simplified drawing of the Finance subprocess it produced (revision 5). Step names
+// and quotes match public/examples/onboarding-final.json.
 
-type Step = 1 | 2 | 3 | "q";
+type Step = 1 | 2 | 3;
 type Point = [number, number];
 type Layout = "h" | "v";
 
-const steps: Step[] = [1, 2, 3, "q"];
+const steps: Step[] = [1, 2, 3];
 
 const nodes: {
   kind: "start" | "end" | "gateway" | "task";
@@ -38,12 +38,12 @@ const edges: { h: Point[]; v: Point[]; step?: Step }[] = [
   { h: [[406, 120], [428, 120]], v: [[150, 262], [150, 286]] },
   { h: [[468, 120], [498, 120]], v: [[150, 326], [150, 352]] },
   { h: [[614, 120], [647, 120]], v: [[150, 404], [150, 433]] },
-  { step: "q", h: [[78, 100], [78, 46], [448, 46], [448, 100]], v: [[170, 78], [268, 78], [268, 306], [170, 306]] },
+  { h: [[78, 100], [78, 46], [448, 46], [448, 100]], v: [[170, 78], [268, 78], [268, 306], [170, 306]] },
 ];
 
 const labels: { text: string; step?: Step; h: Point; v: Point; anchor?: { h?: "start" | "middle" | "end"; v?: "start" | "middle" | "end" } }[] = [
   { text: "No approved terms", h: [78, 158], v: [158, 114], anchor: { v: "start" } },
-  { text: "Approved credit terms", step: "q", h: [263, 38], v: [176, 70], anchor: { v: "start" } },
+  { text: "Approved credit terms", h: [263, 38], v: [176, 70], anchor: { v: "start" } },
   { text: "Finance cleared", h: [660, 158], v: [172, 450], anchor: { v: "start" } },
 ];
 
@@ -74,7 +74,7 @@ function Badge({ step, active }: { step: Step; active: boolean }) {
         active ? "bg-primary text-primary-foreground" : "bg-[var(--brand-teal)]/15 text-primary",
       )}
     >
-      {step === "q" ? "?" : step}
+      {step}
     </span>
   );
 }
@@ -207,55 +207,34 @@ export function InterviewToModel() {
   const { active, bind } = useActiveStep();
   const props = (step: Step) => ({ step, active: active === step, bind });
   return (
-    <div className="relative grid overflow-hidden rounded-2xl border bg-card text-left shadow-[0_1px_2px_rgb(20_61_77/6%),0_24px_60px_-20px_rgb(20_61_77/28%)] lg:grid-cols-[0.78fr_1.22fr]">
-      <div className="flex flex-col gap-4 border-b bg-[#FAFCFC] p-5 sm:p-7 lg:border-r lg:border-b-0">
-        <p className="flex items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          <FileText className="size-4 text-[var(--brand-teal)]" aria-hidden="true" />
-          Interview transcript
-        </p>
-        <div className="flex flex-col gap-4 text-[0.95rem] leading-[1.9]">
-          <p>
-            <span className="mr-1.5 font-semibold">Luis, Finance:</span>A new client normally needs a
-            deposit. <Highlight {...props(1)}>I issue the deposit invoice</Highlight> to the billing
-            contact, <Highlight {...props(2)}>wait until we can identify the received payment</Highlight>,
-            and <Highlight {...props(3)}>record financial clearance</Highlight>.
-          </p>
-          <p className="text-muted-foreground">
-            We have repeat clients with payment terms, but just being a repeat client is not enough.{" "}
-            <Highlight {...props("q")}>Please leave that as a question</Highlight> rather than silently
-            removing Finance from those cases.
-          </p>
-        </div>
+    <div className="overflow-hidden rounded-2xl bg-card text-left shadow-[0_2px_4px_rgb(9_30_38/12%),0_32px_80px_-24px_rgb(9_30_38/55%)]">
+      <div className="flex items-center gap-4 border-b px-4 py-3">
+        <span className="flex gap-1.5" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="size-2.5 rounded-full bg-border" />
+          ))}
+        </span>
+        <span className="mr-auto text-[0.8rem] text-muted-foreground">Example: Brightline client onboarding</span>
+        <a
+          href="/example?view=FinanceWork&element=Invoice"
+          className="hidden items-center gap-1 text-[0.8rem] text-muted-foreground transition-colors hover:text-foreground sm:flex"
+        >
+          Open the example
+          <ArrowUpRight className="size-3.5" aria-hidden="true" />
+        </a>
       </div>
-      <span
-        aria-hidden="true"
-        className="absolute top-1/2 left-[39%] z-10 hidden size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-card text-[var(--brand-teal)] shadow-sm lg:flex"
-      >
-        <ArrowRight className="size-4" />
-      </span>
-      <div className="flex flex-col gap-5 p-5 sm:p-7">
-        <p className="flex flex-wrap items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          <Workflow className="size-4 text-[var(--brand-teal)]" aria-hidden="true" />
-          BPMN model · Clear order — Finance
+      <div className="bg-muted px-5 py-7 sm:px-10 sm:py-9">
+        <p className="mx-auto max-w-3xl text-[1.02rem] leading-[1.95] sm:text-lg sm:leading-[1.9]">
+          <span className="mr-1.5 font-semibold">Luis, Finance:</span>A new client normally needs a
+          deposit. <Highlight {...props(1)}>I issue the deposit invoice</Highlight> to the billing
+          contact, <Highlight {...props(2)}>wait until we can identify the received payment</Highlight>,
+          and <Highlight {...props(3)}>record financial clearance</Highlight>.
         </p>
-        <div className="flex flex-1 items-center">
+      </div>
+      <div className="px-5 py-8 sm:px-10 sm:py-10">
+        <div className="mx-auto max-w-3xl">
           <Diagram layout="h" active={active} />
           <Diagram layout="v" active={active} />
-        </div>
-        <div
-          {...bind("q")}
-          className={cn(
-            "flex gap-3 rounded-xl border p-3.5 text-sm leading-relaxed transition-colors",
-            active === "q" ? "border-[var(--brand-teal)]/50 bg-[var(--brand-tint)]/60" : "bg-muted/50",
-          )}
-        >
-          <CircleHelp className="mt-0.5 size-4 shrink-0 text-[var(--brand-teal)]" aria-hidden="true" />
-          <p>
-            <span className="font-medium">Who can use credit terms instead of paying a deposit?</span>{" "}
-            <span className="text-muted-foreground">
-              Answered in clarification round 3, which added the credit-terms path.
-            </span>
-          </p>
         </div>
       </div>
     </div>

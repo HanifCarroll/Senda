@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./brand.css";
+@import "@fontsource-variable/newsreader/opsz.css";
 @custom-variant data-open (&[data-state="open"]);
 @custom-variant data-closed (&[data-state="closed"]);
 @custom-variant data-active (&[data-state="active"]);
@@ -37,8 +38,10 @@
   body { @apply bg-background text-foreground; margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; }
   button, [role="combobox"], [role="tab"] { cursor: pointer; }
 }
-.marketing-hero { position: relative; isolation: isolate; background: radial-gradient(60rem 30rem at 50% -8rem, rgb(42 127 131 / 14%), transparent 70%); }
-.marketing-hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(circle at 1px 1px, rgb(20 61 77 / 11%) 1px, transparent 0) 0 0 / 24px 24px; mask-image: linear-gradient(to bottom, black, transparent 60%); }
+.marketing { --background: #FFFFFF; --card: #FFFFFF; --muted: #F7F7F2; --secondary: #F7F7F2; --muted-foreground: #62625D; --border: #E6E5DE; --input: #E6E5DE; background: var(--background); }
+body:has(.marketing) { background: #FFFFFF; }
+@media (prefers-reduced-motion: no-preference) { html:has(.marketing) { scroll-behavior: smooth; } }
+.font-display { font-family: "Newsreader Variable", "Iowan Old Style", Charter, Georgia, serif; font-optical-sizing: auto; font-weight: 400; }
 .diagram-workspace { height: max(470px, calc(100dvh - 230px)); }
 .canvas-card { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .canvas-wrap { height: 100%; min-height: 0; }
