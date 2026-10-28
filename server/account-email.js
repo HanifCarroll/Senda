@@ -109,7 +109,7 @@ export function accountEmail({ kind, url, origin }) {
           <p class="body-copy" style="margin:0;color:#525252;font-size:16px;line-height:26px;">${escape(copy.introduction)}</p>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
             <tr><td style="padding:28px 0 20px;">
-              <!--[if mso]><v:roundrect href="${actionURL}" style="height:48px;v-text-anchor:middle;width:448px;" arcsize="16%" stroke="f" fillcolor="#222222"><w:anchorlock/><center style="color:#f5f5f5;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">${escape(copy.action)}</center></v:roundrect><![endif]-->
+              <!--[if mso]><v:roundrect href="${actionURL}" style="height:48px;v-text-anchor:middle;width:446px;" arcsize="16%" stroke="f" fillcolor="#222222"><w:anchorlock/><center style="color:#f5f5f5;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">${escape(copy.action)}</center></v:roundrect><![endif]-->
               <!--[if !mso]><!--><a class="action" href="${actionURL}" style="display:block;background-color:#222222;border:1px solid #222222;border-radius:8px;color:#f5f5f5;font-size:16px;line-height:48px;font-weight:600;text-align:center;text-decoration:none;">${escape(copy.action)}</a><!--<![endif]-->
             </td></tr>
           </table>
