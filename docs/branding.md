@@ -1,9 +1,9 @@
 # Senda: Ink + Teal
 
 The approved identity is the open-book mark with a winding path, using palette 02.
-The mark and serif lettering follow the selected artwork, preserved as traced
-vector outlines. The interface keeps its neutral shadcn foundation and system
-sans-serif text.
+The mark follows the selected artwork. Clean Times New Roman Regular outlines
+give the wordmark the reference's classic serif style. The interface keeps its
+neutral shadcn foundation and system sans-serif text.
 
 ## Color roles
 
@@ -29,8 +29,9 @@ As-is and To-be remain labeled navigation choices. Colors never replace labels.
 The reusable SVG and PNG files are in [public/brand](../public/brand/logo.svg).
 Both normal and inverse SVG versions are available. The source outlines live in
 [artwork.js](../branding/artwork.js); the [selected reference](../branding/selected-reference.png)
-and [restoration notes](../branding/README.md) document the design. No substitute
-font or manually redesigned path should replace these outlines.
+and [artwork notes](../branding/README.md) document the design. Preserve these
+outlines when regenerating assets. Never trace lettering from the small raster
+reference: it produces uneven stems, distorted counters and lumpy curves.
 
 The same source generates the web logo, touch/home-screen icons, SVG/ICO/PNG
 favicons, email logo, social preview, and data-URI assets for offline bundles.

@@ -15,9 +15,9 @@ export const brandColors = Object.freeze({
 export const brandCssVariables = Object.entries(brandColors).map(([key, value]) =>
   `--brand-${key.replace(/[A-Z]/g, char => "-" + char.toLowerCase())}:${value}`).join(";");
 
-// Restored outlines preserve the selected mark and lettering, rather than redrawing them.
+// One canonical vector source keeps the selected mark and clean typeset wordmark consistent.
 export const brandLogoHeight = 72;
-export const brandAssetVersion = "selected-18-3";
+export const brandAssetVersion = "selected-18-4";
 const logoScale = brandLogoHeight / markBounds.height;
 export const brandLogoWidth = Math.ceil((wordmarkOffset.x + wordmarkBounds.width) * logoScale);
 
