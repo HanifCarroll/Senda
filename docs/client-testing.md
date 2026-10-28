@@ -16,6 +16,11 @@ The agent must discover the method and available operations itself. Keep tool
 names, schemas, internal IDs, revision arguments and implementation instructions
 out of the simulated user's messages.
 
+Include first-time setup with an empty account. The user can authorize New
+projects and give the transcript directly to the agent; a placeholder project
+must not be required. Also check clients that connect with read-only access and
+request write permission later. Other existing projects must remain private.
+
 Continue as the process owner or analyst would:
 
 1. Answer the questions the agent actually asks. Provide business facts in small

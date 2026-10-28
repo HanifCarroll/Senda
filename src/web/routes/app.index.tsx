@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Plus, ArrowUpRight } from "lucide-react";
 import { api, post, ApiError } from "@/lib/api";
 import { AccountFrame } from "@/components/account-frame";
+import { ConnectAgent } from "@/components/connect-agent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,12 +69,12 @@ function Projects() {
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Your processes</h1>
             <p className="mt-2 text-muted-foreground">
-              Start with a transcript. Clarify the gaps. Keep revising with your agent.
+              Give your transcript to your agent. Review the diagrams and revisions here.
             </p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button variant="outline">
                 <Plus data-icon="inline-start" />
                 New project
               </Button>
@@ -195,15 +196,14 @@ function Projects() {
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>What process are you working on?</CardTitle>
+              <CardTitle>Start with your agent</CardTitle>
               <CardDescription>
-                Create a project, add the transcript and connect your agent to make the first draft.
+                Connect Senda to ChatGPT or Claude, then share your transcript in that chat.
+                Your agent creates the project and asks about anything unclear.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button variant="outline" onClick={() => setOpen(true)}>
-                Create your first project
-              </Button>
+            <CardContent className="flex flex-wrap gap-2">
+              <ConnectAgent label="Set up your agent" />
               <Button variant="link" asChild>
                 <a href="/example">Explore a worked example</a>
               </Button>

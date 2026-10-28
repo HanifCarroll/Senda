@@ -14,7 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { Input } from "./ui/input";
 import { Field, FieldLabel } from "./ui/field";
 
-export function ConnectAgent() {
+export function ConnectAgent({ label = "Connect your agent" }: { label?: string }) {
   const [open, setOpen] = useState(false),
     [data, setData] = useState<any>(null),
     [error, setError] = useState(""),
@@ -50,15 +50,15 @@ export function ConnectAgent() {
       <DialogTrigger asChild>
         <Button variant="outline">
           <Link2 data-icon="inline-start" />
-          Connect your agent
+          {label}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Work with your own agent</DialogTitle>
           <DialogDescription>
-            Your agent reads the transcript and proposes revisions. Senda keeps the model, sources
-            and history together.
+            Give your transcript to ChatGPT or Claude. Your connected agent creates the project
+            and revises the diagram as you talk. Senda keeps the sources and history together.
           </DialogDescription>
         </DialogHeader>
         {error && (
@@ -111,11 +111,12 @@ export function ConnectAgent() {
             </Field>
           </li>
           <li>
-            Sign in when your agent opens the connection page, then choose the project it may use.
+            Sign in when your agent opens the connection page. Choose New projects to start from
+            your chat, or select an existing project to continue working on it.
           </li>
           <li>
-            Start with: “Could you map the current process from my interview notes? Ask me about
-            anything that’s unclear.” Then answer its questions as the process takes shape.
+            Share the transcript in your agent chat and ask it to create a process in Senda.
+            Answer its questions and request changes in the same conversation.
           </li>
         </ol>
         <Button variant="outline" asChild>
@@ -129,7 +130,7 @@ export function ConnectAgent() {
           for agents that use local skills.
         </p>
         <div className="flex flex-col gap-2 border-t pt-4">
-          <h3 className="text-sm font-medium">Connected projects</h3>
+          <h3 className="text-sm font-medium">Agent access</h3>
           {data?.connections?.length ? (
             <>
               <ul className="flex flex-col gap-2 text-sm">

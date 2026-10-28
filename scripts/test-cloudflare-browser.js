@@ -4,6 +4,7 @@ import { chromium } from "playwright";
 import path from "node:path";
 import os from "node:os";
 import { mkdir } from "node:fs/promises";
+import { createHash, randomBytes } from "node:crypto";
 import { getPlatformProxy } from "wrangler";
 import { hash } from "../src/core/hash.js";
 import { onboardingProposals } from "../examples/complex-onboarding/proposals.js";
@@ -63,12 +64,57 @@ try {
   assert.ok(!(await context.request.get(base + "/api/session")).ok());
   await p.getByRole("button", { name: "Continue to Senda", exact: true }).click();
   await p.waitForURL(base + "/app");
+  await p.getByRole("button", { name: "Set up your agent", exact: true }).waitFor();
+  assert.ok(await p.getByRole("button", { name: "Set up your agent", exact: true }).isVisible());
+  await p.getByRole("button", { name: "Set up your agent", exact: true }).click();
+  assert.match(await p.getByRole("dialog").innerText(), /Choose New projects/);
+  await p.getByRole("button", { name: "Close", exact: true }).click();
   console.log("UI magic link and scanner-safe confirmation passed");
   const post = async (path, data) => {
     const r = await context.request.post(base + path, { headers: { origin: base }, data });
     assert.ok(r.ok(), await r.text());
     return r.json();
   };
+  const redirect = base + "/agent-test/callback";
+  const registration = await post("/api/auth/oauth2/register", {
+    client_name: "Agent-first browser test",
+    redirect_uris: [redirect],
+    application_type: "native",
+    token_endpoint_auth_method: "none",
+    grant_types: ["authorization_code", "refresh_token"],
+    response_types: ["code"],
+    scope: "openid offline_access projects:read projects:write",
+  });
+  const verifier = randomBytes(32).toString("base64url");
+  const authorization = new URLSearchParams({
+    response_type: "code", client_id: registration.client_id,
+    redirect_uri: redirect, scope: "openid offline_access projects:read projects:write",
+    state: "browser-agent-first", prompt: "consent", resource: base + "/mcp",
+    code_challenge: createHash("sha256").update(verifier).digest("base64url"),
+    code_challenge_method: "S256",
+  });
+  const readAuthorization = new URLSearchParams(authorization);
+  readAuthorization.set("scope", "openid offline_access projects:read");
+  await p.goto(base + "/api/auth/oauth2/authorize?" + readAuthorization);
+  await p.getByRole("button", { name: "Allow connection", exact: true }).waitFor();
+  assert.equal(await p.getByRole("combobox").innerText(), "Connect without a project");
+  await p.getByRole("button", { name: "Allow connection", exact: true }).click();
+  await p.waitForURL(url => url.pathname === "/agent-test/callback");
+  await p.goto(base + "/api/auth/oauth2/authorize?" + authorization);
+  await p.getByRole("button", { name: "Allow connection", exact: true }).waitFor();
+  assert.equal(await p.getByRole("combobox").innerText(), "New projects");
+  assert.ok(await p.getByRole("button", { name: "Allow connection", exact: true }).isEnabled());
+  await p.setViewportSize({ width: 1440, height: 1000 });
+  await p.screenshot({ path: artifacts + "/cf-new-project-consent-desktop.png" });
+  await p.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await p.screenshot({ path: artifacts + "/cf-new-project-consent-mobile.png" });
+  await p.getByRole("button", { name: "Allow connection", exact: true }).click();
+  await p.waitForURL(url => url.pathname === "/agent-test/callback");
+  assert.ok(new URL(p.url()).searchParams.has("code"));
+  await p.goto(base + "/app");
+  await p.setViewportSize({ width: 1440, height: 1000 });
+  console.log("Empty-account consent allows the agent to create the first project");
   const { proposals, texts } = await onboardingProposals();
   const project = await post("/api/projects", {
     name: "Cloudflare browser walkthrough",
@@ -115,6 +161,7 @@ try {
     .locator(".app-header")
     .getByText(/Revision 1 ·/)
     .waitFor();
+  await p.getByRole("button", { name: "View original As-is", exact: true }).waitFor();
   assert.ok(await p.getByRole("button", { name: "View original As-is", exact: true }).isVisible());
   for (const [w, h] of [
     [1440, 1000],
@@ -128,18 +175,17 @@ try {
   await requestPage.goto(base + "/example");
   await requestPage.getByRole("button", { name: "Confirm and hold kickoff", exact: true }).press("Enter");
   await requestPage.getByRole("button", { name: "Show evidence", exact: true }).click();
-  await requestPage.getByRole("button", { name: "Request a correction", exact: true }).click();
-  const requestText = requestPage.getByLabel("Request for the agent", { exact: true });
-  assert.match(await requestText.inputValue(), /The step “Confirm and hold kickoff”/);
-  await requestPage.getByRole("button", { name: "Close", exact: true }).click();
+  const evidence = requestPage.getByLabel("Element details", { exact: true });
+  assert.ok(await evidence.getByText("Confirm and hold kickoff", { exact: true }).isVisible());
   await requestPage.getByRole("button", { name: "Send handover pack", exact: true }).press("Enter");
-  await requestPage.getByRole("button", { name: "Request a correction", exact: true }).click();
-  const nextRequest = await requestText.inputValue();
-  assert.match(nextRequest, /The step “Send handover pack”/);
-  assert.doesNotMatch(nextRequest, /Confirm and hold kickoff|\$process-scribe|\\n/);
-  await requestPage.screenshot({ path: artifacts + "/cf-correction-request.png" });
+  assert.ok(await evidence.getByText("Send handover pack", { exact: true }).isVisible());
+  assert.match(await evidence.innerText(), /Client Success reviews it and acknowledges acceptance/);
+  assert.equal(await requestPage.getByRole("button", { name: "Request a correction", exact: true }).count(), 0);
+  await requestPage.getByRole("tab", { name: "Clarifications", exact: true }).click();
+  assert.equal(await requestPage.getByRole("button", { name: /Copy question|Prepare my answer|Clarify this answer/ }).count(), 0);
+  await requestPage.screenshot({ path: artifacts + "/cf-agent-chat-review.png" });
   await requestPage.close();
-  console.log("Correction requests follow the selected step in plain language");
+  console.log("Evidence follows the selected step; review has no prompt-copy handoff");
   await p.getByRole("button", { name: "Sign out", exact: true }).click();
   await p.waitForURL(base + "/");
   await p.goto(firstLink);

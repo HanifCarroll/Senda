@@ -39,7 +39,7 @@ export async function createRequestHandler({
       )
         return json(
           {
-            error: "This connection was revoked. Reconnect and choose a project.",
+            error: "This connection was revoked. Reconnect to continue.",
           },
           401,
         );
@@ -269,17 +269,26 @@ export async function createRequestHandler({
             .strictObject({
               query: z.string(),
               projectId: z.uuid().optional(),
+              createProjects: z.boolean().default(false),
+              connectOnly: z.boolean().default(false),
               accept: z.boolean(),
             })
             .parse(await body());
           const consent = await signedConsent(input.query, request.headers);
           if (input.accept) {
             requireThat(
-              input.projectId && consent.scopes.includes("projects:read"),
+              consent.scopes.includes("projects:read") &&
+                (input.projectId || input.connectOnly ||
+                  (input.createProjects && consent.scopes.includes("projects:write"))),
               "INVALID_REQUEST",
-              "Select a project and request projects:read access.",
+              "Choose a project, or allow new projects with read and write access.",
             );
-            await projects.authorize(actor, input.projectId);
+            requireThat(
+              !input.createProjects || consent.scopes.includes("projects:write"),
+              "INVALID_REQUEST",
+              "Creating projects requires projects:write access.",
+            );
+            if (input.projectId) await projects.authorize(actor, input.projectId);
           }
           const response = await auth.handler(
             new Request(`${origin}/api/auth/oauth2/consent`, {

@@ -266,25 +266,30 @@ export class CloudProjects extends ProjectModels {
       previousRevision: prior?.revision ?? null,
     });
   }
+  // Connection consent can precede the first project grant.
   async grant(owner, client, id) {
-    await this.authorize({ userId: owner }, id);
+    if (id) await this.authorize({ userId: owner }, id);
     requireThat(
       typeof client === "string" && client.length <= 2048,
       "INVALID_REQUEST",
       "Choose a valid agent connection.",
     );
-    await this.db
-      .prepare("INSERT OR IGNORE INTO senda_grants VALUES (?,?,?)")
-      .bind(owner, client, id)
-      .run();
+    await this.db.batch([
+      this.db
+        .prepare("INSERT OR IGNORE INTO senda_agent_connections(owner,client) VALUES (?,?)")
+        .bind(owner, client),
+      ...(id ? [
+        this.db.prepare("INSERT OR IGNORE INTO senda_grants VALUES (?,?,?)").bind(owner, client, id),
+      ] : []),
+    ]);
   }
   async connections(owner) {
     return (
       await this.db
         .prepare(
-          "SELECT g.client,p.id,p.name FROM senda_grants g JOIN senda_projects p ON p.id=g.project AND p.owner=g.owner WHERE g.owner=? ORDER BY g.client,p.name",
+          "SELECT g.client,p.id,p.name FROM senda_grants g JOIN senda_projects p ON p.id=g.project AND p.owner=g.owner WHERE g.owner=? UNION ALL SELECT c.client,NULL AS id,'No projects shared yet' AS name FROM senda_agent_connections c WHERE c.owner=? AND NOT EXISTS (SELECT 1 FROM senda_grants g WHERE g.owner=c.owner AND g.client=c.client) ORDER BY client,name",
         )
-        .bind(owner)
+        .bind(owner, owner)
         .all()
     ).results;
   }
@@ -300,6 +305,7 @@ export class CloudProjects extends ProjectModels {
         .prepare('DELETE FROM "oauthConsent" WHERE "userId"=?')
         .bind(owner),
       this.db.prepare("DELETE FROM senda_grants WHERE owner=?").bind(owner),
+      this.db.prepare("DELETE FROM senda_agent_connections WHERE owner=?").bind(owner),
       this.db
         .prepare(
           "INSERT INTO senda_agent_epochs VALUES (?,1) ON CONFLICT(owner) DO UPDATE SET epoch=epoch+1",

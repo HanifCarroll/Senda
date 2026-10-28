@@ -87,22 +87,7 @@ try {
     bob = await actor("other-owner");
   checks.push("passwordless verified sign-in, scanner-safe confirmation and single-use links");
   const { proposals, texts } = await onboardingProposals();
-  const p = await value(
-    request("/api/projects", alice.cookie, {
-      name: "Synthetic Cloudflare onboarding",
-      purpose: "Exercise As-is and future planning on Workers",
-      perspective: "Brightline Studio",
-      source: {
-        id: "Source_Transcript",
-        title: "Synthetic process interview",
-        kind: "transcript",
-        text: texts.Source_Transcript,
-      },
-    }),
-  );
-  for (const action of ["read", "sources", "models", "head", "review", "bpmn"])
-    assert.equal((await request(`/api/projects/${p.id}/${action}`, bob.cookie)).status, 404);
-  checks.push("private account/project isolation");
+  assert.deepEqual(await value(request("/api/projects", alice.cookie)), []);
   const registration = await value(
     request("/api/auth/oauth2/register", null, {
       client_name: "Synthetic Cloudflare SDK",
@@ -150,13 +135,13 @@ try {
     .getSetCookie()
     .map((x) => x.split(";")[0])
     .join("; ");
-  assert.ok((await value(request("/api/projects", alice.cookie))).some((x) => x.id === p.id));
+  assert.deepEqual(await value(request("/api/projects", alice.cookie)), []);
   checks.push("signed agent authorization resumes through a passwordless email link");
   const accepted = await value(
     request("/api/consent", alice.cookie, {
       query: signed,
       accept: true,
-      projectId: p.id,
+      createProjects: true,
     }),
   );
   const code = new URL(accepted.url || accepted.redirect_uri).searchParams.get("code");
@@ -209,6 +194,30 @@ try {
     assert.ok(!r.isError, JSON.stringify(x));
     return x;
   }
+  assert.deepEqual(await tool("list_projects"), []);
+  const p = await tool("create_project", {
+    name: "Synthetic Cloudflare onboarding",
+    purpose: "Exercise As-is and future planning on Workers",
+    perspective: "Brightline Studio",
+    source: {
+      id: "Source_Transcript",
+      title: "Synthetic process interview",
+      kind: "transcript",
+      text: texts.Source_Transcript,
+    },
+  });
+  assert.equal((await tool("read_sources", { projectId: p.id, model: "as-is" }))[0].text, texts.Source_Transcript);
+  assert.ok((await value(request("/api/projects", alice.cookie))).some(x => x.id === p.id));
+  const hidden = await value(request("/api/projects", alice.cookie, {
+    name: "Unshared process", purpose: "Keep private", perspective: "Other team",
+  }));
+  assert.deepEqual((await tool("list_projects")).map(x => x.id), [p.id]);
+  const deniedRead = await client.callTool({ name: "read_project", arguments: { projectId: hidden.id, model: "as-is" } });
+  assert.equal(deniedRead.isError, true);
+  assert.equal(JSON.parse(deniedRead.content[0].text).code, "NOT_FOUND");
+  for (const action of ["read", "sources", "models", "head", "review", "bpmn"])
+    assert.equal((await request(`/api/projects/${p.id}/${action}`, bob.cookie)).status, 404);
+  checks.push("empty account connects before its first project; agent-created sources persist and unshared projects stay private");
   const method = await tool("get_discovery_method");
   for (const name of ["SKILL.md", "references/methodology.md", "references/remote.md", "references/planning.md"])
     assert.equal(method[name], await readFile(new URL(`../skills/process-scribe/${name}`, import.meta.url), "utf8"));

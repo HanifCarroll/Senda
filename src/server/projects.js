@@ -20,6 +20,8 @@ export class HostedProjects extends ProjectModels {
     this.db.exec(`PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL;
       CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, owner TEXT NOT NULL, name TEXT NOT NULL, created TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS grants (owner TEXT NOT NULL, client TEXT NOT NULL, project TEXT NOT NULL, PRIMARY KEY(owner,client,project));
+      CREATE TABLE IF NOT EXISTS agent_connections (owner TEXT NOT NULL, client TEXT NOT NULL, PRIMARY KEY(owner,client));
+      INSERT OR IGNORE INTO agent_connections(owner,client) SELECT DISTINCT owner,client FROM grants;
       CREATE TABLE IF NOT EXISTS agent_epochs (owner TEXT PRIMARY KEY, epoch INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS project_plans (project_id TEXT PRIMARY KEY, model_id TEXT UNIQUE NOT NULL, baseline_revision INTEGER NOT NULL, baseline_digest TEXT NOT NULL, created TEXT NOT NULL);`);
   }
@@ -228,28 +230,41 @@ export class HostedProjects extends ProjectModels {
       model,
     );
   }
+  // Connection consent can precede the first project grant.
   grant(owner, client, id) {
-    this.authorize({ userId: owner }, id);
+    if (id) this.authorize({ userId: owner }, id);
     requireThat(
       typeof client === "string" && client.length <= 2048,
       "INVALID_REQUEST",
       "Choose a valid agent connection.",
     );
-    this.db
-      .prepare("INSERT OR IGNORE INTO grants VALUES (?,?,?)")
-      .run(owner, client, id);
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      this.db
+        .prepare("INSERT OR IGNORE INTO agent_connections(owner,client) VALUES (?,?)")
+        .run(owner, client);
+      if (id)
+        this.db
+          .prepare("INSERT OR IGNORE INTO grants VALUES (?,?,?)")
+          .run(owner, client, id);
+      this.db.exec("COMMIT");
+    } catch (e) {
+      this.db.exec("ROLLBACK");
+      throw e;
+    }
   }
   connections(owner) {
     return this.db
       .prepare(
-        "SELECT g.client,p.id,p.name FROM grants g JOIN projects p ON p.id=g.project AND p.owner=g.owner WHERE g.owner=? ORDER BY g.client,p.name",
+        "SELECT g.client,p.id,p.name FROM grants g JOIN projects p ON p.id=g.project AND p.owner=g.owner WHERE g.owner=? UNION ALL SELECT c.client,NULL AS id,'No projects shared yet' AS name FROM agent_connections c WHERE c.owner=? AND NOT EXISTS (SELECT 1 FROM grants g WHERE g.owner=c.owner AND g.client=c.client) ORDER BY client,name",
       )
-      .all(owner);
+      .all(owner, owner);
   }
   revokeAll(owner) {
     this.db.exec("BEGIN IMMEDIATE");
     try {
       this.db.prepare("DELETE FROM grants WHERE owner=?").run(owner);
+      this.db.prepare("DELETE FROM agent_connections WHERE owner=?").run(owner);
       this.db
         .prepare(
           "INSERT INTO agent_epochs VALUES (?,1) ON CONFLICT(owner) DO UPDATE SET epoch=epoch+1",
