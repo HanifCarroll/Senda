@@ -38,7 +38,7 @@ function Example() {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-background px-4 py-3 text-sm">
-        <p>This is a fictional interview and scripted revision example.</p>
+        <p>Explore client onboarding</p>
         <div className="flex gap-2">
           <Button
             variant="outline"

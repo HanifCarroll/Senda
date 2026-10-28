@@ -207,9 +207,6 @@ export function PasswordSignIn() {
           )}
         </CardFooter>
       </Card>
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        Use your own agent for the discovery work. Senda makes no model calls of its own.
-      </p>
     </main>
   );
 }

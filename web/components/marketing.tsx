@@ -1,8 +1,10 @@
-import { ArrowRight, FileText, MessageSquare, History, Download } from "lucide-react";
+import { ArrowRight, FileText, History, Download } from "lucide-react";
 import { productName } from "@/lib/brand";
 import { Button } from "./ui/button";
 import { Brand } from "./brand";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui/accordion";
+
+const preview = (name: string) => `/marketing/${name}.svg?v=vector-3`;
 
 export function Marketing() {
   return (
@@ -56,33 +58,29 @@ export function Marketing() {
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">
-            Bring the conversation. Keep the context. Take the diagram with you.
+            Keep the conversation, model and every revision in one place.
           </p>
           <figure className="mt-6 w-full">
             <a href="/example?view=FinanceWork&element=Invoice">
               <picture>
                 <source
                   media="(max-width: 640px)"
-                  srcSet="/marketing/evidence-mobile.webp 390w, /marketing/evidence-mobile-2x.webp 780w"
-                  sizes="calc(100vw - 40px)"
+                  srcSet={preview("evidence-mobile")}
                   width="390"
                   height="718"
                 />
                 <img
-                  src="/marketing/evidence.webp"
-                  srcSet="/marketing/evidence.webp 1200w, /marketing/evidence-2x.webp 2400w"
-                  sizes="(max-width: 1200px) calc(100vw - 64px), 1088px"
+                  src={preview("evidence")}
                   width="1200"
                   height="800"
                   fetchPriority="high"
                   alt="A deposit invoice step alongside the exact transcript passage supporting it in the running review app."
-                  className="w-full rounded-xl border bg-card shadow-xl shadow-foreground/5"
+                  className="w-full"
                 />
               </picture>
             </a>
             <figcaption className="mt-4 text-sm text-muted-foreground">
-              Zoom into a step and read the passage behind it. All screenshots use a fictional
-              onboarding interview.
+              Open a step to read the transcript behind it.
             </figcaption>
           </figure>
         </section>
@@ -90,35 +88,32 @@ export function Marketing() {
           <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-8 md:grid-cols-[0.9fr_1.1fr] md:items-center">
             <div className="flex flex-col gap-6">
               <h2 className="text-3xl leading-tight font-semibold tracking-tight text-balance sm:text-4xl">
-                Find the missing decision before it becomes an assumption.
+                Clarify the decisions that shape the process.
               </h2>
               <p className="text-lg leading-relaxed text-muted-foreground">
-                An interview can describe two teams’ work without saying whether one must wait for
-                the other. A polished diagram can hide that gap. Keep it visible, ask the question,
-                then revise from the answer.
+                When Finance and Delivery work in parallel, setup can depend on both finishing.
+                Ask about the handoff, save the answer and update the diagram.
               </p>
               <blockquote className="border-l-2 pl-5 text-lg leading-relaxed">
                 “I would want them to confirm whether one is supposed to wait for the other.”
                 <footer className="mt-3 text-sm text-muted-foreground">
-                  From the synthetic onboarding interview
+                  Onboarding interview
                 </footer>
               </blockquote>
             </div>
             <figure>
               <a href="/example?draft=true&section=questions">
                 <img
-                  src="/marketing/clarification.webp"
-                  srcSet="/marketing/clarification.webp 384w, /marketing/clarification-2x.webp 768w"
-                  sizes="(max-width: 768px) calc(100vw - 40px), 548px"
-                  width="384"
-                  height="360"
+                  src={preview("clarification")}
+                  width="544"
+                  height="309"
                   loading="lazy"
                   alt="The review asks whether Finance and Delivery start together and what must finish before setup starts."
-                  className="w-full rounded-xl border"
+                  className="w-full"
                 />
               </a>
               <figcaption className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                The first draft makes the uncertainty available for a focused clarification.
+                Turn an open question into the next revision.
               </figcaption>
             </figure>
           </div>
@@ -139,19 +134,16 @@ export function Marketing() {
           <figure>
             <a href="/example">
               <img
-                src="/marketing/overview.webp"
-                srcSet="/marketing/overview.webp 1200w, /marketing/overview-2x.webp 2400w"
-                sizes="(max-width: 1200px) calc(100vw - 64px), 1088px"
+                src={preview("overview")}
                 width="1200"
                 height="800"
                 loading="lazy"
                 alt="The revised onboarding overview separates parallel readiness work, setup, handover and cancellation paths."
-                className="w-full rounded-xl border bg-card"
+                className="w-full"
               />
             </a>
             <figcaption className="mt-3 text-sm text-muted-foreground">
-              The worked example follows three scripted clarification rounds. Open a subprocess for
-              the detail behind the overview.
+              Explore the revised process, then open a subprocess for the details.
             </figcaption>
           </figure>
           <div className="grid gap-8 sm:grid-cols-3">
@@ -159,7 +151,7 @@ export function Marketing() {
               {
                 Icon: FileText,
                 title: "Check why each step is there",
-                text: "Open its source passages and distinguish what was reported from what still needs an answer.",
+                text: "Open a step to see its source passages and related questions.",
               },
               {
                 Icon: History,
@@ -228,27 +220,27 @@ export function Marketing() {
               ],
               [
                 "Can I plan a future process too?",
-                "Yes. Keep the current process in As-is and start a separate To-be plan from a saved revision. Describe the intended changes, clarify decisions with your agent, and revise the plan while keeping both models’ histories. Planning does not overwrite the current process.",
+                "Yes. Keep the current process in As-is and start a separate To-be plan from a saved revision. Describe the intended changes and revise the plan with your agent. Each model keeps its own history.",
               ],
               [
-                "Does it include an AI agent?",
-                "You bring your own compatible agent. It interprets the transcript, asks questions and proposes revisions. The app stores and checks the model; it makes no model calls itself. Your agent provider’s own usage terms apply.",
+                "How does Senda work with my agent?",
+                "Your agent reads the transcript, asks clarification questions and updates the process. Senda keeps the diagram, evidence and revision history together so you can review the work as it develops.",
               ],
               [
                 "Which agents can connect?",
-                "Use an agent that supports authenticated MCP over Streamable HTTP. The server supports the 2026-07-28 protocol and stateless 2025 compatibility. The official TypeScript SDK is tested; named commercial clients will be listed after connection tests. Browser tools are an additional enhancement only where the draft WebMCP API is available.",
+                "Use an agent that supports remote MCP connections. Connect it from your workspace and choose the projects it can access.",
               ],
               [
                 "Who can read my transcript?",
-                "Projects belong to your account. An agent receives access only to projects you authorize; disconnecting agents removes that access. Your connected agent provider can receive the sources it reads. Storage and backups run on the configured hosting service.",
+                "Your projects are private to your account. You choose which projects each agent can access and can revoke that access at any time. A connected agent can read the sources in the projects you share with it.",
               ],
               [
-                "Will the diagram be correct?",
-                "Checks catch structural problems and flag gaps, but people who know the process still need to review its meaning. Reported evidence, unresolved questions and human review stay distinct. The worked examples are synthetic, not independent accuracy measurements.",
+                "How do I review the model?",
+                "Use Review checks to find structural issues and unanswered questions. Walk through the diagram with the people who do the work, inspect the source passages and save their feedback for the next revision.",
               ],
               [
                 "Can I keep using the local tools?",
-                "Yes. The local CLI and offline review bundles remain available. A hosted project and a local project are separate unless you explicitly transfer a model or source; private local files are not published by the hosted app.",
+                "Yes. Use the CLI to create and revise local projects, then export diagrams and offline review bundles.",
               ],
             ].map(([question, answer], i) => (
               <AccordionItem key={question} value={String(i)}>

@@ -159,13 +159,10 @@ function SignIn() {
         </CardContent>
         <CardFooter>
           <p className="text-sm text-muted-foreground">
-            New here? Confirming your email creates your account. No password needed.
+            New here? Confirming your email creates your account.
           </p>
         </CardFooter>
       </Card>
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        Use your own agent for the discovery work. Senda makes no model calls of its own.
-      </p>
       <a href="/privacy" className="text-sm text-muted-foreground underline underline-offset-4">
         How Senda handles your information
       </a>
