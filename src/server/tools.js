@@ -112,7 +112,7 @@ export const toolDefinitions = [
   {
     name: "apply_revision",
     description:
-      "Atomically apply BPMN operations, evidence, clarifications and discovery changes. Read get_model_schema first. Stale writes and invalid references are rejected. Agent statements never count as human review.",
+      "Save BPMN operations, sources, evidence, clarifications and discovery changes as a new model revision. The proposal format and supported operations are documented by get_model_schema. Stale revision numbers and invalid references are rejected atomically.",
     input: z.object({ projectId: project, model, proposal: Proposal }),
     run: (s, a, x) => s.apply(a, x.projectId, x.proposal, x.model),
   },
