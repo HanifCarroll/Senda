@@ -15,6 +15,7 @@
   "files": [
     "bin",
     "src",
+    "branding/artwork.js",
     "skills",
     "docs",
     "README.md",

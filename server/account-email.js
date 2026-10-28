@@ -1,5 +1,5 @@
 import { brandColors as c } from "../src/brand.js";
-import { emailLogoBase64, emailLogoWidth, emailLogoHeight } from "../src/brand-assets.js";
+import { emailLogoBase64, emailLogoDarkBase64, emailLogoWidth, emailLogoHeight } from "../src/brand-assets.js";
 
 const escape = (value) =>
   String(value).replace(
@@ -97,6 +97,8 @@ export function accountEmail({ kind, url, origin }) {
       .muted { color: #b5b5b5 !important; }
       .secondary { color: ${c.lightInk} !important; }
       .action { background-color: ${c.lightInk} !important; border-color: ${c.lightInk} !important; color: ${c.ink} !important; }
+      .logo-light { display: none !important; }
+      .logo-dark { display: block !important; height: ${emailLogoHeight}px !important; max-height: ${emailLogoHeight}px !important; overflow: visible !important; }
     }
   </style>
 </head>
@@ -109,7 +111,8 @@ export function accountEmail({ kind, url, origin }) {
         <tr><td class="email-card content" bgcolor="#fdfdfd" style="padding:40px;background-color:#fdfdfd;border:1px solid #e3e3e3;border-radius:16px;">
           <table role="presentation" width="${emailLogoWidth}" cellpadding="0" cellspacing="0" border="0" style="width:${emailLogoWidth}px;max-width:${emailLogoWidth}px;table-layout:fixed;border-collapse:collapse;">
             <tr><td width="${emailLogoWidth}" style="width:${emailLogoWidth}px;padding:0 0 24px;font-size:0;line-height:0;">
-              <img src="cid:senda-logo" alt="Senda" width="${emailLogoWidth}" height="${emailLogoHeight}" style="display:block;width:${emailLogoWidth}px;height:${emailLogoHeight}px;max-width:${emailLogoWidth}px;max-height:${emailLogoHeight}px;margin:0;border:0;background-color:${c.background};border-radius:5px;color:${c.ink};font-family:Georgia,serif;font-size:20px;">
+              <img src="cid:senda-logo" class="logo-light" alt="Senda" width="${emailLogoWidth}" height="${emailLogoHeight}" style="display:block;width:${emailLogoWidth}px;height:${emailLogoHeight}px;max-width:${emailLogoWidth}px;max-height:${emailLogoHeight}px;margin:0;border:0;background:transparent;color:${c.ink};font-family:Georgia,serif;font-size:20px;">
+              <!--[if !mso]><!--><img src="cid:senda-logo-dark" class="logo-dark" alt="Senda" width="${emailLogoWidth}" height="${emailLogoHeight}" style="display:none;width:${emailLogoWidth}px;height:0;max-width:${emailLogoWidth}px;max-height:0;overflow:hidden;margin:0;border:0;background:transparent;mso-hide:all;"><!--<![endif]-->
             </td></tr>
           </table>
           <h1 class="heading" style="margin:0${copy.introduction ? " 0 12px" : ""};color:${c.text};font-size:28px;line-height:36px;font-weight:650;letter-spacing:-0.6px;">${escape(copy.heading)}</h1>
@@ -136,5 +139,8 @@ export function accountEmail({ kind, url, origin }) {
   return { subject: copy.subject, text, html, attachments: [{
     filename: "senda-logo.png", content: emailLogoBase64, type: "image/png",
     disposition: "inline", contentId: "senda-logo",
+  }, {
+    filename: "senda-logo-dark.png", content: emailLogoDarkBase64, type: "image/png",
+    disposition: "inline", contentId: "senda-logo-dark",
   }] };
 }

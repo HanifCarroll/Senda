@@ -1,3 +1,5 @@
+import { markBounds, wordmarkBounds, markPaths, wordmarkPath } from "../branding/artwork.js";
+
 /** Ink + Teal: brand color is separate from validation and process-state color. */
 export const brandColors = Object.freeze({
   ink: "#143D4D",
@@ -13,18 +15,22 @@ export const brandColors = Object.freeze({
 export const brandCssVariables = Object.entries(brandColors).map(([key, value]) =>
   `--brand-${key.replace(/[A-Z]/g, char => "-" + char.toLowerCase())}:${value}`).join(";");
 
-// Two open pages divided by a winding path. This is the canonical vector mark.
-export const brandMarkPaths = Object.freeze([
-  "M4 5C27 3 55 9 73 17C83 21 81 26 69 31C50 38 34 43 39 51C43 58 60 63 73 69C83 74 81 79 69 84L5 113C2 115 0 113 0 109V10C0 7 1 6 4 5Z",
-  "M156 4C133 3 111 8 94 17C83 22 84 27 96 33C111 40 125 46 122 54C119 62 102 68 91 76C82 82 84 88 96 94C89 104 79 113 72 120C101 109 129 111 156 115C159 116 160 114 160 111V8C160 5 159 4 156 4Z",
-]);
+// Restored outlines preserve the selected mark and lettering, rather than redrawing them.
+export const brandLogoHeight = 72;
+export const brandAssetVersion = "selected-18-2";
+const markHeight = 56, markWidth = markHeight * markBounds.width / markBounds.height;
+const wordHeight = 44, wordWidth = wordHeight * wordmarkBounds.width / wordmarkBounds.height;
+export const brandLogoWidth = Math.ceil(markWidth + 16 + wordWidth);
 
+function markBody(inverse = false) {
+  const fills = inverse ? [brandColors.lightTeal, brandColors.lightInk] : [brandColors.teal, brandColors.ink];
+  return markPaths.map((d, i) => `<path d="${d}" fill="${fills[i]}"/>`).join("");
+}
+export function brandLogoSvg({ inverse = false } = {}) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${brandLogoWidth} ${brandLogoHeight}"><g transform="translate(0 ${(brandLogoHeight - markHeight) / 2}) scale(${markHeight / markBounds.height})">${markBody(inverse)}</g><g transform="translate(${markWidth + 16} ${(brandLogoHeight - wordHeight) / 2}) scale(${wordHeight / wordmarkBounds.height})"><path d="${wordmarkPath}" fill="${inverse ? "#F5F8F9" : brandColors.text}"/></g></svg>`;
+}
 export function brandMarkSvg({ inverse = false, tile = false } = {}) {
-  const fills = inverse
-    ? [brandColors.lightTeal, brandColors.lightInk]
-    : [brandColors.teal, brandColors.ink];
-  const paths = brandMarkPaths.map((d, i) => `<path d="${d}" fill="${fills[i]}"/>`).join("");
-  return tile
-    ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="${brandColors.background}"/><g transform="translate(18 38) scale(.975)">${paths}</g></svg>`
-    : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120">${paths}</svg>`;
+  if (!tile) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${markBounds.width} ${markBounds.height}">${markBody(inverse)}</svg>`;
+  const scale = 160 / markBounds.width, top = (192 - markBounds.height * scale) / 2;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><g transform="translate(16 ${top}) scale(${scale})">${markBody(inverse)}</g></svg>`;
 }

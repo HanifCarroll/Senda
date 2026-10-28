@@ -1,8 +1,9 @@
 # Senda: Ink + Teal
 
 The approved identity is the open-book mark with a winding path, using palette 02.
-The wordmark uses outlined Libre Caslon Display lettering. The interface keeps
-its neutral shadcn foundation and system sans-serif text.
+The mark and serif lettering follow the selected artwork, preserved as traced
+vector outlines. The interface keeps its neutral shadcn foundation and system
+sans-serif text.
 
 ## Color roles
 
@@ -26,16 +27,17 @@ As-is and To-be remain labeled navigation choices. Colors never replace labels.
 ## Assets
 
 The reusable SVG and PNG files are in [public/brand](../public/brand/logo.svg).
-Both normal and inverse SVG versions are available. SVG lettering is outlined,
-so the browser does not need to download a logo font. The font source is
-[Libre Caslon Display](https://github.com/google/fonts/tree/main/ofl/librecaslondisplay),
-with its [OFL notice](../public/brand/OFL-LibreCaslonDisplay.txt) included.
+Both normal and inverse SVG versions are available. The source outlines live in
+[artwork.js](../branding/artwork.js); the [selected reference](../branding/selected-reference.png)
+and [restoration notes](../branding/README.md) document the design. No substitute
+font or manually redesigned path should replace these outlines.
 
 The same source generates the web logo, touch/home-screen icons, SVG/ICO/PNG
 favicons, email logo, social preview, and data-URI assets for offline bundles.
 Offline review files load no external brand resource. Email logos use an inline
-MIME attachment, with alt text, rather than a remote image request. A light plate
-keeps the image readable in mail clients that override dark colors.
+MIME attachments, with alt text, rather than remote image requests. The logo and
+its winding negative space are transparent. Light and dark email appearances use
+separate transparent images, with no background plate or image background style.
 
 The email logo displays at 122 × 36 px, with a 2× PNG. Declare its dimensions
 in HTML attributes and inline CSS inside a fixed-width presentation table;

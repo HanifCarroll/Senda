@@ -279,7 +279,7 @@ export function ReviewApp({
             <a
               href="/"
               aria-label="Senda home"
-              className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background"
+              className="flex size-10 shrink-0 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               <BrandMark />
             </a>
