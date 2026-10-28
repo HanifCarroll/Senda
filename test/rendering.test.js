@@ -23,6 +23,16 @@ const geometry = item => ({ id:item.bpmnElement.id, type:item.$type,
   bounds:item.bounds && {...item.bounds}, waypoints:item.waypoint?.map(p=>({x:p.x,y:p.y})),
   label:item.label?.bounds && {...item.label.bounds}, expanded:item.isExpanded, horizontal:item.isHorizontal });
 
+test('a dense invoice view opens and exports within a bounded time without changing its process', { timeout: 30000 }, async () => {
+  const xml = await readFile(new URL('fixtures/synthetic-invoice-dense.bpmn', import.meta.url), 'utf8');
+  const started = performance.now();
+  const result = await diagramViews(xml);
+  assert.ok(performance.now() - started < 15000, 'Presentation routing must not make a saved diagram unavailable');
+  assert.ok(result.diagrams.length);
+  assert.equal(await withoutDi(result.bpmnXml), await withoutDi(xml));
+  assert.deepEqual((await new BpmnModdle().fromXML(result.bpmnXml)).warnings, []);
+});
+
 test('nested messages are drawn in small context views without altering the saved model or evidence', async t => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'scribe-context-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
