@@ -1,6 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { accountEmail } from "../server/account-email.js";
+import { emailForDelivery } from "../cloudflare/email.js";
+import { readFile } from "node:fs/promises";
+
+test("Workers receives the original PNG bytes, not encoded text", async () => {
+  const message = accountEmail({ kind: "magic", origin: "https://senda.example", url: "https://senda.example/api/auth/magic-link/verify?token=fixture" });
+  const delivery = emailForDelivery(message);
+  assert.ok(delivery.attachments[0].content instanceof ArrayBuffer);
+  assert.deepEqual(Buffer.from(delivery.attachments[0].content), await readFile(new URL("../public/brand/email-logo.png", import.meta.url)));
+  assert.equal(typeof message.attachments[0].content, "string", "The preview and test outbox retain the portable representation.");
+  assert.equal(delivery.html, message.html);
+  assert.equal(delivery.attachments[0].contentId, "senda-logo");
+});
 
 const origin = "https://senda.example";
 

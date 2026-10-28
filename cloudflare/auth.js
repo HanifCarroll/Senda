@@ -3,6 +3,7 @@ import { authOptions } from "../server/auth-options.js";
 import { hash } from "../src/hash.js";
 import { fetchClientMetadataResource } from "./cimd.js";
 import { accountEmail } from "../server/account-email.js";
+import { emailForDelivery } from "./email.js";
 
 export function cloudAuth(env, origin, projects) {
   if (!env.BETTER_AUTH_SECRET || env.BETTER_AUTH_SECRET.length < 32)
@@ -34,7 +35,7 @@ export function cloudAuth(env, origin, projects) {
         const local = ["127.0.0.1", "localhost"].includes(new URL(origin).hostname);
         if (local && env.LOCAL_EMAIL_OUTBOX === "1")
           await env.SNAPSHOTS.put(`test-outbox/${hash(user.email)}.json`, JSON.stringify(message));
-        else await env.EMAIL.send(message);
+        else await env.EMAIL.send(emailForDelivery(message));
       },
     }),
   );
