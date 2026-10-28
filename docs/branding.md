@@ -53,3 +53,5 @@ in, so deployments do not fetch a font or regenerate the logo.
 Update actual application screenshots when the visible branding changes. Keep
 synthetic fixture data and the original screenshot dimensions; the marketing
 page and portfolio should show the running product, not a generated UI mockup.
+
+Google sign-in uses the official multicolor [Google G asset](https://developers.google.com/static/identity/images/g-logo.png), kept at `public/brand/google-g.png`, inside a white outlined button. The provider icon is separate from Senda's mark. Google OAuth branding uses `public/brand/oauth-icon.png`; upload that file in the Google Auth Platform Branding page when the Senda artwork changes. Google stores its own copy of the logo, so a website deployment does not update the consent screen.

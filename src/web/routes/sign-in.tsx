@@ -7,14 +7,14 @@ import { api } from "@/lib/api";
 import { PasswordSignIn } from "@/components/password-sign-in";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, FieldLabel, FieldGroup, FieldSeparator } from "@/components/ui/field";
+import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
+import { Separator } from "@/components/ui/separator";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
   CardContent,
-  CardFooter,
 } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
@@ -92,80 +92,87 @@ function SignIn() {
     }
   }
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-4 py-12">
-      <a href="/" aria-label="Senda home" className="w-fit"><Brand className="h-10" /></a>
-      <Card>
-        <CardHeader>
-          <CardTitle>{sent ? "Check your email" : "Sign in to Senda"}</CardTitle>
-          <CardDescription>
-            Keep your process, its sources and each revision in one private project.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          {error && (
-            <Alert variant="destructive">
-              <AlertTitle>Sign-in needs attention</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {sent && (
-            <Alert>
-              <Mail />
-              <AlertTitle>Your sign-in link is on its way</AlertTitle>
-              <AlertDescription>
-                Open the email sent to {email.trim()} and confirm to sign in. The link expires in 10
-                minutes. Check your spam folder if it does not arrive.
-              </AlertDescription>
-            </Alert>
-          )}
-          {config?.loginMethods?.google && (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                disabled={busy}
-                onClick={google}
-              >
-                Continue with Google
+    <main className="auth-page flex min-h-svh items-center justify-center px-4 py-12">
+      <div className="flex w-full max-w-sm flex-col gap-6">
+        <a href="/" aria-label="Senda home" className="mx-auto w-fit"><Brand className="h-9" /></a>
+        <Card className="[--card-spacing:--spacing(6)]">
+          <CardHeader className="gap-2 text-center">
+            <CardTitle><h1 className="text-2xl font-semibold tracking-tight">{sent ? "Check your email" : "Sign in to Senda"}</h1></CardTitle>
+            <CardDescription>
+              {sent ? "Your sign-in link is valid for 10 minutes." : "Continue to your projects."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-5">
+            {error && (
+              <Alert variant="destructive">
+                <AlertTitle>Sign-in needs attention</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {sent && (
+              <Alert>
+                <Mail />
+                <AlertTitle>Your sign-in link is on its way</AlertTitle>
+                <AlertDescription>
+                  Open the email sent to {email.trim()} and confirm to sign in. Check your spam folder
+                  if it does not arrive.
+                </AlertDescription>
+              </Alert>
+            )}
+            {config?.loginMethods?.google && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="relative h-11 w-full"
+                  disabled={busy}
+                  onClick={google}
+                >
+                  <img src="/brand/google-g.png" alt="" aria-hidden="true" width="20" height="20" className="absolute left-4 size-5 object-contain" />
+                  Sign in with Google
+                </Button>
+                <div className="flex items-center gap-3">
+                  <Separator className="flex-1" />
+                  <span className="shrink-0 text-xs text-muted-foreground">or continue with email</span>
+                  <Separator className="flex-1" />
+                </div>
+              </>
+            )}
+            <form method="post" onSubmit={send} className="flex flex-col gap-5">
+              <FieldGroup>
+                <Field data-disabled={!config || busy}>
+                  <FieldLabel htmlFor="email">Email</FieldLabel>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    className="h-11"
+                    required
+                    maxLength={254}
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setSent(false);
+                    }}
+                    disabled={!config || busy}
+                  />
+                </Field>
+              </FieldGroup>
+              <Button type="submit" className="h-11" disabled={!config?.loginMethods?.magicLink || busy}>
+                {busy ? "Please wait…" : sent ? "Send another link" : "Send sign-in link"}
               </Button>
-              <FieldSeparator>or continue with email</FieldSeparator>
-            </>
-          )}
-          <form method="post" onSubmit={send} className="flex flex-col gap-5">
-            <FieldGroup>
-              <Field data-disabled={!config || busy}>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  maxLength={254}
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setSent(false);
-                  }}
-                  disabled={!config || busy}
-                />
-              </Field>
-            </FieldGroup>
-            <Button type="submit" disabled={!config?.loginMethods?.magicLink || busy}>
-              {busy ? "Please wait…" : sent ? "Send another link" : "Send sign-in link"}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter>
-          <p className="text-sm text-muted-foreground">
-            New here? Confirming your email creates your account.
-          </p>
-        </CardFooter>
-      </Card>
-      <a href="/privacy" className="text-sm text-muted-foreground underline underline-offset-4">
-        How Senda handles your information
-      </a>
+            </form>
+            <p className="text-center text-xs leading-relaxed text-muted-foreground">
+              Your first sign-in creates your account.
+            </p>
+          </CardContent>
+        </Card>
+        <a href="/privacy" className="self-center text-xs text-muted-foreground underline underline-offset-4">
+          Privacy policy
+        </a>
+      </div>
     </main>
   );
 }

@@ -148,7 +148,7 @@ try {
       googleUrl = new URL(route.request().url());
       return route.fulfill({ contentType: "text/html", body: "<p>Google OAuth test boundary</p>" });
     });
-    await p.getByRole("button", { name: "Continue with Google", exact: true }).click();
+    await p.getByRole("button", { name: "Sign in with Google", exact: true }).click();
     await p.getByText("Google OAuth test boundary", { exact: true }).waitFor();
     assert.equal(googleUrl.searchParams.get("redirect_uri"), base + "/api/auth/callback/google");
     assert.ok(googleUrl.searchParams.get("state"));
