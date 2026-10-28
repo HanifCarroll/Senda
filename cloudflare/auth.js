@@ -21,20 +21,20 @@ export function cloudAuth(env, origin, projects) {
             google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET },
           }
         : {}),
-      sendEmail: async (user, url, kind) => {
+      sendSignInLink: async ({ email, url }) => {
         const message = {
           from: {
             email: "accounts@mail.senda.hanifcarroll.com",
             name: "Senda",
           },
-          to: user.email,
-          ...accountEmail({ kind, url, origin }),
+          to: email,
+          ...accountEmail({ url, origin }),
         };
         // A local-only test transport exercises real signed links without sending
         // fixture emails. No public endpoint exposes this private test outbox.
         const local = ["127.0.0.1", "localhost"].includes(new URL(origin).hostname);
         if (local && env.LOCAL_EMAIL_OUTBOX === "1")
-          await env.SNAPSHOTS.put(`test-outbox/${hash(user.email)}.json`, JSON.stringify(message));
+          await env.SNAPSHOTS.put(`test-outbox/${hash(email)}.json`, JSON.stringify(message));
         else await env.EMAIL.send(emailForDelivery(message));
       },
     }),

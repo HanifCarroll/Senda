@@ -3,12 +3,6 @@ import { getReview, getReviews } from "@/lib/reviews";
 import { ReviewApp } from "@/components/review-app";
 import type { Review, ReviewChoice, Section } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Empty,
-  EmptyHeader,
-  EmptyTitle,
-  EmptyDescription,
-} from "@/components/ui/empty";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Marketing } from '@/components/marketing';

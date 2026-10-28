@@ -32,8 +32,7 @@ zigzags or a background tile.
 
 ## Updating assets
 
-Run `npm run build:brand`. The generated SVGs and PNGs include normal and inverse
-logos, the standalone mark, transparent favicons and icons, two transparent email
-logos and the social card. Email logos retain their compact display dimensions.
+Run `npm run build:brand`. The generated SVGs and PNGs include the web logo, standalone mark,
+transparent favicons and icons, light/dark email logos and the social card. Email logos retain their compact display dimensions.
 Check the full wordmark both enlarged and at its actual 122 × 36 px email size;
 check normal and dark versions on their intended surfaces.

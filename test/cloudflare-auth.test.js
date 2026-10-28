@@ -67,7 +67,7 @@ test("passwordless accounts use hashed expiring links and verified Google emails
   const options = authOptions({
     origin: "https://senda.example",
     passwordless: true,
-    sendEmail: (...args) => sent.push(args),
+    sendSignInLink: (message) => sent.push(message),
     projects: {},
     google: { clientId: "test-client", clientSecret: "test-secret" },
   });
@@ -80,6 +80,7 @@ test("passwordless accounts use hashed expiring links and verified Google emails
     email: "owner@example.test",
     url: "https://senda.example/link",
   });
-  assert.equal(sent[0][2], "magic");
-  assert.equal(sent[0][0].email, "owner@example.test");
+  assert.deepEqual(sent, [{ email: "owner@example.test", url: "https://senda.example/link" }]);
+  assert.equal(options.emailVerification, undefined);
+  assert.equal(options.emailAndPassword.sendResetPassword, undefined);
 });

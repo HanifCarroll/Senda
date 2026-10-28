@@ -2,7 +2,7 @@
 
 This is an original synthetic interview with fictional participants and three scripted clarification rounds. It contains no real client information or genuine human review approvals.
 
-Run `npm run test:workflow` from the repository root with Node 24. Each run creates a fresh ignored directory under `output/`, prints its location, and saves a report, proposals, CLI results and four review bundles. The final draft remains unapproved.
+Run `npm run test:workflow` from the repository root with Node 24. Each run uses a temporary directory and removes it on completion, including failed runs. To inspect the report, proposals, CLI results and four review bundles, run `npm run test:workflow -- --keep-output`; that creates and prints a fresh ignored directory under `output/`. The final draft remains unapproved.
 
 The rounds are:
 

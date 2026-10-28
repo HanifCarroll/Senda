@@ -7,7 +7,7 @@ export function authOptions({
   secret,
   projects,
   appName = "Senda",
-  sendEmail,
+  sendSignInLink,
   cimdTransport,
   passwordless = false,
   google,
@@ -22,28 +22,10 @@ export function authOptions({
       enabled: !passwordless,
       minPasswordLength: 12,
       maxPasswordLength: 128,
-      requireEmailVerification: !!sendEmail,
-      ...(sendEmail
-        ? {
-            sendResetPassword: ({ user, url }) => sendEmail(user, url, "reset"),
-            revokeSessionsOnPasswordReset: true,
-            resetPasswordTokenExpiresIn: 1800,
-          }
-        : {}),
+      requireEmailVerification: passwordless,
     },
     ...(google
       ? { socialProviders: { google: { ...google, requireEmailVerification: true } } }
-      : {}),
-    ...(sendEmail
-      ? {
-          emailVerification: {
-            sendVerificationEmail: ({ user, url }) => sendEmail(user, url, "verify"),
-            sendOnSignUp: true,
-            sendOnSignIn: false,
-            autoSignInAfterVerification: false,
-            expiresIn: 3600,
-          },
-        }
       : {}),
     session: { expiresIn: 60 * 60 * 24 * 7, cookieCache: { enabled: false } },
     advanced: {
@@ -53,13 +35,13 @@ export function authOptions({
     rateLimit: { enabled: true, storage: "database", window: 60, max: 40 },
     plugins: [
       jwt(),
-      ...(sendEmail
+      ...(sendSignInLink
         ? [
             magicLink({
               expiresIn: 600,
               rateLimit: { window: 60, max: 10 },
               storeToken: "hashed",
-              sendMagicLink: ({ email, url }) => sendEmail({ email }, url, "magic"),
+              sendMagicLink: sendSignInLink,
             }),
           ]
         : []),

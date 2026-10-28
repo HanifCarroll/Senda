@@ -19,9 +19,7 @@ Email messages go through the sender-restricted Cloudflare Email Service binding
 
 ### Email copy and design
 
-All three account messages share [one template](../server/account-email.js):
-sign-in, email confirmation and password reset. Production currently sends sign-in
-links. Keep the subject specific, the heading short, the main action prominent,
+The [sign-in template](../server/account-email.js) is the only account email. Keep the subject specific, the heading short, the main action prominent,
 the expiry near the button, and the unsolicited-message note in the footer.
 Sign-in messages also offer a link to request a replacement. The confirmation
 page explains its own action; email copy does not narrate the clicks ahead.
@@ -83,21 +81,6 @@ project until the signed-in owner approves its consent screen.
 
 An agent connecting to Senda is distinct from Senda signing in to a model
 provider. Senda currently makes no inference requests itself.
-
-## ChatGPT and Claude plans
-
-OpenAI documents Sign in with ChatGPT and optional plan usage as separate
-permissions. Website integration is currently a limited partner trial; hosted
-apps interested in plan usage must apply. The open-source/local flow is not a
-general authorization for a shared hosted service. See [website sign-in](https://developers.openai.com/siwc/website)
-and [plan-usage eligibility](https://developers.openai.com/siwc/token-sharing-open-source).
-
-Anthropic's published [subscription guidance](https://support.claude.com/en/articles/13189465-log-in-to-your-claude-account)
-directs third-party apps toward API authentication and does not establish a
-general public Sign in with Claude integration. Do not reuse native-app OAuth
-credentials or promise subscription-funded requests for Senda. Users can keep
-the modeling work in an authorized agent client and connect that client to
-Senda, subject to that client's features and plan.
 
 Primary implementation references: [Better Auth magic links](https://better-auth.com/docs/plugins/magic-link),
 [Google sign-in](https://better-auth.com/docs/authentication/google),

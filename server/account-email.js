@@ -7,41 +7,17 @@ const escape = (value) =>
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
   );
 
-const messages = {
-  magic: {
-    subject: "Your Senda sign-in link",
-    preview: "Sign in to your account. Your link expires in 10 minutes.",
-    heading: "Sign in",
-    introduction: "",
-    action: "Continue to Senda",
-    expiry: "This link expires in 10 minutes and can be used once.",
-    reassurance: "If you didn’t ask to sign in, you can ignore this email.",
-  },
-  verify: {
-    subject: "Confirm your Senda email address",
-    preview: "Confirm your email to finish setting up your account.",
-    heading: "Confirm your email",
-    introduction: "Confirm this email address to finish setting up your Senda account.",
-    action: "Confirm email address",
-    expiry: "This link expires in one hour.",
-    reassurance: "If you didn’t create a Senda account, you can ignore this email.",
-  },
-  reset: {
-    subject: "Reset your Senda password",
-    preview: "Choose a new password. Your link expires in 30 minutes.",
-    heading: "Reset your password",
-    introduction: "Choose a new password for your Senda account.",
-    action: "Choose a new password",
-    expiry: "This link expires in 30 minutes.",
-    reassurance:
-      "If you didn’t ask to reset your password, you can ignore this email. Your password will stay the same.",
-  },
+const copy = {
+  subject: "Your Senda sign-in link",
+  preview: "Sign in to your account. Your link expires in 10 minutes.",
+  heading: "Sign in",
+  action: "Continue to Senda",
+  expiry: "This link expires in 10 minutes and can be used once.",
+  reassurance: "If you didn’t ask to sign in, you can ignore this email.",
 };
 
 /** A self-contained email; its logo is an inline MIME image, with no remote fetch. */
-export function accountEmail({ kind, url, origin }) {
-  const copy = Object.hasOwn(messages, kind) ? messages[kind] : null;
-  if (!copy) throw new Error("Unknown account email type.");
+export function accountEmail({ url, origin }) {
   const base = new URL(origin),
     destination = new URL(url);
   if (
@@ -51,23 +27,18 @@ export function accountEmail({ kind, url, origin }) {
     throw new Error("Invalid account email link.");
   // Keep all signed query parameters intact. Opening a sign-in email must not
   // consume its token: verification still requires the confirmation page.
-  const link = kind === "magic"
-      ? new URL(`/sign-in/confirm${destination.search}`, base).href
-      : url,
+  const link = new URL(`/sign-in/confirm${destination.search}`, base).href,
     actionURL = escape(link),
     home = escape(base.origin),
     newLink = new URL("/sign-in", base).href,
-    recovery = kind === "magic"
-      ? `<p class="muted" style="margin:20px 0 0;font-size:14px;line-height:22px;color:${c.muted};">Link expired? <a class="secondary" href="${escape(newLink)}" style="color:${c.ink};text-decoration:underline;text-underline-offset:3px;">Request a new one</a>.</p>`
-      : "";
+    recovery = `<p class="muted" style="margin:20px 0 0;font-size:14px;line-height:22px;color:${c.muted};">Link expired? <a class="secondary" href="${escape(newLink)}" style="color:${c.ink};text-decoration:underline;text-underline-offset:3px;">Request a new one</a>.</p>`;
 
   const text = [
     "Senda",
     copy.heading,
-    copy.introduction,
     `${copy.action}:\n${link}`,
     copy.expiry,
-    ...(kind === "magic" ? [`Link expired? Request a new one:\n${newLink}`] : []),
+    `Link expired? Request a new one:\n${newLink}`,
     copy.reassurance,
     base.origin,
   ].filter(Boolean).join("\n\n");
@@ -92,8 +63,7 @@ export function accountEmail({ kind, url, origin }) {
     @media (prefers-color-scheme: dark) {
       .email-background { background-color: #141414 !important; }
       .email-card { background-color: #202020 !important; border-color: #3b3b3b !important; }
-      .heading, .wordmark { color: #f5f5f5 !important; }
-      .body-copy { color: #d4d4d4 !important; }
+      .heading { color: #f5f5f5 !important; }
       .muted { color: #b5b5b5 !important; }
       .secondary { color: ${c.lightInk} !important; }
       .action { background-color: ${c.lightInk} !important; border-color: ${c.lightInk} !important; color: ${c.ink} !important; }
@@ -115,8 +85,7 @@ export function accountEmail({ kind, url, origin }) {
               <!--[if !mso]><!--><img src="cid:senda-logo-dark" class="logo-dark" alt="Senda" width="${emailLogoWidth}" height="${emailLogoHeight}" style="display:none;width:${emailLogoWidth}px;height:0;max-width:${emailLogoWidth}px;max-height:0;overflow:hidden;margin:0;border:0;background:transparent;mso-hide:all;"><!--<![endif]-->
             </td></tr>
           </table>
-          <h1 class="heading" style="margin:0${copy.introduction ? " 0 12px" : ""};color:${c.text};font-size:28px;line-height:36px;font-weight:650;letter-spacing:-0.6px;">${escape(copy.heading)}</h1>
-          ${copy.introduction ? `<p class="body-copy" style="margin:0;color:${c.muted};font-size:16px;line-height:26px;">${escape(copy.introduction)}</p>` : ""}
+          <h1 class="heading" style="margin:0;color:${c.text};font-size:28px;line-height:36px;font-weight:650;letter-spacing:-0.6px;">${escape(copy.heading)}</h1>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
             <tr><td style="padding:28px 0 20px;">
               <!--[if mso]><v:roundrect href="${actionURL}" style="height:48px;v-text-anchor:middle;width:446px;" arcsize="16%" stroke="f" fillcolor="${c.ink}"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">${escape(copy.action)}</center></v:roundrect><![endif]-->

@@ -27,7 +27,7 @@ As-is and To-be remain labeled navigation choices. Colors never replace labels.
 ## Assets
 
 The reusable SVG and PNG files are in [public/brand](../public/brand/logo.svg).
-Both normal and inverse SVG versions are available. The source outlines live in
+The source outlines live in
 [artwork.js](../branding/artwork.js); the [selected reference](../branding/selected-reference.png)
 and [artwork notes](../branding/README.md) document the design. Preserve these
 outlines when regenerating assets. Never trace lettering from the small raster
