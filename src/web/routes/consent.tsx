@@ -26,12 +26,20 @@ function Consent() {
     [project, setProject] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const canCreate = !!data?.scopes.includes("projects:write");
+  const accessDescription = project === "new"
+    ? canCreate
+      ? "Your agent can create a project from a transcript you share in your chat, then read and revise its current and future models. No existing projects are added to this connection."
+      : "Connect your agent now. It can ask for permission to create a project when you start. No existing projects are added to this connection."
+    : `The agent can read both As-is and To-be models in the selected project, including their transcripts, evidence and diagrams${canCreate ? ", and save revisions or create a new project" : ""}.`;
   useEffect(() => {
     const query = window.location.search.slice(1);
     void api(`/api/consent?query=${encodeURIComponent(query)}`)
       .then((value) => {
         setData(value);
-        if (value.projects.length === 1) setProject(value.projects[0].id);
+        if (value.scopes.includes("projects:write")) setProject("new");
+        else if (value.projects.length === 1) setProject(value.projects[0].id);
+        else setProject("new");
       })
       .catch((e) => {
         if (e instanceof ApiError && e.status === 401)
@@ -43,10 +51,13 @@ function Consent() {
     setBusy(true);
     setError("");
     try {
+      const access = project === "new"
+        ? canCreate ? { createProjects: true } : { connectOnly: true }
+        : { projectId: project };
       const value = await post("/api/consent", {
         query: window.location.search.slice(1),
         accept,
-        ...(accept ? { projectId: project } : {}),
+        ...(accept ? access : {}),
       });
       const target = value.redirect_uri || value.url;
       if (target) window.location.assign(target);
@@ -65,7 +76,7 @@ function Consent() {
       <a href="/" aria-label="Senda home" className="w-fit"><Brand className="h-10" /></a>
       <Card>
         <CardHeader>
-          <CardTitle>Choose what your agent can work on</CardTitle>
+          <CardTitle>Connect your agent</CardTitle>
           <CardDescription>
             {data?.clientInfo?.client_name ||
               data?.clientInfo?.name ||
@@ -84,17 +95,20 @@ function Consent() {
             <>
               <Field>
                 <FieldLabel htmlFor="consent-project">
-                  Allow access to this project
+                  What can your agent work on?
                 </FieldLabel>
                 <Select value={project} onValueChange={setProject}>
                   <SelectTrigger
                     id="consent-project"
                     className="h-auto min-h-10 w-full [&>span]:whitespace-normal [&>span]:text-left"
                   >
-                    <SelectValue placeholder="Select a private project" />
+                    <SelectValue placeholder="Choose a project" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
+                      <SelectItem value="new">
+                        {canCreate ? "New projects" : "Connect without a project"}
+                      </SelectItem>
                       {data.projects.map((p: any) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.name}
@@ -105,12 +119,7 @@ function Consent() {
                 </Select>
               </Field>
               <p className="text-sm leading-relaxed">
-                The agent can read both As-is and To-be models in the selected
-                project, including their transcripts, evidence and diagrams
-                {data.scopes.includes("projects:write")
-                  ? ", and propose saved revisions or create a new project"
-                  : ""}
-                . It cannot record human approval.
+                {accessDescription}
               </p>
               <p className="break-words text-xs text-muted-foreground">
                 Requested account access: {data.scopes.join(", ")}
@@ -118,26 +127,6 @@ function Consent() {
                   ? ". Additional profile claims were requested; review the agent request before connecting."
                   : ""}
               </p>
-              {!data.projects.length && (
-                <p className="text-sm">
-                  <a
-                    className="underline"
-                    href="/app"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Create a project
-                  </a>
-                  , then{" "}
-                  <button
-                    className="underline"
-                    onClick={() => window.location.reload()}
-                  >
-                    refresh this page
-                  </button>
-                  .
-                </p>
-              )}
               <div className="flex gap-3">
                 <Button
                   disabled={busy || !project}
@@ -155,7 +144,7 @@ function Consent() {
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
                 You can disconnect agents from the app at any time. Your agent
-                provider receives the information it reads from this project.
+                provider receives the information it reads from connected projects.
               </p>
             </>
           )}

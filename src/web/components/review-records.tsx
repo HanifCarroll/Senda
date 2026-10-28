@@ -1,5 +1,4 @@
-import { Copy, ArrowRight } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowRight } from "lucide-react";
 import type { Review, Question } from "@/lib/types";
 import { readableLabel } from "@/lib/review-navigation";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui/accordion";
@@ -7,7 +6,6 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
 import { Alert, AlertTitle, AlertDescription } from "./ui/alert";
-import { AgentRequest } from "./agent-request";
 
 function QuestionItems({
   questions,
@@ -90,38 +88,9 @@ function QuestionItems({
                   </Button>
                 ))}
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(q.question);
-                      toast.success("Question copied");
-                    } catch {
-                      toast.error("Copy was unavailable. Select and copy the question manually.");
-                    }
-                  }}
-                >
-                  <Copy data-icon="inline-start" />
-                  Copy question
-                </Button>
-                {onAnswer && q.status !== "answered" ? (
-                  <Button onClick={() => onAnswer(q.id)}>Answer question</Button>
-                ) : (
-                  <AgentRequest
-                    key={q.id}
-                    title={q.status === "answered" ? "Clarify this answer" : "Prepare my answer"}
-                    prompt={`About the ${review.modelKind === "to-be" ? "future" : "current"} process for “${review.title}”, version ${review.revision}:
-
-${q.question}
-
-My answer:
-[Write your answer or correction here.]
-
-Please update the diagram to reflect this.`}
-                  />
-                )}
-              </div>
+              {onAnswer && q.status !== "answered" && (
+                <Button className="w-fit" onClick={() => onAnswer(q.id)}>Answer question</Button>
+              )}
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -157,7 +126,7 @@ export function Clarifications({
           <CardDescription>
             {onAnswer
               ? "Save an answer here, then ask your agent to revise the process. The saved diagram updates automatically."
-              : "Use an answer request to continue with your modeling agent. The next export will include the updated diagram."}
+              : "Continue the conversation with your agent to clarify these points and revise the diagram."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -385,26 +354,11 @@ export function ReviewChecks({
                   </Button>
                 ))}
               </div>
-              <AgentRequest
-                title="Prepare review feedback"
-                prompt={`I’ve walked through “${nextCase.title}” in the ${review.modelKind === "to-be" ? "future" : "current"} process for “${review.title}”, version ${review.revision}.
-
-Here’s what I found:
-[Describe what is correct, missing or different.]
-
-Ask me about anything unclear and update the diagram where needed.`}
-              />
             </>
           ) : (
-            <AgentRequest
-              title="Prepare review feedback"
-              prompt={`I’ve reviewed the ${review.modelKind === "to-be" ? "future" : "current"} process for “${review.title}”, version ${review.revision}.
-
-Here’s my feedback:
-[Describe any missing or incorrect details.]
-
-Please update the diagram and show me what changed.`}
-            />
+            <p className="text-sm text-muted-foreground">
+              Tell your agent what needs to change. Saved revisions appear here automatically.
+            </p>
           )}
         </CardContent>
       </Card>

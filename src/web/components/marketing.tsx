@@ -8,7 +8,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./
 import { InterviewToModel } from "./interview-to-model";
 import { PathArt } from "./path-art";
 
-const preview = (name: string) => `/marketing/${name}.svg?v=vector-3`;
+const preview = (name: string) => `/marketing/${name}.svg?v=vector-4`;
 const repository = "https://github.com/HanifCarroll/Senda";
 const methodology = `${repository}/blob/main/skills/process-scribe/references/methodology.md`;
 
@@ -374,9 +374,9 @@ export function Marketing() {
               </p>
               <ol className="flex flex-col gap-5">
                 {[
-                  ["Connect", "Open a project, choose Connect your agent, and paste the server URL into your agent’s connector settings."],
-                  ["Authorize", "Sign in when your agent asks, then pick the projects it can open."],
-                  ["Ask", "Download the discovery skill from the same screen, give it to your agent, and ask it to model the interview."],
+                  ["Connect", "Add Senda in ChatGPT or Claude’s connection settings, then sign in and allow it to create new projects."],
+                  ["Share", "Give your agent the interview transcript and ask it to map the process in Senda. It creates the project and asks about missing details."],
+                  ["Review", "Answer questions and request changes in the same chat. Open Senda to explore the diagram, compare revisions and export the result."],
                 ].map(([title, text], i) => (
                   <li key={title} className="flex gap-5">
                     <span className={cn(display, "w-5 text-[1.45rem] leading-none text-muted-foreground tabular-nums")}>{i + 1}</span>
@@ -402,8 +402,8 @@ export function Marketing() {
                 <WindowBar title="Your agent" />
                 <div className="flex flex-col gap-4 p-5 sm:p-6">
                   <div className="ml-8 rounded-2xl rounded-br-md bg-primary px-4 py-3 text-[0.95rem] leading-relaxed text-primary-foreground">
-                    Model the Brightline onboarding interview as the current process. Ask me about missing
-                    decisions and keep the evidence attached.
+                    Here are my client onboarding interview notes. Could you map the process in Senda
+                    and ask me about anything unclear?
                   </div>
                   <div className="mr-6 flex flex-col gap-3 rounded-2xl rounded-bl-md bg-muted px-4 py-3 text-[0.95rem] leading-relaxed">
                     <p>
@@ -430,8 +430,12 @@ export function Marketing() {
                   "A BPMN 2.0 process model, the standard notation for activities, decisions, responsibilities and handoffs. You can explore it in Senda or download a .bpmn file with its layout. Exports are tested with bpmn-js, the open-source modeler behind bpmn.io.",
                 ],
                 [
+                  "Can I start in ChatGPT or Claude?",
+                  "Yes. Connect Senda, sign in and choose New projects. Then give your agent the transcript and ask it to map the process. It creates the project for you. Continue answering questions and requesting changes in the same chat; open Senda whenever you want to review the diagram or its history.",
+                ],
+                [
                   "Which AI agents can connect?",
-                  "Any agent that can add a remote MCP server and sign in with OAuth. Some assistants call this a custom connector. Add Senda’s server URL, sign in, and choose the projects it can open. Coding agents can also use the command-line tool with the downloadable skill.",
+                  "Any agent that can add a remote MCP server and sign in with OAuth. Some assistants call this a custom connector. Add Senda’s server URL, sign in, and allow new projects or select an existing one. Coding agents can also use the command-line tool with the downloadable skill.",
                 ],
                 [
                   "Does Senda run AI on my transcripts?",

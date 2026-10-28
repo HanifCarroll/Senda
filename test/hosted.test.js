@@ -181,6 +181,8 @@ test(
       );
       async function connect(
         scopes = "openid profile offline_access projects:read projects:write",
+        cookie = alice,
+        access = { projectId: project.id },
       ) {
         const verifier = randomBytes(32).toString("base64url");
         const query = new URLSearchParams({
@@ -198,7 +200,7 @@ test(
         });
         const authorize = await request(
           `/api/auth/oauth2/authorize?${query}`,
-          alice,
+          cookie,
         );
         let next = authorize.headers.get("location");
         if (!next) {
@@ -210,7 +212,7 @@ test(
         const consent = await content(
           await request(
             `/api/consent?query=${encodeURIComponent(signed)}`,
-            alice,
+            cookie,
           ),
         );
         assert.equal(consent.client, registration.client_id);
@@ -220,15 +222,15 @@ test(
           (
             await request(
               `/api/consent?query=${encodeURIComponent(tampered.toString())}`,
-              alice,
+              cookie,
             )
           ).status,
           400,
         );
         const accepted = await content(
-          await request("/api/consent", alice, {
+          await request("/api/consent", cookie, {
             query: signed,
-            projectId: project.id,
+            ...access,
             accept: true,
           }),
         );
@@ -261,6 +263,56 @@ test(
         return { token, client };
       }
       const { client, token } = await connect();
+      await t.test(
+        "an empty account connects first, creates through its agent and keeps other projects private",
+        async () => {
+          const fresh = await signup("first-project@example.test");
+          assert.deepEqual(await content(await request("/api/projects", fresh)), []);
+          await assert.rejects(connect(undefined, fresh, {}));
+          assert.deepEqual((await content(await request("/api/connections", fresh))).connections, []);
+          const firstConnection = await connect(undefined, fresh, { createProjects: true });
+          assert.deepEqual((await call("list_projects", {}, firstConnection.client)).value, []);
+          assert.equal((await content(await request("/api/connections", fresh))).connections.length, 1);
+          // Disconnecting also revokes an agent that has never created a project.
+          await content(await request("/api/connections", fresh, {}, "DELETE"));
+          const revoked = await fetch(`${origin}/mcp`, {
+            method: "POST",
+            headers: { authorization: `Bearer ${firstConnection.token.access_token}`, "content-type": "application/json" },
+            body: "{}",
+          });
+          assert.equal(revoked.status, 401);
+          const connected = await connect(undefined, fresh, { createProjects: true });
+          const created = await call("create_project", {
+            name: "Agent-created onboarding",
+            purpose: "Map the interview shared in the agent chat",
+            perspective: "Onboarding team",
+            source: { id: "Interview", title: "Interview notes", kind: "transcript", text: "A signed order starts onboarding." },
+          }, connected.client);
+          assert.ok(!created.isError);
+          const saved = (await call("read_project", { projectId: created.value.id }, connected.client)).value;
+          assert.equal(saved.revision, 1);
+          assert.equal(saved.discovery.sources[0].text, "A signed order starts onboarding.");
+          assert.equal((await content(await request(`/api/projects/${created.value.id}`, fresh))).revision, 1);
+          const hidden = await content(await request("/api/projects", fresh, {
+            name: "Unshared process", purpose: "Keep private", perspective: "Other team",
+          }));
+          assert.deepEqual((await call("list_projects", {}, connected.client)).value.map(p => p.id), [created.value.id]);
+          assert.equal((await call("read_project", { projectId: hidden.id }, connected.client)).value.code, "NOT_FOUND");
+          assert.equal((await call("read_project", { projectId: project.id }, connected.client)).value.code, "NOT_FOUND");
+          const reader = bob;
+          await assert.rejects(connect("openid offline_access projects:read", reader, { createProjects: true }));
+          assert.deepEqual((await content(await request("/api/connections", reader))).connections, []);
+          const readConnection = await connect("openid offline_access projects:read", reader, { connectOnly: true });
+          assert.deepEqual((await call("list_projects", {}, readConnection.client)).value, []);
+          const blocked = await fetch(`${origin}/mcp`, {
+            method: "POST",
+            headers: { authorization: `Bearer ${readConnection.token.access_token}`, "content-type": "application/json" },
+            body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "create_project", arguments: {} } }),
+          });
+          assert.equal(blocked.status, 403);
+          assert.match(blocked.headers.get("www-authenticate"), /projects:write/);
+        },
+      );
       await t.test(
         "2025 stateless compatibility uses the same token and project boundary",
         async () => {
