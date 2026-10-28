@@ -41,7 +41,8 @@ try {
   }
   // A light plate keeps the logo legible even when an email client inverts its UI.
   const emailSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width + 24} 88"><rect width="${width + 24}" height="88" rx="12" fill="${c.background}"/><svg x="12" y="8" width="${width}" height="72" viewBox="0 0 ${width} 72">${logoSvg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "")}</svg></svg>`;
-  const emailPng = await png(emailSvg, (width + 24) * 2, 176),
+  const emailLogoWidth = 122, emailLogoHeight = 36;
+  const emailPng = await png(emailSvg, emailLogoWidth * 2, emailLogoHeight * 2),
     faviconPng = await png(faviconSvg, 32, 32),
     touchPng = await png(faviconSvg, 180, 180),
     icon192 = await png(faviconSvg, 192, 192),
@@ -68,7 +69,8 @@ try {
     `export const brandLogoDataUri = ${JSON.stringify("data:image/svg+xml;base64," + Buffer.from(logoSvg).toString("base64"))};\n` +
     `export const brandFaviconDataUri = ${JSON.stringify("data:image/svg+xml;base64," + Buffer.from(faviconSvg).toString("base64"))};\n` +
     `export const emailLogoBase64 = ${JSON.stringify(emailPng.toString("base64"))};\n` +
-    `export const emailLogoWidth = ${width + 24};\n`);
+    `export const emailLogoWidth = ${emailLogoWidth};\n` +
+    `export const emailLogoHeight = ${emailLogoHeight};\n`);
   console.log("Generated SVG logos, PNG email logo, favicon formats, touch icons and offline assets.");
 } finally {
   await browser.close();

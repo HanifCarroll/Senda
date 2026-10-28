@@ -37,6 +37,11 @@ Offline review files load no external brand resource. Email logos use an inline
 MIME attachment, with alt text, rather than a remote image request. A light plate
 keeps the image readable in mail clients that override dark colors.
 
+The email logo displays at 122 × 36 px, with a 2× PNG. Declare its dimensions
+in HTML attributes and inline CSS inside a fixed-width presentation table;
+attributes alone allowed Apple Mail to enlarge it. Verify email changes in
+Apple Mail as well as browser previews.
+
 Run `npm run build:brand` after changing the mark, lettering or canonical colors.
 This uses the existing Playwright browser; set `SENDA_TEST_BROWSER` when using an
 installed Chrome rather than Playwright Chromium. Generated assets are checked

@@ -1,5 +1,5 @@
 import { brandColors as c } from "../src/brand.js";
-import { emailLogoBase64, emailLogoWidth } from "../src/brand-assets.js";
+import { emailLogoBase64, emailLogoWidth, emailLogoHeight } from "../src/brand-assets.js";
 
 const escape = (value) =>
   String(value).replace(
@@ -107,7 +107,11 @@ export function accountEmail({ kind, url, origin }) {
       <!--[if mso]><table role="presentation" width="528" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:528px;border-collapse:separate;">
         <tr><td class="email-card content" bgcolor="#fdfdfd" style="padding:40px;background-color:#fdfdfd;border:1px solid #e3e3e3;border-radius:16px;">
-          <img src="cid:senda-logo" alt="Senda" width="${Math.round(emailLogoWidth / 2)}" height="44" style="display:block;margin:0 0 28px;border:0;background-color:${c.background};border-radius:6px;color:${c.ink};font-family:Georgia,serif;font-size:24px;">
+          <table role="presentation" width="${emailLogoWidth}" cellpadding="0" cellspacing="0" border="0" style="width:${emailLogoWidth}px;max-width:${emailLogoWidth}px;table-layout:fixed;border-collapse:collapse;">
+            <tr><td width="${emailLogoWidth}" style="width:${emailLogoWidth}px;padding:0 0 24px;font-size:0;line-height:0;">
+              <img src="cid:senda-logo" alt="Senda" width="${emailLogoWidth}" height="${emailLogoHeight}" style="display:block;width:${emailLogoWidth}px;height:${emailLogoHeight}px;max-width:${emailLogoWidth}px;max-height:${emailLogoHeight}px;margin:0;border:0;background-color:${c.background};border-radius:5px;color:${c.ink};font-family:Georgia,serif;font-size:20px;">
+            </td></tr>
+          </table>
           <h1 class="heading" style="margin:0${copy.introduction ? " 0 12px" : ""};color:${c.text};font-size:28px;line-height:36px;font-weight:650;letter-spacing:-0.6px;">${escape(copy.heading)}</h1>
           ${copy.introduction ? `<p class="body-copy" style="margin:0;color:${c.muted};font-size:16px;line-height:26px;">${escape(copy.introduction)}</p>` : ""}
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
