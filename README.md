@@ -1,4 +1,4 @@
-# Senda
+<h1><img src="public/brand/logo.svg" alt="Senda" width="210"></h1>
 
 Turn a discovery conversation into a BPMN model whose activities, decisions and sequence can be traced back to evidence.
 
@@ -38,7 +38,7 @@ Each project separates **As-is · Current process** from **To-be · Planned futu
 
 For local exported snapshots, use `npm run preview` and open `/local`; the preview keeps those files on loopback and retains existing `/?review=…` links. `PROCESS_SCRIBE_REVIEWS` selects another local export root. Local snapshots use manual agent/CLI updates and exports; hosted projects use the authorized service and do not expose that filesystem library. Exact duplicate exports share one visible version.
 
-The diagram workspace uses the available screen height and can expand to fill the window. Evidence starts collapsed, including when a saved link selects a step. Open **Evidence** explicitly to inspect it; the desktop panel resizes, and the mobile view uses a bottom sheet. Source passages open in a drawer with a direct return to the diagram. The URL retains the selected review, section, view and step; session storage remembers the pan and zoom without saving transcript text.
+The diagram workspace uses the available screen height and can expand to fill the window. Evidence starts collapsed, including when a saved link selects a step. Open **Evidence** explicitly to inspect it; the desktop panel resizes, and the mobile view uses a bottom sheet. Source passages open in a drawer with a direct return to the diagram. Message links say whether they focus a message in this diagram or open a named subprocess or diagram. The URL retains the selected review, section, view and step; session storage remembers the pan and zoom without saving transcript text.
 
 The walkthrough and source screens use narrower reading columns. Open questions appear before answer history; **Copy question**, **Prepare my answer** and **Request a correction** create a manual handoff to the modeling agent. Requests are editable and copied to the clipboard; the app does not send them or record invented approvals. Review checks prioritize the next question or case, with detailed diagram changes collapsed below the business summary.
 

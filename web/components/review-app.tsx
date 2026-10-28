@@ -1,9 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
-  ArrowRight,
   Download,
-  GitBranch,
   Maximize,
   Minimize,
   MessageSquare,
@@ -12,6 +10,9 @@ import {
   RefreshCw,
   PanelRight,
   Info,
+  Crosshair,
+  Layers,
+  ArrowUpRight,
 } from "lucide-react";
 import type {
   Review,
@@ -19,9 +20,10 @@ import type {
   ReviewLocation,
   Section,
 } from "@/lib/types";
-import { readableLabel } from "@/lib/review-navigation";
+import { destinationFor, readableLabel } from "@/lib/review-navigation";
 import { cn } from "@/lib/utils";
 import { DiagramCanvas, type CanvasControls } from "./diagram-canvas";
+import { BrandMark } from "./brand";
 import { EvidencePanel } from "./evidence-panel";
 import { RevisionPicker } from "./revision-picker";
 import {
@@ -220,12 +222,7 @@ export function ReviewApp({
     setFocusRequest(0);
   }
   async function go(id: string) {
-    const detail = review.views.find((v) => v.elementId === id);
-    const destination =
-      detail ||
-      review.views.find(
-        (v) => v.elementIds.includes(id) && !v.contextIds.includes(id),
-      );
+    const destination = destinationFor(review.views, id);
     await updateLocation({
       view: destination?.elementId || view?.elementId,
       element: id,
@@ -235,7 +232,8 @@ export function ReviewApp({
     });
     setFocusRequest((n) => n + 1);
     setSearch("");
-    setMobileEvidence(false);
+    setMobileEvidence(!destination);
+    if (!destination) setInspecting(true);
   }
   function select(id: string) {
     if (review.views.some((v) => v.elementId === id)) {
@@ -281,9 +279,9 @@ export function ReviewApp({
             <a
               href="/"
               aria-label="Senda home"
-              className="shrink-0 rounded-lg bg-primary p-2 text-primary-foreground"
+              className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background"
             >
-              <GitBranch className="size-5" />
+              <BrandMark />
             </a>
             <div className="min-w-0 flex-1">
               <Heading className="truncate text-base font-semibold tracking-tight sm:text-lg">
@@ -727,10 +725,14 @@ export function ReviewApp({
                       <Button
                         key={id}
                         variant="outline"
+                        className="h-auto justify-start whitespace-normal py-3 text-left"
                         onClick={() => showView(id)}
                       >
-                        {review.views.find((v) => v.elementId === id)?.title}
-                        <ArrowRight data-icon="inline-end" />
+                        <Layers data-icon="inline-start" />
+                        <span className="flex min-w-0 flex-col gap-1">
+                          <span>{review.views.find((v) => v.elementId === id)?.title}</span>
+                          <span className="text-xs text-muted-foreground">Open subprocess</span>
+                        </span>
                       </Button>
                     ))}
                   </div>
@@ -746,18 +748,35 @@ export function ReviewApp({
                             </span>
                           </AccordionTrigger>
                           <AccordionContent>
+                            <p className="mb-3 text-sm text-muted-foreground">
+                              Each message shows where it will open. Messages in this diagram are brought into focus.
+                            </p>
                             <div className="grid gap-2 sm:grid-cols-2">
-                              {view.relatedMessageIds.map((id) => (
+                              {view.relatedMessageIds.map((id) => {
+                                const destination = destinationFor(review.views, id);
+                                const here = destination?.elementId === view.elementId;
+                                const action = here ? "Show in this diagram" : destination
+                                  ? `Open ${destination.parentId ? "subprocess" : "diagram"}: ${destination.title}`
+                                  : "View evidence · diagram unavailable";
+                                const Icon = here ? Crosshair : destination?.parentId ? Layers : destination ? ArrowUpRight : Info;
+                                return (
                                 <Button
                                   key={id}
                                   variant="outline"
                                   className="h-auto justify-start whitespace-normal py-3 text-left"
+                                  data-message-id={id}
                                   onClick={() => go(id)}
                                 >
-                                  {catalog.get(id)?.label}
-                                  <ArrowRight data-icon="inline-end" />
+                                  <span className="flex min-w-0 flex-col gap-1">
+                                    <span>{catalog.get(id)?.label}</span>
+                                    <span className="flex items-start gap-2 text-xs text-muted-foreground">
+                                      <Icon data-icon="inline-start" className="mt-0.5" aria-hidden="true" />
+                                      <span>{action}</span>
+                                    </span>
+                                  </span>
                                 </Button>
-                              ))}
+                                );
+                              })}
                               {!view.relatedMessageIds.length ? (
                                 <p>
                                   No message exchanges are linked to this part.

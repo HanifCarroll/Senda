@@ -33,6 +33,7 @@
     "build": "vite build",
     "preview": "PROCESS_SCRIBE_LOCAL_REVIEW=1 node server/serve.js",
     "preview:emails": "node scripts/preview-account-emails.js",
+    "build:brand": "node scripts/build-brand-assets.js",
     "serve": "node server/serve.js",
     "dev:hosted": "PROCESS_SCRIBE_HOSTED=1 vite dev",
     "browser:webmcp": "node scripts/open-webmcp-browser.js",

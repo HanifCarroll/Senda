@@ -1,4 +1,10 @@
-import type { ModelElement, ReviewChoice } from "./types";
+import type { DiagramView, ModelElement, ReviewChoice } from "./types";
+
+// Use the same destination for the preview label and the actual navigation.
+export function destinationFor(views: DiagramView[], id: string) {
+  return views.find((v) => v.elementId === id) ||
+    views.find((v) => v.elementIds.includes(id) && !v.contextIds.includes(id));
+}
 
 export function readableLabel(element?: ModelElement) {
   if (!element) return "Show this step";

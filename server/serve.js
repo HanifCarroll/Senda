@@ -39,6 +39,9 @@ const types = {
   ".webp": "image/webp",
   ".json": "application/json",
   ".woff2": "font/woff2",
+  ".ico": "image/x-icon",
+  ".webmanifest": "application/manifest+json",
+  ".txt": "text/plain; charset=utf-8",
 };
 const server = createServer(
   createNodeHandler(application, origin, async (request) => {
@@ -47,7 +50,8 @@ const server = createServer(
       url.pathname.startsWith("/assets/") ||
       url.pathname.startsWith("/marketing/") ||
       url.pathname.startsWith("/examples/") ||
-      url.pathname === "/favicon.svg"
+      url.pathname.startsWith("/brand/") ||
+      ["/favicon.svg", "/favicon.ico", "/favicon-32.png", "/apple-touch-icon.png", "/site.webmanifest"].includes(url.pathname)
     ) {
       try {
         const filename = await realpath(

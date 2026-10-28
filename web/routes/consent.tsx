@@ -1,3 +1,4 @@
+import { Brand } from "@/components/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { api, post, ApiError } from "@/lib/api";
@@ -61,7 +62,7 @@ function Consent() {
   }
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-6 px-4 py-12">
-      <a href="/">Senda</a>
+      <a href="/" aria-label="Senda home" className="w-fit"><Brand className="h-10" /></a>
       <Card>
         <CardHeader>
           <CardTitle>Choose what your agent can work on</CardTitle>

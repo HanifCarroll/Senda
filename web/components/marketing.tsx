@@ -1,6 +1,7 @@
-import { ArrowRight, GitBranch, FileText, MessageSquare, History, Download } from "lucide-react";
+import { ArrowRight, FileText, MessageSquare, History, Download } from "lucide-react";
 import { productName } from "@/lib/brand";
 import { Button } from "./ui/button";
+import { Brand } from "./brand";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui/accordion";
 
 export function Marketing() {
@@ -12,8 +13,7 @@ export function Marketing() {
           className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-5 py-5 sm:px-8"
         >
           <a href="/" className="mr-auto flex items-center gap-2 font-semibold tracking-tight">
-            <GitBranch className="size-5" />
-            {productName}
+            <Brand />
           </a>
           <a
             href="#how-it-works"

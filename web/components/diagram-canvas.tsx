@@ -108,6 +108,7 @@ export function DiagramCanvas({
         width: host.clientWidth || 1,
         height: host.clientHeight || 1,
       });
+      let previousSize = size();
       function draw() {
         if (!host.clientWidth || !host.clientHeight) return;
         const { width, height } = size();
@@ -213,8 +214,15 @@ export function DiagramCanvas({
       if (saved.current.has(view.elementId) || stored) draw();
       else fit(true);
       observer = new ResizeObserver(() => {
-        if (host.clientWidth && host.clientHeight)
-          camera.fitted ? fit() : draw();
+        if (!host.clientWidth || !host.clientHeight) return;
+        const nextSize = size();
+        if (!camera.fitted) {
+          // Keep the same point in the center when a panel or viewport resizes.
+          camera.x += (previousSize.width - nextSize.width) / (2 * camera.scale);
+          camera.y += (previousSize.height - nextSize.height) / (2 * camera.scale);
+        }
+        previousSize = nextSize;
+        camera.fitted ? fit() : draw();
       });
       observer.observe(host);
       let drag:

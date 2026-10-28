@@ -1,3 +1,4 @@
+import { Brand } from "@/components/brand";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/privacy")({
@@ -8,7 +9,7 @@ export const Route = createFileRoute("/privacy")({
 function Privacy() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-5 py-12 sm:px-8">
-      <a href="/" className="text-sm font-medium">← Senda</a>
+      <a href="/" aria-label="Senda home" className="w-fit"><Brand className="h-10" /></a>
       <header className="space-y-3">
         <h1 className="text-3xl font-semibold tracking-tight">Privacy</h1>
         <p className="text-sm text-muted-foreground">Updated 27 October 2026</p>

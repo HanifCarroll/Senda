@@ -4,6 +4,19 @@ import { accountEmail } from "../server/account-email.js";
 
 const origin = "https://senda.example";
 
+test("the branded email logo is an embedded PNG with a matching Content-ID", () => {
+  const message = accountEmail({ kind: "magic", origin, url: origin + "/api/auth/magic-link/verify?token=preview" });
+  const cid = message.html.match(/<img src="cid:([^"]+)"/)[1];
+  const image = message.attachments.find(attachment => attachment.contentId === cid);
+  assert.ok(image);
+  assert.equal(image.type, "image/png");
+  assert.equal(image.disposition, "inline");
+  const bytes = Buffer.from(image.content, "base64");
+  assert.equal(bytes.subarray(1, 4).toString(), "PNG");
+  assert.ok(bytes.length > 1000);
+  assert.ok(!/<(?:img|script)[^>]+src="https?:/i.test(message.html));
+});
+
 test("a sign-in email preserves the complete signed return query without consuming its token", () => {
   const query = "?token=signed-token&callbackURL=https%3A%2F%2Fsenda.example%2Fconsent%3Fsig%3Dx%26client_id%3Dy&errorCallbackURL=https%3A%2F%2Fsenda.example%2Fsign-in",
     message = accountEmail({ kind: "magic", origin, url: origin + "/api/auth/magic-link/verify" + query }),

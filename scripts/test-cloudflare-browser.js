@@ -92,6 +92,19 @@ try {
   await p.locator("#diagram-stage svg").waitFor({ timeout: 60000 });
   assert.equal(reviewRequests, 1, "A slow initial review must finish without a poll replacing it.");
   await p.unrouteAll({ behavior: "wait" });
+  const messages = p.locator(".messages-panel");
+  await messages.locator('[data-slot="accordion-trigger"]').click();
+  const intakeMessage = p.locator("[data-message-id]").filter({ hasText: "Request missing items" });
+  assert.match(await intakeMessage.innerText(), /Open subprocess: Check handover pack/);
+  await intakeMessage.click();
+  await p.waitForURL(/view=Intake/);
+  assert.match(await intakeMessage.innerText(), /Show in this diagram/);
+  await intakeMessage.focus();
+  await p.keyboard.press("Enter");
+  assert.equal(new URL(p.url()).searchParams.get("view"), "Intake");
+  assert.ok(new URL(p.url()).searchParams.get("element"));
+  assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  console.log("Message destinations and keyboard navigation passed");
   await p.getByRole("tab", { name: /^To-be/ }).click();
   await p.getByRole("button", { name: "Create To-be model", exact: true }).click();
   await p

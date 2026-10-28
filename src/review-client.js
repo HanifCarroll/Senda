@@ -145,7 +145,7 @@ export function mountReview(data) {
       const destination = viewFor(id);
       const row = button('', () => goTo(id), 'message-button');
       row.dataset.messageId = id;
-      row.append(html('span', label(id)), html('small', destination?.elementId === current.elementId ? 'Shown in this view' : destination ? `Open ${destination.title}` : 'Drawing unavailable'));
+      row.append(html('span', label(id)), html('small', destination?.elementId === current.elementId ? 'Show in this diagram' : destination ? `Open ${destination.parentId ? 'subprocess' : 'diagram'}: ${destination.title}` : 'View evidence · diagram unavailable'));
       messageList.append(row);
     }
   }

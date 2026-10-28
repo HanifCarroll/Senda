@@ -1,3 +1,4 @@
+import { Brand } from "@/components/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Mail } from "lucide-react";
@@ -92,9 +93,7 @@ function SignIn() {
   }
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-4 py-12">
-      <a href="/" className="text-sm font-medium">
-        ← Senda
-      </a>
+      <a href="/" aria-label="Senda home" className="w-fit"><Brand className="h-10" /></a>
       <Card>
         <CardHeader>
           <CardTitle>{sent ? "Check your email" : "Sign in to Senda"}</CardTitle>

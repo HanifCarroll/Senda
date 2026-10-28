@@ -1,6 +1,6 @@
 # Public page and screenshot provenance
 
-The public Senda page uses the app's existing Neutral palette, shadcn controls and sans-serif type. Its sequence is an outcome-led heading, a real evidence-view screenshot, a transcript gap becoming a clarification, a revised process, three practical benefits, an own-agent workflow, factual FAQs and a working project CTA.
+The public Senda page uses the shared Ink + Teal identity over a neutral shadcn foundation, with sans-serif interface text and an outlined serif wordmark. Its sequence is an outcome-led heading, a real evidence-view screenshot, a transcript gap becoming a clarification, a revised process, three practical benefits, an own-agent workflow, factual FAQs and a working project CTA. See [brand assets and color roles](branding.md).
 
 Live references were inspected and visually captured on 27 October 2026:
 

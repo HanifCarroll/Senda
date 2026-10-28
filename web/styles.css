@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./brand.css";
 @custom-variant data-open (&[data-state="open"]);
 @custom-variant data-closed (&[data-state="closed"]);
 @custom-variant data-active (&[data-state="active"]);
@@ -21,15 +22,15 @@
 }
 :root {
   --radius: .65rem;
-  --background: oklch(.985 .003 250); --foreground: oklch(.22 .015 250);
+  --background: var(--brand-background); --foreground: var(--brand-text);
   --card: white; --card-foreground: var(--foreground);
   --popover: white; --popover-foreground: var(--foreground);
-  --primary: oklch(.269 0 0); --primary-foreground: white;
-  --secondary: oklch(.96 .004 250); --secondary-foreground: var(--foreground);
-  --muted: oklch(.965 .004 250); --muted-foreground: oklch(.47 .02 250);
-  --accent: oklch(.95 0 0); --accent-foreground: oklch(.269 0 0);
+  --primary: var(--brand-ink); --primary-foreground: white;
+  --secondary: #EDF3F5; --secondary-foreground: var(--foreground);
+  --muted: #EDF3F5; --muted-foreground: var(--brand-muted);
+  --accent: var(--brand-tint); --accent-foreground: var(--brand-ink);
   --destructive: oklch(.577 .245 27.325);
-  --border: oklch(.90 .008 250); --input: var(--border); --ring: var(--primary);
+  --border: var(--brand-border); --input: var(--border); --ring: var(--brand-teal);
 }
 @layer base {
   * { @apply border-border; }
@@ -52,8 +53,8 @@ body:has(.focus-mode) .account-header, body:has(.focus-mode) .project-navigation
 .diagram-stage .diagram-element { cursor: pointer; }
 .diagram-stage .diagram-element:focus-visible { outline: 2px solid var(--primary); }
 .diagram-stage .is-selected > rect, .diagram-stage .is-selected > circle, .diagram-stage .is-selected > path:not(.connection-hit), .diagram-stage .is-selected > polyline:not(.connection-hit) { stroke: var(--primary); stroke-width: 3; }
-.diagram-stage .is-selected > rect, .diagram-stage .is-selected > circle { fill: #eee; }
-.diagram-stage .is-selected { filter: drop-shadow(0 0 3px #888); }
+.diagram-stage .is-selected > rect, .diagram-stage .is-selected > circle { fill: var(--brand-tint); }
+.diagram-stage .is-selected { filter: drop-shadow(0 0 3px rgb(42 127 131 / 25%)); }
 .diagram-stage .connection-hit { pointer-events: stroke; stroke: transparent!important; stroke-width: 16; fill: none!important; }
 @media (max-width: 1023px) {
   .diagram-workspace { height: max(430px, calc(100dvh - 300px)); }

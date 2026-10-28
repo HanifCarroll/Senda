@@ -17,7 +17,7 @@ for (const file of files) {
     const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
     assert.equal(result.status, 0, `${relative}: ${result.stderr}`);
   }
-  if (/\.(png|webp|jpg|jpeg|woff2)$/i.test(file)) continue;
+  if (/\.(png|webp|jpg|jpeg|woff2|ico)$/i.test(file)) continue;
   const text = await readFile(file, 'utf8');
   // A source-tree hygiene check, not a replacement for reviewing the staged files.
   assert.ok(!/\/Users\/[^/\s]+\//.test(text), `Machine-specific path in ${relative}`);
