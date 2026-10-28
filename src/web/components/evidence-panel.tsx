@@ -57,8 +57,14 @@ export function EvidencePanel({
       <ScrollArea className="min-h-0 flex-1">
         <CardContent className="flex flex-col gap-5 py-4">
           <AgentRequest
+            key={`${review.modelKind || "as-is"}:${element.id}`}
             title="Request a correction"
-            prompt={`Use $process-scribe to update “${review.title}”, based on revision ${review.revision}.\n\nSelected step: ${element.label} (${element.id}).\n\nMy correction:\n[Describe what should change and why.]\n\nAsk about anything unclear. Update the evidence, BPMN and explanation together, then export a new review.`}
+            prompt={`Please update the ${review.modelKind === "to-be" ? "future" : "current"} process for “${review.title}”. I’m looking at version ${review.revision}.
+
+The step “${readableLabel(element)}” needs a correction:
+[Describe what should change and why.]
+
+Ask me about anything unclear, then show me the updated diagram.`}
           />
           {element.source && element.target ? (
             <div className="flex flex-col gap-2 text-sm">

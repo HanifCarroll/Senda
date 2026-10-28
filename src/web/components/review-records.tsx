@@ -111,7 +111,14 @@ function QuestionItems({
                   <AgentRequest
                     key={q.id}
                     title={q.status === "answered" ? "Clarify this answer" : "Prepare my answer"}
-                    prompt={`Use $process-scribe to continue “${review.title}” from revision ${review.revision}.\n\nQuestion (${q.id}): ${q.question}\n\nMy answer or correction:\n[Write your answer here.]\n\nLink the new answer as evidence, update the affected steps and explanation, and export the next revision. Keep unresolved details explicit.`}
+                    prompt={`About the ${review.modelKind === "to-be" ? "future" : "current"} process for “${review.title}”, version ${review.revision}:
+
+${q.question}
+
+My answer:
+[Write your answer or correction here.]
+
+Please update the diagram to reflect this.`}
                   />
                 )}
               </div>
@@ -380,13 +387,23 @@ export function ReviewChecks({
               </div>
               <AgentRequest
                 title="Prepare review feedback"
-                prompt={`Use $process-scribe to record my feedback for “${review.title}”, revision ${review.revision}.\n\nCase (${nextCase.id}): ${nextCase.title}\n\nWhat I observed / my correction:\n[Describe what is correct, missing or different.]\n\nAsk for clarification as needed. Do not record approval unless I explicitly give it.`}
+                prompt={`I’ve walked through “${nextCase.title}” in the ${review.modelKind === "to-be" ? "future" : "current"} process for “${review.title}”, version ${review.revision}.
+
+Here’s what I found:
+[Describe what is correct, missing or different.]
+
+Ask me about anything unclear and update the diagram where needed.`}
               />
             </>
           ) : (
             <AgentRequest
               title="Prepare review feedback"
-              prompt={`Review “${review.title}”, revision ${review.revision}.\n\nMy feedback:\n[Describe any missing or incorrect details.]\n\nUse $process-scribe to update the evidence and diagram, and export the next revision.`}
+              prompt={`I’ve reviewed the ${review.modelKind === "to-be" ? "future" : "current"} process for “${review.title}”, version ${review.revision}.
+
+Here’s my feedback:
+[Describe any missing or incorrect details.]
+
+Please update the diagram and show me what changed.`}
             />
           )}
         </CardContent>

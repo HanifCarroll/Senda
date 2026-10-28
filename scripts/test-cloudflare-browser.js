@@ -124,6 +124,22 @@ try {
     assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await p.screenshot({ path: `${artifacts}/cf-project-${w}.png` });
   }
+  const requestPage = await context.newPage();
+  await requestPage.goto(base + "/example");
+  await requestPage.getByRole("button", { name: "Confirm and hold kickoff", exact: true }).press("Enter");
+  await requestPage.getByRole("button", { name: "Show evidence", exact: true }).click();
+  await requestPage.getByRole("button", { name: "Request a correction", exact: true }).click();
+  const requestText = requestPage.getByLabel("Request for the agent", { exact: true });
+  assert.match(await requestText.inputValue(), /The step “Confirm and hold kickoff”/);
+  await requestPage.getByRole("button", { name: "Close", exact: true }).click();
+  await requestPage.getByRole("button", { name: "Send handover pack", exact: true }).press("Enter");
+  await requestPage.getByRole("button", { name: "Request a correction", exact: true }).click();
+  const nextRequest = await requestText.inputValue();
+  assert.match(nextRequest, /The step “Send handover pack”/);
+  assert.doesNotMatch(nextRequest, /Confirm and hold kickoff|\$process-scribe|\\n/);
+  await requestPage.screenshot({ path: artifacts + "/cf-correction-request.png" });
+  await requestPage.close();
+  console.log("Correction requests follow the selected step in plain language");
   await p.getByRole("button", { name: "Sign out", exact: true }).click();
   await p.waitForURL(base + "/");
   await p.goto(firstLink);
