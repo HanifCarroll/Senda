@@ -135,15 +135,19 @@ export const toolDefinitions = [
   {
     name: "review_project",
     description:
-      "Render saved views and return a private browser review link, current revision and layout findings.",
-    input: z.object({ projectId: project, model }),
+      "Render saved views and return a private browser review link, revision and layout findings. Optionally select an earlier revision.",
+    input: z.object({
+      projectId: project,
+      model,
+      revision: z.number().int().positive().optional(),
+    }),
     read: true,
     run: async (s, a, x, origin) => {
-      const r = await s.review(a, x.projectId, undefined, x.model);
+      const r = await s.review(a, x.projectId, x.revision, x.model);
       return {
         revision: r.revision,
         model: x.model,
-        url: `${origin}/app/projects/${x.projectId}?model=${x.model}`,
+        url: `${origin}/app/projects/${x.projectId}?model=${x.model}${x.revision ? `&revision=${r.revision}` : ""}`,
         views: r.views.map((v) => ({
           id: v.elementId,
           title: v.title,
@@ -155,17 +159,21 @@ export const toolDefinitions = [
   {
     name: "export_bpmn",
     description:
-      "Export the complete process with improved portable BPMN diagram geometry. Review and evidence remain separate.",
-    input: z.object({ projectId: project, model }),
+      "Export the complete process with improved portable BPMN diagram geometry. Optionally select an earlier revision. The download link preserves the exported revision; review and evidence remain separate.",
+    input: z.object({
+      projectId: project,
+      model,
+      revision: z.number().int().positive().optional(),
+    }),
     read: true,
     run: async (s, a, x, origin) => {
-      const r = await s.review(a, x.projectId, undefined, x.model);
+      const r = await s.review(a, x.projectId, x.revision, x.model);
       return {
         revision: r.revision,
         model: x.model,
         filename: r.exportFilename,
         xml: r.exportXml,
-        browserDownload: `${origin}/api/projects/${x.projectId}/bpmn?model=${x.model}`,
+        browserDownload: `${origin}/api/projects/${x.projectId}/bpmn?model=${x.model}&revision=${r.revision}`,
       };
     },
   },

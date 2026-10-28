@@ -21,6 +21,10 @@ Pools are participants in an interaction, not necessarily legal companies. Lanes
 
 Capture inputs, outputs, significant document states, sender, recipient and decision rules through artifact/handoff/condition claims and native BPMN elements when relevant. Do not draw a sequence flow to mean a document association. Preserve manual work when documenting the business process.
 
+## Cancellation during parallel work
+
+Clarify which work stops when a branch reports cancellation. Walk that case with the other branch still active and again after it has reached a synchronization point. A plain end event ends its path; it does not cancel the other branch or satisfy a parallel join. A terminate end event stops work in its containing scope, so terminating a nested subprocess does not by itself stop a sibling branch in the parent process. Choose the scope and event from the stated business rule, including what happens to outstanding reminders. Review these cases even when an unsupported construct limits the automated behavioral checks.
+
 ## Deliberate abstraction
 
 Use meaningful subprocesses to keep levels readable. Collapsed content still exists; an intentionally unspecified subprocess has no modeled internals. For the latter, add an `abstractions` record with the subprocess ID, reason, inputs and outcomes. Only empty ordinary subprocesses can use this exemption. An existing detailed subprocess must not be hidden from validation through an abstraction record.

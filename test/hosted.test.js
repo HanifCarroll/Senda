@@ -350,6 +350,10 @@ test(
           ).value;
           assert.equal(review.exportXml, exported.xml);
           assert.equal(
+            new URL(exported.browserDownload).searchParams.get("revision"),
+            String(exported.revision),
+          );
+          assert.equal(
             await (
               await request(`/api/projects/${project.id}/bpmn`, alice)
             ).text(),
@@ -477,6 +481,7 @@ test(
           assert.equal(created.value.revision, 1);
           const args = { projectId: project.id, model: "to-be" };
           const first = (await call("read_project", args)).value;
+          const baselineExport = (await call("export_bpmn", args)).value;
           assert.equal(first.mode, "proposed");
           assert.deepEqual(first.discovery.claims, []);
           assert.deepEqual(first.reviews, {});
@@ -616,6 +621,32 @@ test(
           const exported = (await call("export_bpmn", args)).value;
           assert.equal(exported.filename, "to-be-revision-4.bpmn");
           assert.equal(exported.xml, review.exportXml);
+          const historical = (
+            await call("export_bpmn", { ...args, revision: 1 })
+          ).value;
+          assert.equal(historical.revision, 1);
+          assert.equal(historical.filename, "to-be-revision-1.bpmn");
+          assert.equal(historical.xml, baselineExport.xml);
+          assert.notEqual(historical.xml, exported.xml);
+          const historicalUrl = new URL(historical.browserDownload);
+          assert.equal(historicalUrl.searchParams.get("model"), "to-be");
+          assert.equal(historicalUrl.searchParams.get("revision"), "1");
+          assert.equal(
+            await (await request(historicalUrl.pathname + historicalUrl.search, alice)).text(),
+            historical.xml,
+          );
+          const historicalReview = (
+            await call("review_project", { ...args, revision: 1 })
+          ).value;
+          assert.equal(historicalReview.revision, 1);
+          assert.equal(new URL(historicalReview.url).searchParams.get("revision"), "1");
+          // The latest model is now revision 4; the link issued at revision 1 stays fixed.
+          const baselineUrl = new URL(baselineExport.browserDownload);
+          assert.equal(
+            await (await request(baselineUrl.pathname + baselineUrl.search, alice)).text(),
+            baselineExport.xml,
+          );
+          assert.equal((await call("read_project", args)).value.revision, 4);
           assert.equal(
             await (
               await request(

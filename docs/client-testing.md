@@ -49,3 +49,35 @@ sequence of tool calls as evidence that the agent chose that sequence unaided.
 For usage estimates, measure the realistic journey with the intended provider.
 Include repeated context, reasoning, tool results, repair attempts and failed
 runs. Consumer-plan usage limits do not establish DeepSeek API costs.
+
+## Observed results, 28 October 2026
+
+The ChatGPT browser client completed a fresh business-language onboarding
+journey: an interview draft, clarification of parallel work and setup conditions,
+deadlines and cancellations, a separate future model, future reminders and a
+manual fallback, and a later current-process correction. Updating the current
+model preserved the future plan's original baseline. The agent retrieved an
+earlier revision and compared the two versions without being given tool names or
+operation arguments.
+
+Inspecting the exported BPMN revealed that unpaid-deposit cancellation initially
+ended Finance's branch without stopping parallel Delivery work. A further
+business clarification corrected both models. Their resulting exports parsed
+without warnings, retained the parallel split and join, distinguished the manual
+and automated checks, and contained the process-scope terminate event. This is
+artifact verification, not proof of general soundness; the withdrawal event
+subprocess still requires scenario review.
+
+Several early ChatGPT replies displayed “This response couldn’t load” even though
+the sources and revisions saved and the replies were present in the conversation
+record. Later replies rendered normally. Treat the journey as having a client
+presentation problem, not as an unqualified UX pass. Downloading through the
+browser automation also timed out; connector exports were independently
+retrieved and inspected. Do not describe that as a verified browser download.
+
+Separate technical ChatGPT checks exercised all 14 tools, rejected stale and
+invalid writes without advancing the model, and rejected access to the other
+client's test project. Claude's technical connection and first clarification
+worked, including incremental write consent; its remaining tests and fresh
+business-language journey await the account's usage reset. No extra usage was
+purchased. Keep these partial results distinct from completed client coverage.

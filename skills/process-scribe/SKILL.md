@@ -9,6 +9,8 @@ When working with connected tools, use the [remote project workflow](references/
 
 When the user requests a future process, follow [planning.md](references/planning.md). Keep As-is (current practice) and To-be (planned future) in separate models with separate revision histories. Reuse the five-stage method to clarify and revise the planned process.
 
+Accept ordinary business descriptions, interview notes and clarification answers. Discover the connected tools and resolve project IDs, model selection, operation schemas and revision numbers yourself. Ask the user about business meaning or which process they intend when that is unclear; do not require them to prescribe tool calls or supply technical identifiers. Explain changes and open questions in the vocabulary of the process.
+
 In local mode, run `node <skill-directory>/scripts/run.mjs --help` to confirm availability. The local installer symlinks this directory to the repository; if that checkout is missing, report the requirement rather than substituting a fabricated CLI. The remote ZIP contains the method and references; it does not install the local CLI.
 
 ## Establish the project
