@@ -1,10 +1,10 @@
 # Shared projects and agent connections
 
-The product is Senda, live at `https://senda.hanifcarroll.com` on Cloudflare Workers. See [Cloudflare resources, deployment and runtime verification](cloudflare.md). Set `PRODUCT_NAME` for the server and `VITE_PRODUCT_NAME` when building the web app. Existing `process-scribe` CLI, skill and repository identifiers remain compatible.
+The product is Senda, live at `https://senda.hanifcarroll.com` on Cloudflare Workers. See [Cloudflare resources, deployment and runtime verification](cloudflare.md). The repository is [HanifCarroll/Senda](https://github.com/HanifCarroll/Senda). The `process-scribe` CLI, skill, data-directory names and existing project databases retain their identifiers for compatibility.
 
-## Run the complete application
+## Local development
 
-Use Node 24. `npm ci`, `npm run build`, then `npm run serve` runs the public homepage, example, account screens, private project app, HTTP API and MCP endpoint. `APP_URL` must be the exact public origin without a trailing slash. Local development defaults to `http://127.0.0.1:3000`. Set `PORT` and `APP_URL` together to use another port. `npm run dev:hosted` enables the same API in Vite development.
+Use Node 24. `npm ci`, `npm run build`, then `npm run serve` runs the public homepage, example, account screens, private project app, HTTP API and MCP endpoint. Local development defaults to `http://127.0.0.1:3000`. `APP_URL` must match the loopback origin without a trailing slash. Set `PORT` and `APP_URL` together to use another port. `npm run dev:hosted` enables the same API in Vite development.
 
 `PROCESS_SCRIBE_DATA` defaults to `.process-scribe/hosted`. It contains the account database, project catalog and one ordinary Senda project database per opaque UUID. Do not put it in a publicly served directory. The service reuses `Project` for all source/model mutations and the improved `diagramViews` pipeline for review and export. The local CLI, local review mode and offline bundles retain their existing behavior. Local export-file server functions are disabled in hosted mode: private local files are never made available as a public example.
 
@@ -44,12 +44,12 @@ On an active private project, the app detects the draft `document.modelContext.r
 
 No polyfill claims WebMCP support. Unsupported browsers keep the regular app and remote MCP flow. Native registration, discovery, revision writes and visible updates were verified in Chrome 156 with WebMCP enabled, including the official DevTools MCP agent bridge. See [browser setup and verification](browser-setup.md). Contract mocks alone do not establish native compatibility.
 
-## Production and alternative Node deployment
+## Production on Cloudflare
 
 Production uses Workers, D1, private R2 and Email Service at the chosen HTTPS subdomain. Follow [Cloudflare deployment](cloudflare.md) for resources, migrations, secrets, build and live checks. Retain the signing secret and both storage resources between releases. Local databases and interview projects are not uploaded automatically.
 
-The Dockerfile and Compose/Caddy configuration remain an alternative for a single Node service with durable storage, including clients requiring the official CIMD transport. Set the exact `APP_URL`, keep a unique `BETTER_AUTH_SECRET` outside Git, and preserve `/data`. This alternative does not configure account email; add and verify a mail transport before claiming verification or recovery. Back up a local database with a coordinated SQLite backup or a stopped service; copying a live main file can miss its WAL.
+Cloudflare is the production deployment target. The local Node adapter supports development, CLI projects and exported review bundles; it has no production email transport. Container and reverse-proxy deployment files have been removed.
 
-For either deployment, verify accounts, two-user isolation, OAuth consent, revisions, revocation, examples and BPMN downloads through the actual HTTPS hostname. Local tests alone do not establish a deployed connection. Commercial MCP clients still need individual connection tests.
+Verify accounts, two-user isolation, OAuth consent, revisions, revocation, examples and BPMN downloads through the actual HTTPS hostname. Local tests alone do not establish a deployed connection. Commercial MCP clients still need individual connection tests.
 
 Primary implementation references: [Better Auth MCP](https://www.better-auth.com/docs/plugins/mcp), [OAuth provider](https://www.better-auth.com/docs/plugins/oauth-provider), [MCP HTTP serving](https://ts.sdk.modelcontextprotocol.io/v2/serving/http), [remote connections](https://modelcontextprotocol.io/docs/develop/connect-remote-servers), [Chrome WebMCP](https://developer.chrome.com/docs/ai/webmcp), and [WebMCP draft](https://webmachinelearning.github.io/webmcp/).

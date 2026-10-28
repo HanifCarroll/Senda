@@ -1,8 +1,10 @@
 <h1><img src="public/brand/logo.svg" alt="Senda" width="210"></h1>
 
-Turn a discovery conversation into a BPMN model whose activities, decisions and sequence can be traced back to evidence.
+Turn process interviews into clear BPMN diagrams. Clarify decisions, trace each step to its source, and keep revising the process with your agent.
 
-Senda combines a reusable agent skill, a local CLI, a JavaScript library and a TanStack Start app with private shared projects and authenticated agent connections. The agent conducts discovery and interprets the source material. The application stores evidence and revisions, applies BPMN edits through [Miragon bpmn-cli](https://github.com/Miragon/bpmn-cli), and produces the review and portable diagram. It does not make its own LLM calls or require a model-provider API key. The `process-scribe` CLI, skill and repository identifiers remain compatible.
+Explore the current process, plan a separate future version, and compare saved revisions. Senda keeps the diagram, source material and clarification answers together in a private project.
+
+The project includes a TanStack Start app, an agent skill, a local CLI and a JavaScript library. Your agent interprets the conversation; Senda stores the evidence and revisions, applies BPMN edits through [Miragon bpmn-cli](https://github.com/Miragon/bpmn-cli), and exports portable diagrams. The CLI and skill use the `process-scribe` command.
 
 The discovery method follows Chapter 5 of *Fundamentals of Business Process Management*, second edition: boundaries → activities and events → resources and handoffs → control flow → relevant additional detail, with iteration and review throughout. Chapters 1–4 inform interview preparation, abstraction and modeling patterns. [Read the methodology summary](skills/process-scribe/references/methodology.md).
 

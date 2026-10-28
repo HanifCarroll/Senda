@@ -1,8 +1,8 @@
 import { BpmnModdle } from 'bpmn-moddle';
-import { newXml, applyToXml, parseOps, layoutXml, validateXml, renderSvg, metricsXml, viewXml, OPS_SCHEMA } from '@miragon/bpmn-cli';
+import { newXml, applyToXml, parseOps, layoutXml, validateXml, metricsXml, OPS_SCHEMA } from '@miragon/bpmn-cli';
 import { requireThat } from './errors.js';
 
-export { OPS_SCHEMA, validateXml, metricsXml, viewXml };
+export { OPS_SCHEMA, validateXml, metricsXml };
 export const BUSINESS_TYPES = new Set(['Task','UserTask','ServiceTask','ManualTask','ScriptTask','SendTask','ReceiveTask','BusinessRuleTask','CallActivity','SubProcess','StartEvent','EndEvent','IntermediateCatchEvent','IntermediateThrowEvent','BoundaryEvent','ExclusiveGateway','ParallelGateway','InclusiveGateway','EventBasedGateway','ComplexGateway','Participant','Lane','SequenceFlow','MessageFlow','DataObjectReference','DataStoreReference']);
 export const typeOf = (el) => el.$type?.replace('bpmn:', '') || '';
 export function collect(definitions) {
@@ -41,20 +41,6 @@ export async function prepareImport(xml) {
   requireThat(check.ok, 'INVALID_MODEL', 'The imported model failed structural validation.', { errors: check.errors });
   if (!parsed.rootElement.diagrams?.length) return (await layoutXml(xml, { platform: 'none' })).xml;
   return xml;
-}
-export async function diagramSvg(xml) {
-  const r = await renderSvg(xml);
-  return r.images?.[0]?.svg || r.svg || null;
-}
-export async function diagramSvgs(xml) {
-  const elements = (await parseModel(xml)).elements;
-  if (!elements.some(e => e.$instanceOf?.('bpmn:FlowNode'))) return [];
-  const first = await renderSvg(xml);
-  const rest = await Promise.all((first.planes || []).map(plane => renderSvg(xml, { plane })));
-  return [first, ...rest].filter(r => r.svg).map((r, index) => ({
-    elementId: r.plane, title: elements.find(e => e.id === r.plane)?.name || (index ? `Process detail ${index}` : 'Process overview'),
-    file: index ? `diagram-${index + 1}.svg` : 'diagram.svg', svg: r.svg, notes: r.notes || [],
-  }));
 }
 function signature(e) {
   function plain(node) {

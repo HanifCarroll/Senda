@@ -1,7 +1,7 @@
 {
-  "name": "process-scribe",
+  "name": "senda",
   "version": "0.3.0",
-  "description": "Evidence-backed process discovery with an agent skill and Miragon BPMN editing",
+  "description": "Turn process interviews into clear BPMN diagrams and revise current and future processes with your agent",
   "private": true,
   "type": "module",
   "license": "MIT",

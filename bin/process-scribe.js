@@ -9,7 +9,8 @@ const integer = value => {
   return Number(value);
 };
 const print = result => process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-const program = new Command().name('process-scribe').description('Evidence-backed BPMN discovery').version('0.2.0')
+const { version } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+const program = new Command().name('process-scribe').description('Create and revise BPMN diagrams with your agent').version(version)
   .option('-p, --project <directory>', 'Directory containing the process project', '.process-scribe');
 program.exitOverride();
 program.configureOutput({ writeErr: () => {} });

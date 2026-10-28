@@ -1,6 +1,6 @@
 # Architecture and backend choice
 
-The host agent performs discovery using the skill. It submits structured proposals through the CLI. The service validates evidence references and uses Miragon to apply BPMN operations in memory. It checks the candidate, then appends one snapshot containing both the BPMN XML and the discovery records. `ProjectCore` is shared by local SQLite and Cloudflare D1/R2 storage adapters. Exports are derived from a saved revision.
+The host agent performs discovery using the skill. It submits structured proposals through the CLI or connected project tools. The service validates evidence references and uses Miragon to apply BPMN operations in memory. It checks the candidate, then appends one snapshot containing both the BPMN XML and the discovery records. `ProjectCore` is shared by local SQLite and Cloudflare D1/R2 storage adapters. Exports are derived from a saved revision.
 
 ```text
 Interview / documents / clarification answers
@@ -9,11 +9,11 @@ Interview / documents / clarification answers
                    |
         Proposal (claims + BPMN edits)
                    |
-         CLI / JavaScript Project API
+    CLI / JavaScript API / HTTP / MCP / WebMCP
                    |
     Evidence checks + Miragon + quality checks
                    |
-      Atomic SQLite revision / human reviews
+    Atomic SQLite or D1/R2 revision / human reviews
                    |
         HTML + BPMN + SVG + JSON bundle
 ```
@@ -40,7 +40,7 @@ Answer and correction dialogs prepare editable requests for manual clipboard tra
 
 Local snapshot mode runs on loopback and reads exported revisions. New CLI revisions must be exported and selected in that library. The page-header BPMN download uses fresh portable DI; the view download dialog offers SVG and standalone BPMN. The offline bundle remains a portable fallback with its own content security policy. Hosted account projects use the authorized service described below and do not expose the local filesystem library.
 
-The app uses a fixed Neutral semantic palette defined in its stylesheet. It does not read previous browser theme preferences or encode process meaning in color. Component sources are checked in under `web/components/ui`; `components.json` declares the Radix Nova style and utility aliases.
+The app uses the fixed Ink + Teal brand palette through semantic tokens in its stylesheet. It does not read previous browser theme preferences or encode process meaning in color. Component sources are checked in under `web/components/ui`; `components.json` declares the Radix Nova style and utility aliases.
 
 ## Why Miragon here
 
@@ -75,7 +75,7 @@ Metadata is stored beside the BPMN, not embedded into arbitrary BPMN extensions.
 
 ## Hosted account projects and agent adapters
 
-`server/` provides one shared authenticated request handler. The Node adapter wraps local `Project` databases; the Cloudflare adapter wraps the same `ProjectCore` using D1 metadata and private R2 snapshots. Better Auth supplies accounts, sessions and resource-bound OAuth; a durable catalog maps opaque IDs to private local project databases. The HTTP API, official SDK MCP endpoint and progressive active-project WebMCP tools all use that service. Expected revisions, source/reference validation and atomic saves remain in the existing core. Agent tools cannot record human approval. The app persists uploads and clarification answers, offers saved revisions and detects agent updates without requiring a new manual export. Local file-server functions are disabled on the hosted deployment. The public example is a separate generated synthetic fixture.
+`server/` provides one shared authenticated request handler. `ProjectModels` owns the common source limits, atomic proposal submission and model-reading operations. Each storage adapter implements `withProject` to authorize the actor and manage the project lifetime; Cloudflare also loads the requested historical snapshot before shared reads. Catalog queries, grants, To-be creation transactions and storage-specific review preloading stay in their adapters. The Node adapter wraps local `Project` databases; the Cloudflare adapter wraps the same `ProjectCore` using D1 metadata and private R2 snapshots. Better Auth supplies accounts, sessions and resource-bound OAuth; a durable catalog maps opaque IDs to private local project databases. The HTTP API, official SDK MCP endpoint and progressive active-project WebMCP tools all use that service. Expected revisions, source/reference validation and atomic saves remain in the existing core. Agent tools cannot record human approval. The app persists uploads and clarification answers, offers saved revisions and detects agent updates without requiring a new manual export. Local file-server functions are disabled on the hosted deployment. The public example is a separate generated synthetic fixture.
 
 A private project has an As-is model and an optional To-be model with separate snapshot histories. Node stores them in separate `Project` databases; Cloudflare stores revision metadata in D1 and immutable snapshot content in private R2. The catalog pins the To-be model to a specific As-is revision and content digest. Creation copies validated BPMN as an unconfirmed baseline plus a design brief; claims, walkthroughs, scenarios, questions and reviews remain separate. Each model owns its history and expected revision. Renderer and camera keys include the model so identical BPMN IDs and revision numbers cannot mix views. Remote tools require a model argument; native browser tools bind to the active UI model and reject an override. Later As-is revisions never silently rebase a plan. See the [planning method](../skills/process-scribe/references/planning.md).
 

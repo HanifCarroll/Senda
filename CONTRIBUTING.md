@@ -9,3 +9,5 @@ Use stable BPMN IDs and preserve the atomic relationship between XML and evidenc
 The skill lives at `skills/process-scribe/SKILL.md`. Its methodology reference is the canonical original summary of the textbook approach. If application behavior and the skill diverge, update both and demonstrate the affected user workflow.
 
 No generated reports, dependencies or benchmark environments belong in the repository. GitHub Actions runs the same checks and the synthetic demo on Linux. A remote passing run does not replace human review of a real process model.
+
+Production runs on Cloudflare Workers, D1 and private R2. See [deployment and runtime checks](docs/cloudflare.md). The Node server is for local development and review exports. Shared HTTP/account operations live in `server/`; model-level reads and writes belong in `server/project-models.js`, with authorization and persistence in the Node and Cloudflare adapters. Keep the CLI and offline bundle functional when changing the hosted app.

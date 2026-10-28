@@ -1,6 +1,6 @@
 # Public page and screenshot provenance
 
-The public Senda page uses the shared Ink + Teal identity over a neutral shadcn foundation, with sans-serif interface text and an outlined serif wordmark. Its sequence is an outcome-led heading, a real evidence-view screenshot, a transcript gap becoming a clarification, a revised process, three practical benefits, an own-agent workflow, factual FAQs and a working project CTA. See [brand assets and color roles](branding.md).
+The public Senda page uses the shared Ink + Teal identity over a neutral shadcn foundation, with sans-serif interface text and an outlined serif wordmark. Its sequence is an outcome-led heading and evidence preview, the transcript-to-As-is-to-To-be workflow, a concrete clarification, a revised process and its benefits, agent connection, FAQs and a project CTA. Copy and layout were reviewed with Opus 5.5 through the local Claude Code CLI, then checked against the implemented workflow. See [brand assets and color roles](branding.md).
 
 Live references were inspected and visually captured on 27 October 2026:
 

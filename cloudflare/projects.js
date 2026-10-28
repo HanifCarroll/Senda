@@ -1,7 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { z } from "zod";
-import { ProjectCore, initialSnapshot, schema } from "../src/project-core.js";
-import { SourceInput, Proposal } from "../src/schema.js";
+import { ProjectCore, initialSnapshot } from "../src/project-core.js";
 import { contentHash } from "../src/hash.js";
 import { parseModel } from "../src/model.js";
 import { requireThat, ScribeError } from "../src/errors.js";
@@ -9,9 +7,12 @@ import { UUID, ModelKind, Create, Plan } from "../server/contracts.js";
 import { renderReview } from "../server/review.js";
 import { CloudStore, prepareSnapshot } from "./store.js";
 
-export class CloudProjects {
+import { ProjectModels } from "../server/project-models.js";
+
+export class CloudProjects extends ProjectModels {
   revokesAuthTokens = true;
   constructor(db, bucket) {
+    super();
     Object.assign(this, { db, bucket });
   }
   async authorize(actor, id) {
@@ -56,15 +57,6 @@ export class CloudProjects {
         )
         .all()
     ).results;
-  }
-  checkSources(sources) {
-    requireThat(
-      sources.length <= 40 &&
-        sources.reduce((n, s) => n + Buffer.byteLength(s.text || ""), 0) <=
-          1_000_000,
-      "LIMIT",
-      "Keep each model below 40 sources and 1 MB of source text.",
-    );
   }
   async create(actor, input) {
     const data = Create.parse(input);
@@ -253,53 +245,13 @@ export class CloudProjects {
     requireThat(row?.revision, "NOT_FOUND", "This model is not available.");
     return { id, model, revision: row.revision };
   }
-  async read(actor, id, revision, model = "as-is") {
-    const p = await this.open(actor, id, model, revision);
-    return {
-      ...(await p.inspect(revision)),
-      modelKind: model,
-      history: p.history(),
-      schema: schema(),
-    };
-  }
-  async sources(actor, id, model = "as-is") {
-    return (await this.open(actor, id, model)).read().discovery.sources;
-  }
-  async questions(actor, id, model = "as-is") {
-    const s = (await this.open(actor, id, model)).read();
-    return { revision: s.revision, questions: s.discovery.questions };
-  }
-  async checks(actor, id, model = "as-is") {
-    return (await this.open(actor, id, model)).validate();
-  }
-  async apply(actor, id, input, model = "as-is") {
-    const proposal = Proposal.parse(input);
-    requireThat(
-      proposal.operations.length <= 500,
-      "LIMIT",
-      "Submit at most 500 model operations per revision.",
-    );
-    const p = await this.open(actor, id, model);
-    this.checkSources([...p.read().discovery.sources, ...proposal.sources]);
-    return p.apply(proposal);
-  }
-  async addSource(actor, id, input, model = "as-is") {
-    const x = z
-      .strictObject({
-        expectedRevision: z.number().int().positive(),
-        source: SourceInput,
-      })
-      .parse(input);
-    return this.apply(
-      actor,
-      id,
-      {
-        expectedRevision: x.expectedRevision,
-        summary: `Add ${x.source.kind}: ${x.source.title}`,
-        sources: [x.source],
-      },
-      model,
-    );
+  async withProject(actor, id, work, model = "as-is", revision) {
+    const project = await this.open(actor, id, model, revision);
+    try {
+      return await work(project);
+    } finally {
+      project.close();
+    }
   }
   async review(actor, id, revision, model = "as-is") {
     const p = await this.open(actor, id, model, revision),

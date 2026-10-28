@@ -7,8 +7,6 @@ import { contentHash } from './store.js';
 import { reviewHtml } from './review-page.js';
 import { ScribeError } from './errors.js';
 
-export { reviewHtml } from './review-page.js';
-
 export async function exportBundle(project, output) {
   const snapshot = project.read();
   const destination = path.resolve(output || path.join(project.store.directory, 'exports', `revision-${snapshot.revision}`));

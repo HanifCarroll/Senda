@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, existsSync, closeSync, openSync } from 'node:fs';
 import path from 'node:path';
 import { hash } from './hash.js';
-export { hash, contentHash } from './hash.js';
+export { contentHash } from './hash.js';
 import { requireThat, ScribeError } from './errors.js';
 
 

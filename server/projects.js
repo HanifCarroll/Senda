@@ -3,19 +3,18 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { z } from "zod";
-import { Project, schema } from "../src/service.js";
+import { Project } from "../src/service.js";
 import { contentHash } from "../src/store.js";
 import { parseModel } from "../src/model.js";
-import { SourceInput, Proposal } from "../src/schema.js";
 import { ScribeError, requireThat } from "../src/errors.js";
 
 import { UUID, ModelKind, Plan, Create } from "./contracts.js";
-export { ModelKind } from "./contracts.js";
+import { ProjectModels } from "./project-models.js";
 
 /** All transports resolve an authenticated actor here before opening a project. */
-export class HostedProjects {
+export class HostedProjects extends ProjectModels {
   constructor(directory) {
+    super();
     this.directory = directory;
     this.db = new DatabaseSync(path.join(directory, "catalog.sqlite"));
     this.db.exec(`PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL;
@@ -213,53 +212,6 @@ export class HostedProjects {
       baselineRevision: baseline.revision,
     };
   }
-  checkSources(sources) {
-    requireThat(
-      sources.length <= 40 &&
-        sources.reduce((n, s) => n + Buffer.byteLength(s.text || ""), 0) <=
-          1_000_000,
-      "LIMIT",
-      "Keep each project below 40 sources and 1 MB of source text.",
-    );
-  }
-  async apply(actor, id, input, model = "as-is") {
-    const proposal = Proposal.parse(input);
-    requireThat(
-      proposal.operations.length <= 500,
-      "LIMIT",
-      "Submit at most 500 model operations per revision.",
-    );
-    return this.withProject(
-      actor,
-      id,
-      async (project) => {
-        this.checkSources([
-          ...project.read().discovery.sources,
-          ...proposal.sources,
-        ]);
-        return project.apply(proposal);
-      },
-      model,
-    );
-  }
-  async addSource(actor, id, input, model = "as-is") {
-    const data = z
-      .strictObject({
-        expectedRevision: z.number().int().positive(),
-        source: SourceInput,
-      })
-      .parse(input);
-    return this.apply(
-      actor,
-      id,
-      {
-        expectedRevision: data.expectedRevision,
-        summary: `Add ${data.source.kind}: ${data.source.title}`,
-        sources: [data.source],
-      },
-      model,
-    );
-  }
   async head(actor, id, model = "as-is") {
     return this.withProject(
       actor,
@@ -267,41 +219,6 @@ export class HostedProjects {
       (p) => ({ id, model, revision: p.read().revision }),
       model,
     );
-  }
-  async read(actor, id, revision, model = "as-is") {
-    return this.withProject(
-      actor,
-      id,
-      async (p) => ({
-        ...(await p.inspect(revision)),
-        modelKind: model,
-        history: p.history(),
-        schema: schema(),
-      }),
-      model,
-    );
-  }
-  async sources(actor, id, model = "as-is") {
-    return this.withProject(
-      actor,
-      id,
-      (p) => p.read().discovery.sources,
-      model,
-    );
-  }
-  async questions(actor, id, model = "as-is") {
-    return this.withProject(
-      actor,
-      id,
-      (p) => ({
-        revision: p.read().revision,
-        questions: p.read().discovery.questions,
-      }),
-      model,
-    );
-  }
-  async checks(actor, id, model = "as-is") {
-    return this.withProject(actor, id, (p) => p.validate(), model);
   }
   async review(actor, id, revision, model = "as-is") {
     return this.withProject(
