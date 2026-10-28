@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic supplier-invoice qualification process. No interview/source records. -->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_NorthstarStudioSupplierInvoiceHandling" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_Main" name="Northstar Studio — Supplier Invoice Handling" isExecutable="false">
+    <bpmn:startEvent id="Start_Invoice" name="Supplier invoice received">
+      <bpmn:outgoing>Flow_InvoiceToRegister</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_InvoiceToRegister" sourceRef="Start_Invoice" targetRef="Task_Register" />
+    <bpmn:task id="Task_Register" name="Register invoice">
+      <bpmn:incoming>Flow_InvoiceToRegister</bpmn:incoming>
+      <bpmn:outgoing>Flow_RegisterToCompleteness</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_RegisterToCompleteness" sourceRef="Task_Register" targetRef="Task_Completeness" />
+    <bpmn:task id="Task_Completeness" name="Check invoice details and duplicates">
+      <bpmn:incoming>Flow_RegisterToCompleteness</bpmn:incoming>
+      <bpmn:incoming>Flow_WaitCorrectionToCompleteness</bpmn:incoming>
+      <bpmn:outgoing>Flow_CompletenessToComplete</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_CompletenessToComplete" sourceRef="Task_Completeness" targetRef="Gate_Complete" />
+    <bpmn:exclusiveGateway id="Gate_Complete">
+      <bpmn:incoming>Flow_CompletenessToComplete</bpmn:incoming>
+      <bpmn:outgoing>Flow_CompleteToRequestCorrection</bpmn:outgoing>
+      <bpmn:outgoing>Flow_CompleteToDuplicate</bpmn:outgoing>
+      <bpmn:outgoing>Flow_CompleteToChecksFork</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_CompleteToRequestCorrection" name="Missing information" sourceRef="Gate_Complete" targetRef="Task_RequestCorrection" />
+    <bpmn:sequenceFlow id="Flow_CompleteToDuplicate" name="Duplicate" sourceRef="Gate_Complete" targetRef="Task_LinkDuplicate" />
+    <bpmn:sequenceFlow id="Flow_CompleteToChecksFork" name="Complete and not duplicate" sourceRef="Gate_Complete" targetRef="Gate_ChecksReentry" />
+    <bpmn:task id="Task_LinkDuplicate" name="Link to original invoice and close without payment">
+      <bpmn:incoming>Flow_CompleteToDuplicate</bpmn:incoming>
+      <bpmn:outgoing>Flow_LinkDuplicateToDuplicate</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_LinkDuplicateToDuplicate" sourceRef="Task_LinkDuplicate" targetRef="End_Duplicate" />
+    <bpmn:task id="Task_RequestCorrection" name="Request corrected invoice">
+      <bpmn:incoming>Flow_CompleteToRequestCorrection</bpmn:incoming>
+      <bpmn:outgoing>Flow_RequestCorrectionToWaitCorrection</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_RequestCorrectionToWaitCorrection" sourceRef="Task_RequestCorrection" targetRef="Task_WaitCorrection" />
+    <bpmn:task id="Task_WaitCorrection" name="Await corrected invoice">
+      <bpmn:incoming>Flow_RequestCorrectionToWaitCorrection</bpmn:incoming>
+      <bpmn:outgoing>Flow_WaitCorrectionToCompleteness</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:boundaryEvent id="Timer_Supplier3Days" name="3 calendar days after information request" cancelActivity="false" attachedToRef="Task_WaitCorrection">
+      <bpmn:outgoing>Flow_Supplier3DaysToSupplierReminder</bpmn:outgoing>
+      <bpmn:timerEventDefinition>
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P3D</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Timer_Supplier10Days" name="10 calendar days after information request" attachedToRef="Task_WaitCorrection">
+      <bpmn:outgoing>Flow_Supplier10DaysToSupplierReject</bpmn:outgoing>
+      <bpmn:timerEventDefinition>
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P10D</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_Supplier10DaysToSupplierReject" sourceRef="Timer_Supplier10Days" targetRef="Task_SupplierReject" />
+    <bpmn:sequenceFlow id="Flow_Supplier3DaysToSupplierReminder" sourceRef="Timer_Supplier3Days" targetRef="Task_SupplierReminder" />
+    <bpmn:sequenceFlow id="Flow_WaitCorrectionToCompleteness" name="Corrected invoice received" sourceRef="Task_WaitCorrection" targetRef="Task_Completeness" />
+    <bpmn:exclusiveGateway id="Gate_Issues">
+      <bpmn:incoming>Flow_ChecksJoinToIssues</bpmn:incoming>
+      <bpmn:outgoing>Flow_IssuesToResolve</bpmn:outgoing>
+      <bpmn:outgoing>Flow_IssuesToAmount</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_IssuesToResolve" name="Mismatch, missing or damaged goods" sourceRef="Gate_Issues" targetRef="Task_Resolve" />
+    <bpmn:sequenceFlow id="Flow_IssuesToAmount" name="Checks satisfied" sourceRef="Gate_Issues" targetRef="Gate_Amount" />
+    <bpmn:task id="Task_Resolve" name="Procurement resolves invoice or delivery issue">
+      <bpmn:incoming>Flow_IssuesToResolve</bpmn:incoming>
+      <bpmn:outgoing>Flow_ResolveToResolved</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_ResolveToResolved" sourceRef="Task_Resolve" targetRef="Gate_Resolved" />
+    <bpmn:exclusiveGateway id="Gate_Resolved">
+      <bpmn:incoming>Flow_ResolveToResolved</bpmn:incoming>
+      <bpmn:outgoing>Flow_ResolvedToRejected</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ResolvedToChecksFork</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_ResolvedToRejected" name="Invoice rejected" sourceRef="Gate_Resolved" targetRef="End_Rejected" />
+    <bpmn:sequenceFlow id="Flow_ResolvedToChecksFork" name="Issue corrected or replacement received" sourceRef="Gate_Resolved" targetRef="Gate_ChecksReentry" />
+    <bpmn:endEvent id="End_Rejected" name="Invoice rejected">
+      <bpmn:incoming>Flow_ResolvedToRejected</bpmn:incoming>
+      <bpmn:terminateEventDefinition />
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="Gate_Amount">
+      <bpmn:incoming>Flow_IssuesToAmount</bpmn:incoming>
+      <bpmn:outgoing>Flow_AmountToManager</bpmn:outgoing>
+      <bpmn:outgoing>Flow_AmountToAPLead</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_AmountToManager" name="Gross invoice total above £5,000" sourceRef="Gate_Amount" targetRef="Task_Manager" />
+    <bpmn:sequenceFlow id="Flow_AmountToAPLead" name="Gross invoice total £5,000 or below" sourceRef="Gate_Amount" targetRef="Task_APLead" />
+    <bpmn:task id="Task_Manager" name="Finance manager reviews invoice">
+      <bpmn:incoming>Flow_AmountToManager</bpmn:incoming>
+      <bpmn:outgoing>Flow_ManagerToApproval</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_ManagerToApproval" sourceRef="Task_Manager" targetRef="Gate_Approval" />
+    <bpmn:task id="Task_APLead" name="AP lead reviews invoice">
+      <bpmn:incoming>Flow_AmountToAPLead</bpmn:incoming>
+      <bpmn:outgoing>Flow_APLeadToApproval</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_APLeadToApproval" sourceRef="Task_APLead" targetRef="Gate_Approval" />
+    <bpmn:exclusiveGateway id="Gate_Approval">
+      <bpmn:incoming>Flow_ManagerToApproval</bpmn:incoming>
+      <bpmn:incoming>Flow_APLeadToApproval</bpmn:incoming>
+      <bpmn:outgoing>Flow_ApprovalToQuery</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ApprovalToRefused</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ApprovalToSchedule</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_ApprovalToQuery" name="Queried" sourceRef="Gate_Approval" targetRef="Task_Query" />
+    <bpmn:sequenceFlow id="Flow_ApprovalToRefused" name="Refused" sourceRef="Gate_Approval" targetRef="Task_NotifyRefusal" />
+    <bpmn:sequenceFlow id="Flow_ApprovalToSchedule" name="Approved" sourceRef="Gate_Approval" targetRef="Task_Schedule" />
+    <bpmn:task id="Task_NotifyRefusal" name="Notify supplier and close rejected invoice">
+      <bpmn:incoming>Flow_ApprovalToRefused</bpmn:incoming>
+      <bpmn:outgoing>Flow_NotifyRefusalToRefused</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_NotifyRefusalToRefused" sourceRef="Task_NotifyRefusal" targetRef="End_Refused" />
+    <bpmn:task id="Task_Query" name="AP investigates with Procurement or requester">
+      <bpmn:incoming>Flow_ApprovalToQuery</bpmn:incoming>
+      <bpmn:outgoing>Flow_QueryToChecksReentry</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_QueryToChecksReentry" name="Correction or replacement received; repeat both checks" sourceRef="Task_Query" targetRef="Gate_ChecksReentry" />
+    <bpmn:endEvent id="End_Refused" name="Invoice rejected and case ended">
+      <bpmn:incoming>Flow_NotifyRefusalToRefused</bpmn:incoming>
+      <bpmn:terminateEventDefinition />
+    </bpmn:endEvent>
+    <bpmn:task id="Task_Schedule" name="Include in Tuesday or Friday payment run">
+      <bpmn:incoming>Flow_ApprovalToSchedule</bpmn:incoming>
+      <bpmn:incoming>Flow_FailedResolutionToSchedule</bpmn:incoming>
+      <bpmn:outgoing>Flow_ScheduleToWaitBank</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_ScheduleToWaitBank" sourceRef="Task_Schedule" targetRef="Task_WaitBank" />
+    <bpmn:task id="Task_WaitBank" name="Await bank payment confirmation">
+      <bpmn:incoming>Flow_ScheduleToWaitBank</bpmn:incoming>
+      <bpmn:outgoing>Flow_WaitBankToPayment</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_WaitBankToPayment" sourceRef="Task_WaitBank" targetRef="Gate_Payment" />
+    <bpmn:exclusiveGateway id="Gate_Payment">
+      <bpmn:incoming>Flow_WaitBankToPayment</bpmn:incoming>
+      <bpmn:outgoing>Flow_PaymentToFailure</bpmn:outgoing>
+      <bpmn:outgoing>Flow_PaymentToRemittance</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_PaymentToFailure" name="Payment failed" sourceRef="Gate_Payment" targetRef="Task_Failure" />
+    <bpmn:sequenceFlow id="Flow_PaymentToRemittance" name="Payment successful" sourceRef="Gate_Payment" targetRef="Task_Remittance" />
+    <bpmn:task id="Task_Failure" name="AP investigates failed payment">
+      <bpmn:incoming>Flow_PaymentToFailure</bpmn:incoming>
+      <bpmn:outgoing>Flow_FailureToSchedule</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_FailureToSchedule" name="Problem fixed; resubmit" sourceRef="Task_Failure" targetRef="Gate_FailedResolution" />
+    <bpmn:exclusiveGateway id="Gate_FailedResolution">
+      <bpmn:incoming>Flow_FailureToSchedule</bpmn:incoming>
+      <bpmn:outgoing>Flow_FailedResolutionToSchedule</bpmn:outgoing>
+      <bpmn:outgoing>Flow_FailedResolutionToManagerUnpaid</bpmn:outgoing>
+      <bpmn:outgoing>Flow_FailedResolutionToChecksReentry</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_FailedResolutionToSchedule" name="Bank details fixed; no reapproval" sourceRef="Gate_FailedResolution" targetRef="Task_Schedule" />
+    <bpmn:sequenceFlow id="Flow_FailedResolutionToManagerUnpaid" name="Cannot fix payment" sourceRef="Gate_FailedResolution" targetRef="Task_ManagerUnpaid" />
+    <bpmn:sequenceFlow id="Flow_FailedResolutionToChecksReentry" name="Payment amount changed; repeat both checks" sourceRef="Gate_FailedResolution" targetRef="Gate_ChecksReentry" />
+    <bpmn:task id="Task_Remittance" name="Email supplier remittance advice">
+      <bpmn:incoming>Flow_PaymentToRemittance</bpmn:incoming>
+      <bpmn:outgoing>Flow_RemittanceToClose</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_RemittanceToClose" sourceRef="Task_Remittance" targetRef="Task_Close" />
+    <bpmn:task id="Task_Close" name="Close invoice record">
+      <bpmn:incoming>Flow_RemittanceToClose</bpmn:incoming>
+      <bpmn:outgoing>Flow_CloseToPaid</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_CloseToPaid" sourceRef="Task_Close" targetRef="End_Paid" />
+    <bpmn:endEvent id="End_Paid" name="Invoice paid and closed">
+      <bpmn:incoming>Flow_CloseToPaid</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Duplicate" name="Already logged invoice">
+      <bpmn:incoming>Flow_LinkDuplicateToDuplicate</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:parallelGateway id="Gate_ChecksFork">
+      <bpmn:incoming>Flow_ChecksReentryToChecksFork</bpmn:incoming>
+      <bpmn:outgoing>Flow_ChecksForkToPOCheck</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ChecksForkToDeliveryCheck</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_ChecksForkToPOCheck" sourceRef="Gate_ChecksFork" targetRef="Task_POCheck" />
+    <bpmn:sequenceFlow id="Flow_ChecksForkToDeliveryCheck" sourceRef="Gate_ChecksFork" targetRef="Task_DeliveryCheck" />
+    <bpmn:task id="Task_POCheck" name="Compare invoice with purchase order">
+      <bpmn:incoming>Flow_ChecksForkToPOCheck</bpmn:incoming>
+      <bpmn:outgoing>Flow_POCheckToChecksJoin</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_POCheckToChecksJoin" sourceRef="Task_POCheck" targetRef="Gate_ChecksJoin" />
+    <bpmn:task id="Task_DeliveryCheck" name="Obtain delivery confirmation from requester">
+      <bpmn:incoming>Flow_ChecksForkToDeliveryCheck</bpmn:incoming>
+      <bpmn:outgoing>Flow_DeliveryCheckToChecksJoin</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:boundaryEvent id="Timer_Delivery2Days" name="2 calendar days after first delivery request" cancelActivity="false" attachedToRef="Task_DeliveryCheck">
+      <bpmn:outgoing>Flow_Delivery2DaysToRemindRequester</bpmn:outgoing>
+      <bpmn:timerEventDefinition>
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P2D</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Timer_Delivery7Days" name="7 calendar days after first delivery request" cancelActivity="false" attachedToRef="Task_DeliveryCheck">
+      <bpmn:outgoing>Flow_Delivery7DaysToEscalateDelivery</bpmn:outgoing>
+      <bpmn:timerEventDefinition>
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P7D</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_Delivery7DaysToEscalateDelivery" sourceRef="Timer_Delivery7Days" targetRef="Task_EscalateDelivery" />
+    <bpmn:sequenceFlow id="Flow_Delivery2DaysToRemindRequester" sourceRef="Timer_Delivery2Days" targetRef="Task_RemindRequester" />
+    <bpmn:sequenceFlow id="Flow_DeliveryCheckToChecksJoin" sourceRef="Task_DeliveryCheck" targetRef="Gate_ChecksJoin" />
+    <bpmn:parallelGateway id="Gate_ChecksJoin">
+      <bpmn:incoming>Flow_POCheckToChecksJoin</bpmn:incoming>
+      <bpmn:incoming>Flow_DeliveryCheckToChecksJoin</bpmn:incoming>
+      <bpmn:outgoing>Flow_ChecksJoinToIssues</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_ChecksJoinToIssues" sourceRef="Gate_ChecksJoin" targetRef="Gate_Issues" />
+    <bpmn:exclusiveGateway id="Gate_ChecksReentry">
+      <bpmn:incoming>Flow_CompleteToChecksFork</bpmn:incoming>
+      <bpmn:incoming>Flow_ResolvedToChecksFork</bpmn:incoming>
+      <bpmn:incoming>Flow_QueryToChecksReentry</bpmn:incoming>
+      <bpmn:incoming>Flow_FailedResolutionToChecksReentry</bpmn:incoming>
+      <bpmn:outgoing>Flow_ChecksReentryToChecksFork</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_ChecksReentryToChecksFork" sourceRef="Gate_ChecksReentry" targetRef="Gate_ChecksFork" />
+    <bpmn:task id="Task_SupplierReminder" name="AP reminds supplier">
+      <bpmn:incoming>Flow_Supplier3DaysToSupplierReminder</bpmn:incoming>
+      <bpmn:outgoing>Flow_SupplierReminderToSupplierReminderBranch</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="End_SupplierReminderBranch" name="Reminder sent; continue waiting">
+      <bpmn:incoming>Flow_SupplierReminderToSupplierReminderBranch</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_SupplierReminderToSupplierReminderBranch" sourceRef="Task_SupplierReminder" targetRef="End_SupplierReminderBranch" />
+    <bpmn:task id="Task_SupplierReject" name="AP lead rejects, notifies supplier and closes case">
+      <bpmn:incoming>Flow_Supplier10DaysToSupplierReject</bpmn:incoming>
+      <bpmn:outgoing>Flow_SupplierRejectToSupplierTimeout</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_SupplierRejectToSupplierTimeout" sourceRef="Task_SupplierReject" targetRef="End_SupplierTimeout" />
+    <bpmn:endEvent id="End_SupplierTimeout" name="Invoice rejected; case ended">
+      <bpmn:incoming>Flow_SupplierRejectToSupplierTimeout</bpmn:incoming>
+      <bpmn:terminateEventDefinition />
+    </bpmn:endEvent>
+    <bpmn:task id="Task_RemindRequester" name="Remind requester to confirm delivery">
+      <bpmn:incoming>Flow_Delivery2DaysToRemindRequester</bpmn:incoming>
+      <bpmn:outgoing>Flow_RemindRequesterToDeliveryReminderBranch</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="End_DeliveryReminderBranch" name="Reminder sent; continue waiting">
+      <bpmn:incoming>Flow_RemindRequesterToDeliveryReminderBranch</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_RemindRequesterToDeliveryReminderBranch" sourceRef="Task_RemindRequester" targetRef="End_DeliveryReminderBranch" />
+    <bpmn:task id="Task_EscalateDelivery" name="Involve Procurement; keep invoice on hold">
+      <bpmn:incoming>Flow_Delivery7DaysToEscalateDelivery</bpmn:incoming>
+      <bpmn:outgoing>Flow_EscalateDeliveryToDeliveryEscalationBranch</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="End_DeliveryEscalationBranch" name="Procurement involved; delivery confirmation still pending">
+      <bpmn:incoming>Flow_EscalateDeliveryToDeliveryEscalationBranch</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_EscalateDeliveryToDeliveryEscalationBranch" sourceRef="Task_EscalateDelivery" targetRef="End_DeliveryEscalationBranch" />
+    <bpmn:task id="Task_ManagerUnpaid" name="Finance manager closes invoice unpaid and notifies supplier">
+      <bpmn:incoming>Flow_FailedResolutionToManagerUnpaid</bpmn:incoming>
+      <bpmn:outgoing>Flow_ManagerUnpaidToUnpaid</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_ManagerUnpaidToUnpaid" sourceRef="Task_ManagerUnpaid" targetRef="End_Unpaid" />
+    <bpmn:endEvent id="End_Unpaid" name="Closed unpaid; case ended">
+      <bpmn:incoming>Flow_ManagerUnpaidToUnpaid</bpmn:incoming>
+      <bpmn:terminateEventDefinition />
+    </bpmn:endEvent>
+  </bpmn:process>
+  </bpmn:definitions>

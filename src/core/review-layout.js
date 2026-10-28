@@ -49,6 +49,7 @@ function portNormal(point, shape) {
   return null;
 }
 const dot = (a,b,n) => (b.x-a.x)*n.x+(b.y-a.y)*n.y;
+const searchBudget = elements => ({ remaining: elements.filter(e=>['bpmn:SequenceFlow','bpmn:MessageFlow'].includes(e.$type)).length > 25 ? 100000 : 500000 });
 
 // Extra presentation checks complement the library's DI metrics. Distances are
 // conservative app heuristics in model pixels, not BPMN validity constraints.
@@ -98,7 +99,8 @@ class Queue {
  * stay fixed. Obstacle avoidance and a strong crossing penalty favor free
  * gutters; the existing drawing is retained unless measured quality improves.
  */
-function route(edge, shapes, edges) {
+function route(edge, shapes, edges, budget) {
+  if (budget.remaining <= 0) return null;
   const start = edge.waypoint[0], end = edge.waypoint.at(-1);
   const from=portNormal(start,shapes.find(s=>s.bpmnElement?.id===edge.bpmnElement.sourceRef?.id)), to=portNormal(end,shapes.find(s=>s.bpmnElement?.id===edge.bpmnElement.targetRef?.id));
   const stubs=[...(from?[{x:start.x+from.x*16,y:start.y+from.y*16}]:[]),...(to?[{x:end.x+to.x*16,y:end.y+to.y*16}]:[])];
@@ -125,9 +127,13 @@ function route(edge, shapes, edges) {
   const index = (x,y,dir) => (y*width+x)*2+dir;
   const queue = new Queue(), distances = new Map(), previous = new Map();
   for (const dir of [0,1]) { const x=xs.indexOf(start.x), y=ys.indexOf(start.y), key=index(x,y,dir); queue.push({x,y,dir,key,cost:0}); distances.set(key,0); }
-  let finish;
+  let finish, visited = 0;
+  const blockers = [...obstacles, ...labels];
   while (queue.items.length) {
     const current=queue.pop(); if (current.cost !== distances.get(current.key)) continue;
+    // Presentation is optional; a dense routing grid must never make a saved
+    // model impossible to open or export. Keep the valid baseline on exhaustion.
+    if (++visited > 60000 || --budget.remaining < 0) return null;
     if (xs[current.x]===end.x && ys[current.y]===end.y) { finish=current.key; break; }
     for (const [dx,dy,dir] of [[1,0,0],[-1,0,0],[0,1,1],[0,-1,1]]) {
       const x=current.x+dx, y=current.y+dy;
@@ -135,7 +141,7 @@ function route(edge, shapes, edges) {
       const a={x:xs[current.x],y:ys[current.y]}, b={x:xs[x],y:ys[y]};
       if(from && a.x===start.x && a.y===start.y && dot(a,b,from)<=0) continue;
       if(to && b.x===end.x && b.y===end.y && dot(a,b,to)>=0) continue;
-      if ([...obstacles,...labels].some(box => through(a,b,box))) continue;
+      if (blockers.some(box => through(a,b,box))) continue;
       const cost=current.cost + Math.abs(a.x-b.x)+Math.abs(a.y-b.y)+(dir===current.dir?0:24)
         + lines.filter(([c,d])=>collision(a,b,c,d)).length*1500;
       const key=index(x,y,dir);
@@ -182,8 +188,9 @@ function moveLabel(item, shapes, edges) {
   box.x=best.x; box.y=best.y;
 }
 
-export async function optimizeReviewLayout(xml) {
+export async function optimizeReviewLayout(xml, { routingBudget } = {}) {
   const moddle=new BpmnModdle(), {rootElement:definitions}=await moddle.fromXML(xml);
+  routingBudget ||= searchBudget(collect(definitions));
   const baseline=await measure(xml,definitions);
   let current=baseline, currentXml=xml;
   const serialize=async()=> (await moddle.toXML(definitions,{format:true})).xml;
@@ -192,7 +199,7 @@ export async function optimizeReviewLayout(xml) {
     for (let pass=0;pass<3;pass++) {
       const ids=new Set(current.problems.filter(p=>['crossings','segmentOverlap','parallelRun','titleIntrusion','longDetour','labelOnLine','tangentEntry'].includes(p.kind)).flatMap(p=>p.ids));
       for (const edge of edges.filter(e=>ids.has(e.bpmnElement?.id))) {
-        const points=route(edge,shapes,edges); if (!points) continue;
+        const points=route(edge,shapes,edges,routingBudget); if (!points) continue;
         const saved=edge.waypoint, label=edge.label?.bounds, oldLabel=label?{x:label.x,y:label.y}:null;
         edge.waypoint=points.map(p=>moddle.create('dc:Point',p)); moveLabel(edge,shapes,edges);
         const candidate=await serialize(), measured=await measure(candidate,definitions);
@@ -232,9 +239,11 @@ export async function layoutReviewProjection(xml, collapsed = []) {
     break; // At most six expensive native layout/routing variants per view.
   }
   if (elements.some(e=>e.$type==='bpmn:Collaboration' && e.participants?.length>1)) options.push({reversePools:true});
+  // Share the search budget across every display-order variant of this view.
+  const routingBudget = searchBudget(elements);
   const layout = async projection => {
     const native=await layoutXml(projection,{platform:'none',collapse:collapsed});
-    return optimizeReviewLayout(native.xml);
+    return optimizeReviewLayout(native.xml, { routingBudget });
   };
   let best=await layout(xml), original=best;
   for (const option of options) {
