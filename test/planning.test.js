@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { openHostedProjects } from "../server/projects.js";
+import { openHostedProjects } from "../src/server/projects.js";
 import { onboardingProposals } from "../examples/complex-onboarding/proposals.js";
-import { contentHash } from "../src/store.js";
+import { contentHash } from "../src/core/store.js";
 
 test("planning preserves a pinned baseline across concurrent creation, As-is edits and reopening", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "senda-plan-"));

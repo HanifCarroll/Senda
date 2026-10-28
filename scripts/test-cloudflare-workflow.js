@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { getPlatformProxy } from "wrangler";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { createHash, randomBytes } from "node:crypto";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import { unzipSync, strFromU8 } from "fflate";
 import path from "node:path";
 import { onboardingProposals } from "../examples/complex-onboarding/proposals.js";
-import { hash } from "../src/hash.js";
+import { hash } from "../src/core/hash.js";
 
 // Run against a local Worker started with LOCAL_EMAIL_OUTBOX=1. Its private R2
 // binding captures real signed mail links; no fixture email is sent externally.
@@ -208,6 +209,18 @@ try {
     assert.ok(!r.isError, JSON.stringify(x));
     return x;
   }
+  const method = await tool("get_discovery_method");
+  for (const name of ["SKILL.md", "references/methodology.md", "references/remote.md", "references/planning.md"])
+    assert.equal(method[name], await readFile(new URL(`../skills/process-scribe/${name}`, import.meta.url), "utf8"));
+  assert.deepEqual((await value(request("/api/skill"))).references, method);
+  const download = await request("/api/skill.zip");
+  assert.equal(download.status, 200);
+  const files = unzipSync(new Uint8Array(await download.arrayBuffer()));
+  assert.deepEqual(Object.keys(files).sort(), Object.keys(method).map(name => `process-scribe/${name}`).sort());
+  for (const [name, text] of Object.entries(method))
+    assert.equal(strFromU8(files[`process-scribe/${name}`]), text);
+  checks.push("the packaged discovery skill matches source through MCP, HTTP and ZIP download");
+
   for (const [index, proposal] of proposals.entries()) {
     await tool("apply_revision", { projectId: p.id, model: "as-is", proposal });
     const x = await tool("read_project", { projectId: p.id, model: "as-is" });

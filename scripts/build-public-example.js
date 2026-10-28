@@ -1,7 +1,7 @@
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { openHostedProjects } from "../server/projects.js";
+import { openHostedProjects } from "../src/server/projects.js";
 import { onboardingProposals } from "../examples/complex-onboarding/proposals.js";
 
 const directory = await mkdtemp(path.join(tmpdir(), "scribe-public-example-"));

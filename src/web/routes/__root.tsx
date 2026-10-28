@@ -2,7 +2,7 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import styles from '../styles.css?url'
 import { productName } from '@/lib/brand'
-import { brandAssetVersion, brandColors } from '../../src/brand.js'
+import { brandAssetVersion, brandColors } from '../../core/brand.js'
 
 export const Route = createRootRoute({
   head: () => ({

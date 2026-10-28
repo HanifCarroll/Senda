@@ -10,15 +10,15 @@ The skill lives at `skills/process-scribe/SKILL.md`. Its methodology reference i
 
 No generated reports, dependencies or benchmark environments belong in the repository. GitHub Actions runs the same checks and the synthetic demo on Linux. A remote passing run does not replace human review of a real process model.
 
-Production runs on Cloudflare Workers, D1 and private R2. See [deployment and runtime checks](docs/cloudflare.md). The Node server is for local development and review exports. Shared HTTP/account operations live in `server/`; model-level reads and writes belong in `server/project-models.js`, with authorization and persistence in the Node and Cloudflare adapters. Keep the CLI and offline bundle functional when changing the hosted app.
+Production runs on Cloudflare Workers, D1 and private R2. See [deployment and runtime checks](docs/cloudflare.md). The Node server is for local development and review exports. Shared HTTP/account operations live in `src/server/`; model-level reads and writes belong in `src/server/project-models.js`, with authorization and persistence in the Node and Cloudflare adapters. Keep the CLI and offline bundle functional when changing the hosted app.
 
 ## What belongs where
 
 | Folder | Purpose |
 | --- | --- |
-| `src/`, `bin/` | Shared modeling, layout, export and command-line tools |
-| `web/` | TanStack Start pages and shadcn components |
-| `server/`, `cloudflare/` | Shared account/API behavior, local server and production storage/runtime adapters |
+| `src/core/`, `bin/` | Shared modeling, layout, export and command-line tools |
+| `src/web/` | TanStack Start pages and shadcn components |
+| `src/server/`, `src/cloudflare/` | Shared account/API behavior, local server and production storage/runtime adapters |
 | `test/`, `examples/` | Regression tests and reusable transcript/model fixtures |
 | `skills/`, `docs/` | Agent methodology and developer/operational documentation |
 | `branding/`, `public/` | Canonical logo artwork and assets served to browsers |

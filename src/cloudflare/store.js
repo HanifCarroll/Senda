@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { hash, contentHash } from "../src/hash.js";
-import { requireThat } from "../src/errors.js";
+import { hash, contentHash } from "../core/hash.js";
+import { requireThat } from "../core/errors.js";
 
 // R2 holds immutable content. D1 publishes a revision with one conditional SQL
 // insert, so competing writers cannot publish the same parent twice.

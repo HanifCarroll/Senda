@@ -3,10 +3,10 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { Project } from "../src/service.js";
-import { contentHash } from "../src/store.js";
-import { parseModel } from "../src/model.js";
-import { ScribeError, requireThat } from "../src/errors.js";
+import { Project } from "../core/service.js";
+import { contentHash } from "../core/store.js";
+import { parseModel } from "../core/model.js";
+import { ScribeError, requireThat } from "../core/errors.js";
 
 import { UUID, ModelKind, Plan, Create } from "./contracts.js";
 import { ProjectModels } from "./project-models.js";

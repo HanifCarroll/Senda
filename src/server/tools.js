@@ -1,9 +1,9 @@
 import { McpServer, createMcpHandler } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { schema } from "../src/project-core.js";
-import { SourceInput, Proposal } from "../src/schema.js";
-import { publicError } from "../src/errors.js";
-import { skillBundle } from "./skill.js";
+import { schema } from "../core/project-core.js";
+import { SourceInput, Proposal } from "../core/schema.js";
+import { publicError } from "../core/errors.js";
+import { skillBundle } from "#senda/skill";
 import { ModelKind } from "./contracts.js";
 
 const project = z

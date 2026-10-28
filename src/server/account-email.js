@@ -1,5 +1,5 @@
-import { brandColors as c } from "../src/brand.js";
-import { emailLogoBase64, emailLogoDarkBase64, emailLogoWidth, emailLogoHeight } from "../src/brand-assets.js";
+import { brandColors as c } from "../core/brand.js";
+import { emailLogoBase64, emailLogoDarkBase64, emailLogoWidth, emailLogoHeight } from "../core/brand-assets.js";
 
 const escape = (value) =>
   String(value).replace(

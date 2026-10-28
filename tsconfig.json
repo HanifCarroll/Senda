@@ -5,7 +5,7 @@
     "noUnusedLocals": true, "noUnusedParameters": true,
     "allowJs": true, "checkJs": false, "esModuleInterop": true,
     "types": ["vite/client", "node"],
-    "paths": { "@/*": ["./web/*"] }
+    "paths": { "@/*": ["./src/web/*"] }
   },
-  "include": ["web", "vite.config.ts"]
+  "include": ["src/web", "vite.config.ts", "vite.cloudflare.config.ts"]
 }

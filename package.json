@@ -11,7 +11,7 @@
   "bin": {
     "process-scribe": "bin/process-scribe.js"
   },
-  "exports": "./src/index.js",
+  "exports": "./src/core/index.js",
   "files": [
     "bin",
     "src",
@@ -32,11 +32,11 @@
     "install:skill": "node scripts/install-skill.js",
     "dev": "vite dev",
     "build": "vite build",
-    "preview": "PROCESS_SCRIBE_LOCAL_REVIEW=1 node server/serve.js",
+    "preview": "PROCESS_SCRIBE_LOCAL_REVIEW=1 node src/server/serve.js",
     "preview:emails": "node scripts/preview-account-emails.js",
     "build:brand": "node scripts/build-brand-assets.js",
     "build:marketing": "node scripts/build-marketing-previews.js",
-    "serve": "node server/serve.js",
+    "serve": "node src/server/serve.js",
     "dev:hosted": "PROCESS_SCRIBE_HOSTED=1 vite dev",
     "browser:webmcp": "node scripts/open-webmcp-browser.js",
     "typecheck": "tsc --noEmit",
@@ -87,5 +87,8 @@
       "wrangler": "$wrangler",
       "miniflare": "5.20261023.1-beta"
     }
+  },
+  "imports": {
+    "#senda/skill": "./src/server/skill.js"
   }
 }

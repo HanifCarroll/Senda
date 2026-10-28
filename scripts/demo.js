@@ -1,7 +1,7 @@
 import { readFile, mkdir, mkdtemp } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Project, exportBundle } from '../src/index.js';
+import { Project, exportBundle } from '../src/core/index.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 await mkdir(path.join(root, 'output'), { recursive: true });

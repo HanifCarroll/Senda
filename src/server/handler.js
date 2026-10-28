@@ -5,8 +5,8 @@ import { verifyOAuthQueryParams } from "@better-auth/oauth-provider";
 import { ModelKind } from "./contracts.js";
 import { createAgentHandler } from "./tools.js";
 import { toolDefinitions } from "./tools.js";
-import { publicError, requireThat } from "../src/errors.js";
-import { skillBundle } from "./skill.js";
+import { publicError, requireThat } from "../core/errors.js";
+import { skillBundle } from "#senda/skill";
 import { zipSync, strToU8 } from "fflate";
 import { createInsufficientScopeError } from "better-auth/oauth2";
 

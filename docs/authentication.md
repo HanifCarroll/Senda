@@ -19,7 +19,7 @@ Email messages go through the sender-restricted Cloudflare Email Service binding
 
 ### Email copy and design
 
-The [sign-in template](../server/account-email.js) is the only account email. Keep the subject specific, the heading short, the main action prominent,
+The [sign-in template](../src/server/account-email.js) is the only account email. Keep the subject specific, the heading short, the main action prominent,
 the expiry near the button, and the unsolicited-message note in the footer.
 Sign-in messages also offer a link to request a replacement. The confirmation
 page explains its own action; email copy does not narrate the clicks ahead.

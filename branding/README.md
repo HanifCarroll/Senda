@@ -22,7 +22,7 @@ it are transparent.
 The wordmark's tight bounds are 114.2109375 × 34.0546875 units. Its top-left is
 placed at (110, 17) relative to the book's 91 × 65 coordinate system. This keeps
 its scale and spacing close to the chosen design while using smooth letterforms.
-The canonical flat colors are defined in src/brand.js.
+The canonical flat colors are defined in src/core/brand.js.
 
 Earlier versions traced the 113 × 36 px reference lettering, preserving raster
 noise as lumpy contours. Do not reuse those paths. Do not generate, smooth or

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fetchClientMetadataResource } from "../cloudflare/cimd.js";
-import { authOptions } from "../server/auth-options.js";
+import { fetchClientMetadataResource } from "../src/cloudflare/cimd.js";
+import { authOptions } from "../src/server/auth-options.js";
 
 test("Worker CIMD fails closed without the public-network boundary", async () => {
   const original = globalThis.Cloudflare;

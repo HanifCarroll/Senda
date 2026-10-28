@@ -4,13 +4,13 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { Project, exportBundle } from '../src/index.js';
-import { diagramViews } from '../src/diagram-views.js';
+import { Project, exportBundle } from '../src/core/index.js';
+import { diagramViews } from '../src/core/diagram-views.js';
 import { onboardingProposals } from '../examples/complex-onboarding/proposals.js';
 import { BpmnModdle } from 'bpmn-moddle';
 import { layoutXml } from '@miragon/bpmn-cli';
-import { optimizeReviewLayout } from '../src/review-layout.js';
-import { collect } from '../src/model.js';
+import { optimizeReviewLayout } from '../src/core/review-layout.js';
+import { collect } from '../src/core/model.js';
 
 async function withoutDi(xml) {
   const moddle=new BpmnModdle(), parsed=await moddle.fromXML(xml);

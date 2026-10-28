@@ -9,8 +9,8 @@ import {
   Client,
   StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
-import { createApplication } from "../server/application.js";
-import { createNodeHandler } from "../server/node-adapter.js";
+import { createApplication } from "../src/server/application.js";
+import { createNodeHandler } from "../src/server/node-adapter.js";
 import { onboardingProposals } from "../examples/complex-onboarding/proposals.js";
 
 test(

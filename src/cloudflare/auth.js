@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { authOptions } from "../server/auth-options.js";
-import { hash } from "../src/hash.js";
+import { hash } from "../core/hash.js";
 import { fetchClientMetadataResource } from "./cimd.js";
 import { accountEmail } from "../server/account-email.js";
 import { emailForDelivery } from "./email.js";

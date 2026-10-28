@@ -4,9 +4,9 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { Project, exportBundle } from '../src/index.js';
-import { parseModel } from '../src/model.js';
-import { renderReview } from '../server/review.js';
+import { Project, exportBundle } from '../src/core/index.js';
+import { parseModel } from '../src/core/model.js';
+import { renderReview } from '../src/server/review.js';
 
 const fixture = name => readFile(new URL(`fixtures/${name}.bpmn`, import.meta.url), 'utf8');
 const example = async name => JSON.parse(await readFile(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));

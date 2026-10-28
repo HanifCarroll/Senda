@@ -1,8 +1,8 @@
-import { assess } from "../src/quality.js";
-import { diagramViews } from "../src/diagram-views.js";
-import { reviewData } from "../src/review-viewer.js";
-import { contentHash, hash } from "../src/hash.js";
-import { parseModel } from "../src/model.js";
+import { assess } from "../core/quality.js";
+import { diagramViews } from "../core/diagram-views.js";
+import { reviewData } from "../core/review-viewer.js";
+import { contentHash, hash } from "../core/hash.js";
+import { parseModel } from "../core/model.js";
 const caches = new Map();
 const assessments = new Map();
 export async function renderReview(

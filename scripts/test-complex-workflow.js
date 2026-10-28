@@ -5,7 +5,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { onboardingProposals } from '../examples/complex-onboarding/proposals.js';
-import { parseModel } from '../src/model.js';
+import { parseModel } from '../src/core/model.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);

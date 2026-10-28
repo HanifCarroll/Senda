@@ -29,8 +29,8 @@ const directory = path.resolve(
   process.env.PROCESS_SCRIBE_DATA || ".process-scribe/hosted",
 );
 const application = await createApplication({ origin, directory });
-const root = fileURLToPath(new URL("../dist/client/", import.meta.url));
-const render = (await import("../dist/server/server.js")).default;
+const root = fileURLToPath(new URL("../../dist/client/", import.meta.url));
+const render = (await import("../../dist/server/server.js")).default;
 const types = {
   ".js": "text/javascript",
   ".css": "text/css",

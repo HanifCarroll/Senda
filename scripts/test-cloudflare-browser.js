@@ -5,7 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { mkdir } from "node:fs/promises";
 import { getPlatformProxy } from "wrangler";
-import { hash } from "../src/hash.js";
+import { hash } from "../src/core/hash.js";
 import { onboardingProposals } from "../examples/complex-onboarding/proposals.js";
 const base = process.env.SENDA_TEST_ORIGIN || "http://127.0.0.1:8788",
   email = `browser-${Date.now()}@example.test`;

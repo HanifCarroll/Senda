@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 export async function skillBundle() {
-  const base = new URL("../skills/process-scribe/", import.meta.url);
+  const base = new URL("../../skills/process-scribe/", import.meta.url);
   const names = [
     "SKILL.md",
     ...(await readdir(new URL("references/", base)))

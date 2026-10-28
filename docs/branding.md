@@ -7,7 +7,7 @@ neutral shadcn foundation and system sans-serif text.
 
 ## Color roles
 
-The canonical values and mark geometry live in [brand.js](../src/brand.js).
+The canonical values and mark geometry live in [brand.js](../src/core/brand.js).
 
 | Role | Value | Use |
 | --- | --- | --- |

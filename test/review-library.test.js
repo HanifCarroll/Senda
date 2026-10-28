@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, symlink, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { Project, exportBundle } from '../src/index.js';
-import { listReviews, loadReview } from '../src/review-library.js';
-import { processGroups } from '../web/lib/review-navigation.ts';
+import { Project, exportBundle } from '../src/core/index.js';
+import { listReviews, loadReview } from '../src/core/review-library.js';
+import { processGroups } from '../src/web/lib/review-navigation.ts';
 
 test('web review loader exposes complete exports without changing project content', async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'scribe-web-'));

@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 export default defineConfig({
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./web", import.meta.url)),
-      [fileURLToPath(new URL("./server/skill.js", import.meta.url))]:
-        fileURLToPath(new URL("./cloudflare/skill.js", import.meta.url)),
+      "@": fileURLToPath(new URL("./src/web", import.meta.url)),
+      "#senda/skill":
+        fileURLToPath(new URL("./src/cloudflare/skill.js", import.meta.url)),
     },
   },
   define: {
@@ -20,7 +20,7 @@ export default defineConfig({
   plugins: [
     cloudflare({ viteEnvironment: { name: "ssr" } }),
     tailwindcss(),
-    tanstackStart({ srcDirectory: "web" }),
+    tanstackStart({ srcDirectory: "src/web" }),
     react(),
   ],
 });

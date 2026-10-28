@@ -1,4 +1,4 @@
-import { markBounds, wordmarkBounds, wordmarkOffset, markPaths, wordmarkPath } from "../branding/artwork.js";
+import { markBounds, wordmarkBounds, wordmarkOffset, markPaths, wordmarkPath } from "../../branding/artwork.js";
 
 /** Ink + Teal: brand color is separate from validation and process-state color. */
 export const brandColors = Object.freeze({

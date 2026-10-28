@@ -2,7 +2,7 @@
 import { Command, InvalidArgumentError } from 'commander';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { Project, schema, exportBundle, publicError } from '../src/index.js';
+import { Project, schema, exportBundle, publicError } from '../src/core/index.js';
 
 const integer = value => {
   if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value))) throw new InvalidArgumentError('Use a positive integer revision.');

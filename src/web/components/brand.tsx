@@ -1,6 +1,6 @@
 import { productName } from "@/lib/brand";
 import { cn } from "@/lib/utils";
-import { brandAssetVersion, brandLogoWidth, brandLogoHeight } from "../../src/brand.js";
+import { brandAssetVersion, brandLogoWidth, brandLogoHeight } from "../../core/brand.js";
 
 export function Brand({ className }: { className?: string }) {
   return productName === "Senda" ? (

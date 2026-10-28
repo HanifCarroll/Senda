@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SourceInput } from "../src/schema.js";
+import { SourceInput } from "../core/schema.js";
 export const UUID = z.uuid();
 export const ModelKind = z.enum(["as-is", "to-be"]);
 export const Plan = z.strictObject({

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { accountEmail } from "../server/account-email.js";
-import { emailForDelivery } from "../cloudflare/email.js";
+import { accountEmail } from "../src/server/account-email.js";
+import { emailForDelivery } from "../src/cloudflare/email.js";
 import { readFile } from "node:fs/promises";
 
 test("Workers receives the original PNG bytes, not encoded text", async () => {

@@ -106,7 +106,7 @@ Successful commands write JSON to stdout. Failures write an error object to stde
 ## JavaScript API
 
 ```js
-import { Project, exportBundle } from './src/index.js';
+import { Project, exportBundle } from './src/core/index.js';
 const project = new Project('/private/path/booking');
 try {
   const current = await project.inspect();

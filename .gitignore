@@ -18,4 +18,4 @@ dist-cloudflare/
 .wrangler/
 .dev.vars*
 .tanstack/
-web/routeTree.gen.ts
+src/web/routeTree.gen.ts

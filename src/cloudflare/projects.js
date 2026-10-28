@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { ProjectCore, initialSnapshot } from "../src/project-core.js";
-import { contentHash } from "../src/hash.js";
-import { parseModel } from "../src/model.js";
-import { requireThat, ScribeError } from "../src/errors.js";
+import { ProjectCore, initialSnapshot } from "../core/project-core.js";
+import { contentHash } from "../core/hash.js";
+import { parseModel } from "../core/model.js";
+import { requireThat, ScribeError } from "../core/errors.js";
 import { UUID, ModelKind, Create, Plan } from "../server/contracts.js";
 import { renderReview } from "../server/review.js";
 import { CloudStore, prepareSnapshot } from "./store.js";

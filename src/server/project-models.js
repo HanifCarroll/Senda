@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { schema } from "../src/project-core.js";
-import { Proposal, SourceInput } from "../src/schema.js";
-import { requireThat } from "../src/errors.js";
+import { schema } from "../core/project-core.js";
+import { Proposal, SourceInput } from "../core/schema.js";
+import { requireThat } from "../core/errors.js";
 
 /** Shared model operations. Each adapter authorizes and opens storage in withProject. */
 export class ProjectModels {

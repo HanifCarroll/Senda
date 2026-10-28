@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { accountEmail } from "../server/account-email.js";
+import { accountEmail } from "../src/server/account-email.js";
 
 const directory = path.resolve(process.argv[2] || "output/account-emails"),
   origin = "https://senda.example";
