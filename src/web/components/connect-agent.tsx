@@ -114,8 +114,8 @@ export function ConnectAgent() {
             Sign in when your agent opens the connection page, then choose the project it may use.
           </li>
           <li>
-            Give your agent the discovery skill and ask it to read the project before drafting or
-            revising the process.
+            Start with: “Could you map the current process from my interview notes? Ask me about
+            anything that’s unclear.” Then answer its questions as the process takes shape.
           </li>
         </ol>
         <Button variant="outline" asChild>
@@ -125,10 +125,8 @@ export function ConnectAgent() {
           </a>
         </Button>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          The download contains the skill and its reference files. Install or provide them using
-          your agent’s own instructions. Adding the server does not automatically run the skill.
-          This server supports authenticated Streamable HTTP with the current MCP protocol and
-          stateless 2025 compatibility. Named commercial clients still need connection tests.
+          Your connected agent can read Senda’s discovery method. The download is also available
+          for agents that use local skills.
         </p>
         <div className="flex flex-col gap-2 border-t pt-4">
           <h3 className="text-sm font-medium">Connected projects</h3>
