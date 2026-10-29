@@ -136,7 +136,7 @@ export class CloudBilling {
       return { url: session.url };
     });
   }
-  async portal(actor) {
+  async portal(actor, { paymentMethod = false } = {}) {
     this.requireConfigured();
     const row = await this.customer(actor.userId);
     requireThat(row?.customer, 'NOT_FOUND', 'This account has no subscription to manage yet.');
@@ -148,6 +148,10 @@ export class CloudBilling {
     const session = await this.stripe.billingPortal.sessions.create({
       customer: row.customer, return_url: this.origin + '/app/billing',
       ...(this.env.STRIPE_PORTAL_CONFIGURATION ? { configuration: this.env.STRIPE_PORTAL_CONFIGURATION } : {}),
+      ...(paymentMethod ? { flow_data: {
+        type: 'payment_method_update',
+        after_completion: { type: 'redirect', redirect: { return_url: this.origin + '/app/billing' } },
+      } } : {}),
     });
     return { url: session.url };
   }
@@ -266,6 +270,7 @@ export class CloudBilling {
       if (path === '/api/billing' && request.method === 'GET') return Response.json(await this.status(actor));
       if (path === '/api/billing/checkout' && request.method === 'POST') return Response.json(await this.checkout(actor, email));
       if (path === '/api/billing/portal' && request.method === 'POST') return Response.json(await this.portal(actor));
+      if (path === '/api/billing/payment-method' && request.method === 'POST') return Response.json(await this.portal(actor, { paymentMethod: true }));
       throw new ScribeError('NOT_FOUND', 'This billing page is not available.');
     } catch (error) {
       if (error instanceof ScribeError) throw error;

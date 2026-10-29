@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { signInRetryForCallback } from '../../shared/model-links.js';
 
 // GET never consumes the token: ordinary email scanners cannot burn the link.
 export const Route = createFileRoute("/sign-in_/confirm")({
@@ -40,7 +41,7 @@ function Confirm() {
             <Alert variant="destructive">
               <AlertTitle>This link is incomplete</AlertTitle>
               <AlertDescription>
-                <a href="/sign-in" className="underline">
+                <a href={ready ? signInRetryForCallback(query.callbackURL, window.location.origin) : '/sign-in'} className="underline">
                   Request a new sign-in link.
                 </a>
               </AlertDescription>

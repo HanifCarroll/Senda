@@ -14,6 +14,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { signInDestination, signInRetry } from '../../shared/model-links.js';
 
 export function PasswordSignIn() {
   const [register, setRegister] = useState(false),
@@ -36,7 +37,7 @@ export function PasswordSignIn() {
     try {
       const result = await authClient.sendVerificationEmail({
         email: verifyEmail,
-        callbackURL: window.location.origin + "/sign-in",
+        callbackURL: window.location.origin + signInRetry(window.location.search),
       });
       if (result.error) setError(result.error.message || "Try again in a moment.");
       else
@@ -90,7 +91,7 @@ export function PasswordSignIn() {
             "Check your inbox for a verification link. Once your email is verified, return here to sign in.",
           );
           setRegister(false);
-        } else window.location.assign(value?.url || "/app");
+        } else window.location.assign(signInDestination(window.location.search));
       }
     } catch {
       setError("The account service could not be reached. Try again.");

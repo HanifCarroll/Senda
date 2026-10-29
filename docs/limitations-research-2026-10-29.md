@@ -3,6 +3,12 @@
 Research date: 29 October 2026. Sources below distinguish provider documentation,
 firsthand user reports, the current implementation and observed tests.
 
+Follow-up: the download landing page, preserved sign-in destination, actual-file
+browser regressions, focused payment-method flow, smaller setup responses and
+metadata-only connector diagnostics are now implemented. See the dated
+[fix and experiment record](fixes-and-experiments-2026-10-29.md) for qualification
+results. The recommendations below describe the earlier research baseline.
+
 ## Payment evidence
 
 The isolated Senda sandbox completed an actual US$1 subscription Checkout with

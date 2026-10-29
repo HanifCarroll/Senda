@@ -217,10 +217,13 @@ try {
   const deniedRead = await client.callTool({ name: "read_project", arguments: { projectId: hidden.id, model: "as-is" } });
   assert.equal(deniedRead.isError, true);
   assert.equal(JSON.parse(deniedRead.content[0].text).code, "NOT_FOUND");
-  for (const action of ["read", "sources", "models", "head", "review", "bpmn"])
-    assert.equal((await request(`/api/projects/${p.id}/${action}`, bob.cookie)).status, 404);
+  for (const action of ["read", "sources", "models", "head", "review", "bpmn", "export-info"])
+    assert.equal((await request(`/api/projects/${p.id}/${action}${action === 'export-info' ? '?revision=1' : ''}`, bob.cookie)).status, 404);
   checks.push("empty account connects before its first project; agent-created sources persist and unshared projects stay private");
-  const method = await tool("get_discovery_method");
+  const methodResult = await client.callTool({ name: 'get_discovery_method', arguments: {} });
+  assert.deepEqual(methodResult.structuredContent, JSON.parse(methodResult.content[0].text));
+  assert.ok(Buffer.byteLength(JSON.stringify(methodResult)) < 24000);
+  const method = (await tool("get_discovery_method", { reference: 'all' })).documents;
   for (const name of ["SKILL.md", "references/methodology.md", "references/remote.md", "references/planning.md"])
     assert.equal(method[name], await readFile(new URL(`../skills/process-scribe/${name}`, import.meta.url), "utf8"));
   assert.deepEqual((await value(request("/api/skill"))).references, method);

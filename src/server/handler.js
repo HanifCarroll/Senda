@@ -327,7 +327,7 @@ export async function createRequestHandler({
         }
       }
       const match =
-        /^\/api\/projects\/([^/]+)(?:\/(head|read|review|sources|questions|checks|bpmn|answers|models))?$/.exec(
+        /^\/api\/projects\/([^/]+)(?:\/(head|read|review|sources|questions|checks|bpmn|export-info|answers|models))?$/.exec(
           pathname,
         );
       if (match) {
@@ -340,6 +340,13 @@ export async function createRequestHandler({
           if (action === "models") return json(await projects.models(actor, id));
           if (action === "head") return json(await projects.head(actor, id, model));
           if (action === "read") return json(await projects.read(actor, id, revision, model));
+          if (action === 'export-info') {
+            requireThat(revision, 'INVALID_REQUEST', 'Choose a saved revision to download.');
+            return json(await projects.withProject(actor, id, p => {
+              const saved = p.read(revision);
+              return { name: saved.name, model, revision: saved.revision, filename: `${model}-revision-${saved.revision}.bpmn` };
+            }, model, revision));
+          }
           if (action === "review") {
             const started = performance.now();
             const value = await projects.review(actor, id, revision, model);

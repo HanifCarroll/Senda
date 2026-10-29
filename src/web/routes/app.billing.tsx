@@ -19,7 +19,9 @@ type Plan = {
 };
 function Billing() {
   const search = Route.useSearch();
-  const [plan, setPlan] = useState<Plan | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false);
+  const [plan, setPlan] = useState<Plan | null>(null), [error, setError] = useState(""),
+    [opening, setOpening] = useState<'checkout' | 'portal' | 'payment-method' | null>(null);
+  const busy = opening !== null;
   useEffect(() => {
     let active = true, timer: ReturnType<typeof setTimeout>, attempts = 0;
     async function load() {
@@ -38,10 +40,10 @@ function Billing() {
     void load();
     return () => { active = false; clearTimeout(timer); };
   }, [search.checkout]);
-  async function open(action: "checkout" | "portal") {
-    setBusy(true); setError("");
+  async function open(action: "checkout" | "portal" | "payment-method") {
+    setOpening(action); setError("");
     try { const result = await post(`/api/billing/${action}`, {}); window.location.assign(result.url); }
-    catch (e: any) { setError(e.message); setBusy(false); }
+    catch (e: any) { setError(e.message); setOpening(null); }
   }
   const usage = plan ? Math.min(100, Math.max(0, Math.round(plan.usedUsd / plan.includedUsd * 100))) : 0;
   return <AccountFrame>
@@ -63,11 +65,14 @@ function Billing() {
             {!!plan.pendingUsd && <p className="text-sm text-muted-foreground">A reply is being prepared. Its temporary allowance reservation is not shown as used.</p>}
             <p className="text-sm text-muted-foreground">{plan.subscription.cancelAt ? "Access ends" : "Allowance renews"} {new Date(plan.subscription.periodEnd).toLocaleDateString(undefined, { dateStyle: "long" })}.</p>
           </> : <p className="text-sm text-muted-foreground">{plan.subscription ? `Subscription status: ${plan.subscription.status.replaceAll("_", " ")}.` : "You’re on Free. Create up to 3 saved projects with your connected agent."}</p>}
-          {plan.subscription && ["past_due", "unpaid", "incomplete"].includes(plan.subscription.status) && <p className="text-sm leading-6 text-muted-foreground">Your latest payment hasn’t completed. Open Manage subscription to update your payment method and pay the outstanding invoice. Built-in chat resumes after Stripe confirms payment.</p>}
+          {plan.subscription && ["past_due", "unpaid", "incomplete"].includes(plan.subscription.status) && <p className="text-sm leading-6 text-muted-foreground">Your latest payment hasn’t completed. Use Update payment method to save a new card, then open Manage subscription to pay the failed amount. Saving a card alone does not settle an outstanding invoice. Built-in chat resumes after Stripe confirms payment.</p>}
           {search.checkout && !plan.subscription?.active && <p role="status" className="text-sm">Your plan appears here after Stripe confirms payment. You can return to your processes while it updates.</p>}
           <div className="flex flex-wrap gap-3">
-            {plan.managed && <Button variant="outline" disabled={busy} onClick={() => void open("portal")}>Manage subscription<ExternalLink /></Button>}
-            {!plan.subscription?.active && plan.checkoutAvailable && <Button disabled={busy} onClick={() => void open("checkout")}>{busy ? "Opening Stripe…" : "Choose Pro"}</Button>}
+            {plan.managed && <>
+              <Button variant="outline" disabled={busy} onClick={() => void open("payment-method")}>{opening === 'payment-method' ? 'Opening Stripe…' : 'Update payment method'}<ExternalLink /></Button>
+              <Button variant="outline" disabled={busy} onClick={() => void open("portal")}>{opening === 'portal' ? 'Opening Stripe…' : 'Manage subscription'}<ExternalLink /></Button>
+            </>}
+            {!plan.subscription?.active && plan.checkoutAvailable && <Button disabled={busy} onClick={() => void open("checkout")}>{opening === 'checkout' ? "Opening Stripe…" : "Choose Pro"}</Button>}
           </div>
         </section>
         <p className="text-sm leading-6 text-muted-foreground">Your saved diagrams stay readable, editable with your connected agent, and exportable when a paid plan ends. You can create new projects while below your current limit of {plan.projectLimit}.</p>

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { writeFile } from "node:fs/promises";
+import { writeFile, readFile } from "node:fs/promises";
+import { BpmnModdle } from 'bpmn-moddle';
+import { savedModelPath, savedModelSignIn } from '../src/shared/model-links.js';
 import { chromium } from "playwright";
 import path from "node:path";
 import os from "node:os";
@@ -28,6 +30,7 @@ const proxy = await getPlatformProxy({
 const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
     reducedMotion: "reduce",
+    acceptDownloads: true,
   }),
   p = await context.newPage(),
   errors = [];
@@ -279,6 +282,77 @@ try {
     assert.ok(googleUrl.searchParams.get("state"));
     await p.unrouteAll({ behavior: "wait" });
   }
+  // Inspect the browser's saved files, not just the attachment HTTP response.
+  await post(`/api/projects/${project.id}?model=to-be`, {
+    expectedRevision: 1, summary: 'Finance reviews the future invoice before sending it',
+    operations: [{ op: 'set', id: 'Invoice', values: { name: 'Review and issue deposit invoice' } }],
+  });
+  const downloadedFiles = [];
+  async function capture(page, role, name, filename) {
+    const pending = page.waitForEvent('download');
+    await page.getByRole(role, { name, exact: true }).click();
+    const download = await pending;
+    assert.equal(await download.failure(), null);
+    const file = path.join(artifacts, filename);
+    await download.saveAs(file);
+    const text = await readFile(file, 'utf8');
+    downloadedFiles.push({ file: filename, suggestedFilename: download.suggestedFilename(), bytes: Buffer.byteLength(text) });
+    return text;
+  }
+  async function bpmnFile(xml, invoiceName) {
+    const parsed = await new BpmnModdle().fromXML(xml);
+    assert.deepEqual(parsed.warnings, []);
+    assert.ok(parsed.rootElement.diagrams.length);
+    assert.ok(parsed.rootElement.diagrams.flatMap(d => d.plane?.planeElement || []).length);
+    assert.equal(parsed.elementsById.Invoice.name, invoiceName);
+  }
+  for (const [model, revision, invoiceName] of [
+    ['as-is', 5, 'Issue deposit invoice'], ['to-be', 1, 'Issue deposit invoice'], ['to-be', 2, 'Review and issue deposit invoice'],
+  ]) {
+    await p.goto(base + savedModelPath(project.id, model, revision, true));
+    await p.getByRole('link', { name: 'Download BPMN', exact: true }).waitFor();
+    await p.getByText(`${model === 'as-is' ? 'As-is' : 'To-be'} · Revision ${revision}`, { exact: true }).waitFor();
+    assert.equal(await p.getByRole('link', { name: 'Review this saved version', exact: true }).getAttribute('href'), savedModelPath(project.id, model, revision));
+    const xml = await capture(p, 'link', 'Download BPMN', `${model}-r${revision}.bpmn`);
+    await bpmnFile(xml, invoiceName);
+  }
+  await p.goto(base + `/app/projects/${project.id}?model=to-be&revision=2&view=FinanceWork`);
+  await p.locator('#diagram-stage svg').waitFor({ timeout: 60000 });
+  await p.getByRole('button', { name: 'Download this view', exact: true }).click();
+  await p.getByRole('button', { name: 'BPMN view', exact: true }).waitFor();
+  await bpmnFile(await capture(p, 'button', 'BPMN view', 'finance-view.bpmn'), 'Review and issue deposit invoice');
+  await p.getByRole('button', { name: 'Download this view', exact: true }).click();
+  const svg = await capture(p, 'button', 'SVG image', 'finance-view.svg');
+  assert.match(svg, /<svg\b/);
+  assert.equal(await p.evaluate(text => new DOMParser().parseFromString(text, 'image/svg+xml').querySelectorAll('parsererror').length, svg), 0);
+  const returningContext = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
+  const returning = await returningContext.newPage();
+  let unsolicitedDownloads = 0;
+  returning.on('download', () => unsolicitedDownloads++);
+  const intended = savedModelPath(project.id, 'to-be', 1, true);
+  await returning.goto(base + intended);
+  await returning.waitForURL(base + savedModelSignIn(project.id, 'to-be', 1, true));
+  await returning.getByLabel('Email', { exact: true }).fill(email);
+  await returning.getByRole('button', { name: 'Send sign-in link', exact: true }).click();
+  await returning.getByText('Your sign-in link is on its way', { exact: true }).waitFor();
+  await returning.goto((await mail()).text.match(/http[^\s]+/)[0]);
+  await returning.getByRole('button', { name: 'Continue to Senda', exact: true }).click();
+  await returning.waitForURL(base + intended);
+  await returning.getByRole('link', { name: 'Download BPMN', exact: true }).waitFor();
+  await returning.reload();
+  await returning.getByRole('link', { name: 'Download BPMN', exact: true }).waitFor();
+  assert.equal(unsolicitedDownloads, 0, 'Sign-in and reload must not silently start or repeat a download');
+  assert.ok(await returning.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await returning.screenshot({ path: artifacts + '/download-mobile.png' });
+  await bpmnFile(await capture(returning, 'link', 'Download BPMN', 'signed-in-to-be-r1.bpmn'), 'Issue deposit invoice');
+  await returning.goto(base + `/app/download/${project.id}?model=to-be&revision=99999`);
+  await returning.getByText('Download unavailable', { exact: true }).waitFor();
+  assert.equal(await returning.getByRole('link', { name: 'Download BPMN', exact: true }).count(), 0);
+  await returningContext.close();
+  assert.deepEqual(errors, []);
+  await writeFile(artifacts + '/browser-downloads.json', JSON.stringify({ files: downloadedFiles, signedOutDestinationPreserved: true, reloadDoesNotDownload: true, modelAndRevisionSemanticsVerified: true }, null, 2));
+  console.log('Actual BPMN/SVG files, independent saved revisions and signed-out mobile download return passed');
+
   await writeFile(
     artifacts + "/cf-ui.json",
     JSON.stringify(
@@ -330,9 +404,27 @@ try {
   await buyer.reload();
   await buyer.getByText("Your latest payment hasn’t completed.", { exact: false }).waitFor();
   assert.ok(await buyer.getByRole("button", { name: "Manage subscription", exact: false }).isVisible());
+  assert.ok(await buyer.getByRole('button', { name: 'Update payment method', exact: false }).isVisible());
   assert.equal(await buyer.getByRole("button", { name: "Choose Pro", exact: true }).count(), 0);
   assert.ok(await buyer.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await buyer.screenshot({ path: artifacts + "/billing-recovery-mobile.png", fullPage: true });
+  let releaseCardUpdate;
+  const cardStarted = new Promise(resolve => {
+    void buyer.route('**/api/billing/payment-method', async route => {
+      assert.deepEqual(route.request().postDataJSON(), {});
+      await new Promise(done => { releaseCardUpdate = async () => { await route.fulfill({ json: { url: base + '/app/billing?card-update-test=opened' } }); done(); }; resolve(); });
+    });
+  });
+  await buyer.getByRole('button', { name: 'Update payment method', exact: false }).click();
+  await cardStarted;
+  await buyer.getByRole('button', { name: 'Opening Stripe…', exact: false }).waitFor();
+  assert.ok(await buyer.getByRole('button', { name: 'Manage subscription', exact: false }).isDisabled());
+  await releaseCardUpdate();
+  await buyer.waitForURL(base + '/app/billing?card-update-test=opened');
+  await buyer.goto(base + savedModelPath(project.id, 'to-be', 1, true));
+  await buyer.getByText('Download unavailable', { exact: true }).waitFor();
+  assert.equal(await buyer.getByRole('link', { name: 'Download BPMN', exact: true }).count(), 0);
+  assert.equal(await buyer.getByText('Cloudflare browser walkthrough', { exact: true }).count(), 0);
   await buyer.goto(base + "/usage");
   await buyer.getByRole("heading", { name: "Usage and subscription terms", exact: true }).waitFor();
   assert.ok(await buyer.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -343,7 +435,7 @@ try {
   await buyerContext.close();
   console.log("Public pricing, mobile terms and plan selection through first-time email sign-in passed");
 } catch (e) {
-  console.error("Page", p.url(), (await p.locator("body").innerText()).slice(0, 1500));
+  console.error("Page", new URL(p.url()).pathname, (await p.locator("body").innerText()).slice(0, 1500));
   await p.screenshot({ path: artifacts + "/cf-ui-error.png" });
   throw e;
 } finally {
