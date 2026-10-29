@@ -67,8 +67,26 @@ GPT-6 was unavailable in the model picker because the account had reached its
 usage limit. The in-app ChatGPT page returned Bad Request after its automatic
 Cloudflare check. No challenge bypass, extra usage or credit purchase was used.
 These conditions limit a comparison; they are not Senda failures or successful
-tests of those unavailable variants. The post-deployment comparison is recorded
-below once the new production tool descriptors are available.
+tests of those unavailable variants. A single later retry of ChatGPT in the
+in-app browser crashed the page, so that client condition remains unqualified.
+
+After production deployment and Refresh tools in ChatGPT, fresh Chrome
+GPT-5.6 Sol Medium conversations displayed both the compact setup (27 seconds)
+and the explicit full fallback (15 seconds). Visible activity confirmed the
+discovery/schema reads; both replies remained readable after reload. These
+single observations do not establish a latency improvement, a payload threshold
+or a fix for the earlier ChatGPT display error, since the baseline also passed.
+
+The compact conversation then received a small fictional business interview,
+without tool names or operation arguments. It created Moss & Co's current-process
+project, saved the diagram at revision 2 and asked four useful clarification
+questions. ChatGPT requested approval for the model save; Allow once completed
+the authorized test. Its final reply displayed normally. An independent Senda
+browser visit verified the diagram, saved source and four questions. The actual
+browser-downloaded BPMN parsed without warnings, and the immutable R2 snapshot's
+digest matched its D1 revision record. Exported semantics matched that snapshot,
+and ten evidence quotations matched their original source segments. This is a focused regression test, separate
+from the earlier complete current/future-model qualification journeys.
 
 ## Local verification
 
@@ -77,3 +95,21 @@ reference/schema retrieval and owner-scoped payment-method updates. Both builds,
 typecheck and the 244-file source check passed. Twelve real Cloudflare runtime/MCP
 checks and the expanded browser journey passed, including actual downloaded files,
 independent histories, authentication, loading/reload behavior and payment UI states.
+
+## Production verification
+
+The functional change was pushed to main as `1e75e98`. GitHub Verify run
+`40875948438` succeeded. Cloudflare's automatic build `5f72dd36` showed the same
+commit and successful build/deploy stages, with no migrations pending. Worker
+version `9f685a2c-df13-4233-81a1-3c9e1fb67d12` served 100% of production traffic.
+All nine migrations were present and no built-in provider runs were active.
+
+Fresh production sign-in reached the exact Willow To-be revision 4 download.
+Its actual browser file was 22,491 bytes, parsed without warnings and was
+byte-for-byte identical to the previously independently verified saved revision.
+Public health, pricing, terms and the new landing page returned HTTP 200.
+
+The disposable sandbox subscription was canceled and its customer deleted.
+The sandbox webhook and public QA endpoint were disabled again; private test
+records were retained. Production purchases remain enabled. No real test charges,
+extra Claude usage or changes to production billing permissions were made.
