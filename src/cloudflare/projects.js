@@ -12,10 +12,11 @@ import { ProjectModels } from "../server/project-models.js";
 
 export class CloudProjects extends ProjectModels {
   revokesAuthTokens = true;
-  constructor(db, bucket, { reviewVersion } = {}) {
+  constructor(db, bucket, { reviewVersion, projectLimit = async () => 100 } = {}) {
     super();
     Object.assign(this, { db, bucket });
     this.reviewCache = new ReviewCache(bucket, reviewVersion);
+    this.projectLimit = projectLimit;
   }
   async authorize(actor, id) {
     UUID.parse(id);
@@ -62,11 +63,8 @@ export class CloudProjects extends ProjectModels {
   }
   async create(actor, input) {
     const data = Create.parse(input);
-    requireThat(
-      (await this.list({ userId: actor.userId })).length < 100,
-      "LIMIT",
-      "The account has reached its project limit.",
-    );
+    const limit = await this.projectLimit(actor);
+    requireThat(Number.isSafeInteger(limit) && limit > 0 && limit <= 100, 'LIMIT', 'The project allowance is not available.');
     const id = randomUUID(),
       sources = data.source ? [data.source] : [];
     this.checkSources(sources);
@@ -86,28 +84,34 @@ export class CloudProjects extends ProjectModels {
     );
     const statements = [
       this.db
-        .prepare("INSERT INTO senda_projects VALUES (?,?,?,?)")
-        .bind(id, actor.userId, data.name, prepared.snapshot.createdAt),
+        .prepare("INSERT INTO senda_projects SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM senda_projects WHERE owner=?)<?")
+        .bind(id, actor.userId, data.name, prepared.snapshot.createdAt, actor.userId, limit),
       this.db
-        .prepare("INSERT INTO senda_models VALUES (?,?,?)")
-        .bind(id, id, "as-is"),
+        .prepare("INSERT INTO senda_models SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM senda_projects WHERE id=? AND owner=?)")
+        .bind(id, id, "as-is", id, actor.userId),
       this.insertInitial(prepared),
     ];
     if (actor.clientId)
       statements.push(
         this.db
-          .prepare("INSERT INTO senda_grants VALUES (?,?,?)")
-          .bind(actor.userId, actor.clientId, id),
+          .prepare("INSERT INTO senda_grants SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM senda_projects WHERE id=? AND owner=?)")
+          .bind(actor.userId, actor.clientId, id, id, actor.userId),
       );
-    await this.db.batch(statements);
+    const results = await this.db.batch(statements);
+    if (results[0].meta.changes !== 1) {
+      await this.bucket.delete(prepared.row.object_key).catch(() => {});
+      requireThat(false, 'PROJECT_LIMIT', limit === 3
+        ? 'Free lets you create up to 3 projects. Your existing work stays available. Choose Senda Pro in Your plan to create more.'
+        : 'This account has reached its 100-project allowance. Your existing work stays available. Contact support if you need more room.');
+    }
     return { id, name: data.name, revision: 1 };
   }
   insertInitial(prepared) {
     return this.db
       .prepare(
-        "INSERT INTO senda_revisions (model_id,revision,parent,created,summary,object_key,digest,content_hash) VALUES (?,?,?,?,?,?,?,?)",
+        "INSERT INTO senda_revisions (model_id,revision,parent,created,summary,object_key,digest,content_hash) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM senda_models WHERE id=?)",
       )
-      .bind(...prepared.values);
+      .bind(...prepared.values, prepared.values[0]);
   }
   async open(actor, id, model = "as-is", revision, options) {
     await this.authorize(actor, id);

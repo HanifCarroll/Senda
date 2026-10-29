@@ -53,7 +53,7 @@ function SignIn() {
     // Consent verifies the signed query. Never accept an arbitrary return URL.
     return (
       window.location.origin +
-      (query.has("sig") && query.has("client_id") ? `/consent${window.location.search}` : "/app")
+      (query.has("sig") && query.has("client_id") ? `/consent${window.location.search}` : query.get("plan") === "pro" ? "/app/billing" : "/app")
     );
   }
   async function send(event: React.FormEvent<HTMLFormElement>) {

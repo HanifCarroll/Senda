@@ -289,8 +289,9 @@ function AgentChat() {
         )}
         {available === false ? (
           <Alert>
-            <AlertTitle>{accessMessage ? "Built-in agent paused" : "The built-in agent isn’t available for your account yet"}</AlertTitle>
+            <AlertTitle>{accessMessage ? "Built-in chat needs attention" : "The built-in agent isn’t available for your account yet"}</AlertTitle>
             <AlertDescription>{accessMessage || "You can use Senda with ChatGPT or Claude. Choose Connect your agent above to get started."}</AlertDescription>
+            {accessMessage && <Button variant="outline" className="mt-3" asChild><a href="/app/billing">Your plan</a></Button>}
           </Alert>
         ) : <form
           onSubmit={send}

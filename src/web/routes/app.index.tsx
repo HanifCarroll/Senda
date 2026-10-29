@@ -25,11 +25,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const Route = createFileRoute("/app/")({ component: Projects });
 function Projects() {
   const [projects, setProjects] = useState<any[] | null>(null),
+    [quota, setQuota] = useState<{ available: boolean; projectLimit: number } | null>(null),
     [error, setError] = useState(""),
     [open, setOpen] = useState(false),
     [text, setText] = useState(""),
     [busy, setBusy] = useState(false);
   useEffect(() => {
+    void api<{ available: boolean; projectLimit: number }>("/api/billing").then(setQuota).catch(() => {});
     void api<any[]>("/api/projects")
       .then(setProjects)
       .catch((e) => {
@@ -71,12 +73,12 @@ function Projects() {
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Your processes</h1>
             <p className="mt-2 text-muted-foreground">
-              Give your transcript to your agent. Review the diagrams and revisions here.
+              Start with a transcript, then review your diagrams, evidence and revisions here.
             </p>
           </div>
           <div className="flex gap-3"><SendaAgentLink /><Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" disabled={!!quota && projects !== null && projects.length >= quota.projectLimit}>
                 <Plus data-icon="inline-start" />
                 New project
               </Button>
@@ -161,6 +163,7 @@ function Projects() {
             </DialogContent>
           </Dialog></div>
         </div>
+        {quota?.available && projects !== null && <p className="text-sm leading-6 text-muted-foreground">{projects.length} of {quota.projectLimit} saved projects. {projects.length >= quota.projectLimit ? <>You’ve reached your creation limit. Your existing work stays available. {quota.projectLimit === 3 && <a className="underline underline-offset-4" href="/app/billing">Upgrade to Pro for up to 100 projects.</a>}</> : <>Projects cannot currently be deleted in the app. <a className="underline underline-offset-4" href="/pricing">Compare plans</a></>}</p>}
         {error && !open && (
           <Alert variant="destructive">
             <AlertTitle>Projects could not be loaded</AlertTitle>

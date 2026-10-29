@@ -41,15 +41,16 @@ Keep `DEEPSEEK_API_KEY` in an ignored, owner-readable `.env`. For local Worker
 runs use `--env-file .env` and a private `.dev.vars` for local auth settings.
 Production uses a Cloudflare Worker secret. Never use a `VITE_` variable for keys.
 
-Until billing entitlements are finished, access requires both a key and an exact
-email in the `AGENT_ALLOWED_EMAILS` Worker secret. Other users retain their
-connected-agent workflow. This is an operator preview, not a public free AI tier.
+Built-in chat requires a current paid entitlement or an exact operator email
+in the `AGENT_ALLOWED_EMAILS` Worker secret, plus the provider key and Workflow.
+Operator access stays separate from paid access. Free accounts retain their
+connected-agent workflow; there is no public free AI tier.
 
 Each upcoming main call reserves US$0.12; each consistency check reserves US$0.04.
 Turns permit at most sixteen main calls (240 KB of instructions, conversation and
 tool schemas; 32,000 output tokens per call) and six checks (60 KB; 16,000 output
-tokens). Each call must fit within the remaining US$1 turn ceiling and US$2 daily
-account limit (UTC) before it starts. Measured calls release unused reservations,
+tokens). Each call must fit within the remaining US$1 turn ceiling and the daily
+account limit (US$3 paid, US$2 operator; UTC) before it starts. Measured calls release unused reservations,
 so repair calls can use that room without raising either ceiling. The rate card is
 `deepseek-flash-2026-10-28-peak`: US$0.30/million input tokens and US$1.20/million
 output tokens, including reasoning, without relying on cache or off-peak discounts.
@@ -62,8 +63,12 @@ a completed turn uses measured usage on the fixed rate card. A run
 expires after nine minutes; a stale lock can be recovered after ten. Changing
 provider rates or model limits requires reviewing the reservation calculation.
 
-Prices and paid allowances remain gated on measured complete journeys and the
-requested Claude agreement. Operator access stays separate from paid entitlement.
+Launch pricing was agreed with Claude Opus 5.5 after a first-principles review:
+US$29/month, US$6 monthly allowance, Free3/Pro100 saved projects. Operator access
+stays separate from paid entitlement. Shared service admission budgets are
+US$10/UTC day and US$100/calendar month, including operators and unknown outcomes.
+The absorbed-cost limit is US$3 per paid period. No automatic overage, funding
+or limit increase occurs. See [billing](billing.md) and the public usage policy.
 Billing flags remain off until sandbox payment and entitlement checks pass.
 
 ## Verification

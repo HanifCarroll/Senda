@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { createStripeClient, verifyStripeEvent, affectedSubscriptions } from '../server/billing/stripe.js';
 import { requireThat, ScribeError } from '../core/errors.js';
 import { hash } from '../core/hash.js';
-import { paidUsage, budgetPause, MIN_PAID_TURN_USD } from './agent-budget.js';
+import { paidUsage, budgetPause, MIN_PAID_TURN_USD, serviceLimits } from './agent-budget.js';
+import { SENDA_PLAN, billingNow, emailListed } from '../server/billing/plan.js';
+import { OperationalAlerts } from './operations.js';
 
 const idOf = value => typeof value === 'string' ? value : value?.id;
 const ACCOUNTS = { live: 'acct_1TX0nfGSlAkX1ZYL', sandbox: 'acct_1TX0nqK7alsSe3q5' };
@@ -16,7 +18,9 @@ export function billingConfig(env) {
     env.STRIPE_ACCOUNT_ID === (live ? ACCOUNTS.live : ACCOUNTS.sandbox) &&
     !!env.STRIPE_SECRET_KEY && !!env.STRIPE_WEBHOOK_SECRET &&
     /^price_/.test(env.STRIPE_PRICE_ID || '') &&
-    Number(env.BILLING_INCLUDED_USD) > 0 && Number(env.BILLING_INCLUDED_USD) <= 10;
+    Number(env.BILLING_INCLUDED_USD) > 0 && Number(env.BILLING_INCLUDED_USD) <= 10 &&
+    (!live || (Number(env.BILLING_INCLUDED_USD) === SENDA_PLAN.includedUsd &&
+      emailListed(env.AGENT_ALLOWED_EMAILS, env.BILLING_OPERATOR_EMAIL)));
   return {
     configured: !!configured, live, accountId: env.STRIPE_ACCOUNT_ID,
     context: `${env.STRIPE_ACCOUNT_ID}:${live ? 'live' : 'sandbox'}`,
@@ -32,6 +36,7 @@ export class CloudBilling {
     this.origin = origin;
     this.config = billingConfig(env);
     this.stripe = client || (this.config.configured ? createStripeClient(env.STRIPE_SECRET_KEY) : null);
+    this.operations = new OperationalAlerts(env);
   }
   requireConfigured() {
     requireThat(this.config.configured, 'BILLING_UNAVAILABLE', 'Paid plans are not available yet. You can keep using your connected agent.');
@@ -44,6 +49,15 @@ export class CloudBilling {
     return this.db.prepare(`SELECT 1 FROM senda_billing_risks r JOIN senda_billing_subscriptions s
       ON s.context=r.context AND s.id=r.subscription WHERE s.context=? AND s.owner=? AND r.active=1`)
       .bind(this.config.context, owner).first();
+  }
+  now() { return billingNow(this.env); }
+  async workspaceLimit(actor) {
+    if (!this.config.configured || !this.config.paidAgentEnabled) return SENDA_PLAN.proProjects;
+    if (this.env.AGENT_ALLOWED_EMAILS) {
+      const user = await this.db.prepare('SELECT email FROM user WHERE id=?').bind(actor.userId).first();
+      if (emailListed(this.env.AGENT_ALLOWED_EMAILS, user?.email)) return SENDA_PLAN.proProjects;
+    }
+    return await this.entitlement(actor) ? SENDA_PLAN.proProjects : SENDA_PLAN.freeProjects;
   }
   async withCustomer(owner, action) {
     const context = this.config.context, now = Date.now(), lock = randomUUID();
@@ -64,7 +78,8 @@ export class CloudBilling {
     ]);
     requireThat(account.id === this.config.accountId && price.livemode === this.config.live &&
       (!forCheckout || price.active) && price.type === 'recurring' && price.recurring?.interval === 'month' &&
-      price.recurring.interval_count === 1 && price.currency === 'usd' && price.unit_amount > 0,
+      price.recurring.interval_count === 1 && price.currency === 'usd' && price.unit_amount > 0 &&
+      (!this.config.live || price.unit_amount === SENDA_PLAN.priceUsd * 100),
       'BILLING_UNAVAILABLE', 'The payment configuration needs operator attention.');
     return price;
   }
@@ -137,24 +152,26 @@ export class CloudBilling {
     return { url: session.url };
   }
   async status(actor) {
-    if (!this.config.configured) return { available: false };
+    if (!this.config.configured) return { available: false, projectLimit: SENDA_PLAN.proProjects };
     const customer = await this.customer(actor.userId);
     const subscriptions = (await this.db.prepare('SELECT id,status,eligible,period_start,period_end,cancel_at FROM senda_billing_subscriptions WHERE context=? AND owner=? ORDER BY period_end DESC')
       .bind(this.config.context, actor.userId).all()).results;
-    const current = subscriptions[0];
+    const current = subscriptions.find(s => s.eligible && s.period_start * 1000 <= this.now() && s.period_end * 1000 > this.now())
+      || subscriptions.find(s => ['active','past_due','unpaid','paused','incomplete'].includes(s.status)) || subscriptions[0];
     const held = await this.reviewHold(actor.userId);
     const price = await this.verifyCatalog();
     const period = current && { context: this.config.context, subscriptionId: current.id,
-      periodStart: new Date(current.period_start * 1000).toISOString(), periodEnd: new Date(current.period_end * 1000).toISOString(), limitUsd: this.config.includedUsd };
+      periodStart: new Date(current.period_start * 1000).toISOString(), periodEnd: new Date(current.period_end * 1000).toISOString(), limitUsd: this.config.includedUsd, dailyUsd: SENDA_PLAN.paidDailyUsd };
     const usage = period ? await paidUsage(this.db, actor.userId, period) : null;
-    const pause = period ? await budgetPause(this.db, actor.userId, new Date().toISOString().slice(0, 10), period) : null;
+    const pause = period ? await budgetPause(this.db, actor.userId, new Date().toISOString().slice(0, 10), period, { nowMs: this.now(), limits: serviceLimits(this.env) }) : null;
     return {
       available: true, checkoutAvailable: this.config.paidAgentEnabled && !held && !subscriptions.some(s => ['active','trialing','past_due','unpaid','paused','incomplete'].includes(s.status)), sandbox: !this.config.live, priceUsd: price.unit_amount / 100,
       includedUsd: this.config.includedUsd, usedUsd: usage?.usedUsd || 0, pendingUsd: usage?.pendingUsd || 0,
       minimumTurnUsd: MIN_PAID_TURN_USD, pause,
+      projectLimit: await this.workspaceLimit(actor),
       managed: !!customer?.customer,
       subscription: current ? {
-        status: current.status, active: !!current.eligible && current.period_end * 1000 > Date.now(),
+        status: current.status, active: !!current.eligible && !held && current.period_start * 1000 <= this.now() && current.period_end * 1000 > this.now(),
         periodEnd: new Date(current.period_end * 1000).toISOString(), cancelAt: current.cancel_at,
       } : null,
     };
@@ -164,11 +181,12 @@ export class CloudBilling {
     const grant = await this.db.prepare(`SELECT * FROM senda_billing_subscriptions s WHERE context=? AND owner=? AND eligible=1 AND period_start<=? AND period_end>?
       AND NOT EXISTS(SELECT 1 FROM senda_billing_risks r JOIN senda_billing_subscriptions held ON held.context=r.context AND held.id=r.subscription WHERE r.context=s.context AND held.owner=s.owner AND r.active=1)
       ORDER BY period_end DESC LIMIT 1`)
-      .bind(this.config.context, actor.userId, Date.now() / 1000, Date.now() / 1000).first();
+      .bind(this.config.context, actor.userId, this.now() / 1000, this.now() / 1000).first();
     return grant ? {
       context: this.config.context, subscriptionId: grant.id,
       periodStart: new Date(grant.period_start * 1000).toISOString(),
       periodEnd: new Date(grant.period_end * 1000).toISOString(), limitUsd: this.config.includedUsd,
+      dailyUsd: SENDA_PLAN.paidDailyUsd,
     } : null;
   }
   async unavailableMessage(actor) {
@@ -176,7 +194,8 @@ export class CloudBilling {
     const hold = await this.reviewHold(actor.userId);
     if (hold) return 'The built-in agent is paused while your payment is reviewed. Your saved work and connected agent remain available. Check Your plan for details.';
     const customer = await this.customer(actor.userId);
-    return customer?.customer ? 'Your paid plan is not active. Check Your plan for payment or subscription details. Your saved work and connected agent remain available.' : null;
+    return customer?.customer ? 'Your paid plan is not active. Check Your plan for payment or subscription details. Your saved work and connected agent remain available.'
+      : 'Built-in chat is included in Senda Pro. Choose Pro in Your plan, or continue with your connected agent.';
   }
   async risk(event) {
     const object = event.data.object;
@@ -225,16 +244,19 @@ export class CloudBilling {
         if (risk) writes.push(this.db.prepare(`INSERT INTO senda_billing_risks(context,subscription,resource,kind,active) SELECT ?,?,?,?,? WHERE ${guard} ON CONFLICT(context,subscription,resource) DO UPDATE SET active=MAX(senda_billing_risks.active,excluded.active)`)
           .bind(context, subscription.id, risk.resource, risk.kind, Number(risk.active), ...lease));
         const eligible = subscription.status === 'active' && !subscription.pause_collection &&
-          !!item && invoice?.status === 'paid' && item.current_period_start <= Date.now() / 1000 && item.current_period_end > Date.now() / 1000;
+          !!item && invoice?.status === 'paid' && item.current_period_start <= this.now() / 1000 && item.current_period_end > this.now() / 1000;
         writes.push(this.db.prepare(`INSERT INTO senda_billing_subscriptions(context,id,owner,status,eligible,period_start,period_end,cancel_at,updated) SELECT ?,?,?,?,CASE WHEN ? AND NOT EXISTS(SELECT 1 FROM senda_billing_risks WHERE context=? AND subscription=? AND active=1) THEN 1 ELSE 0 END,?,?,?,? WHERE ${guard} ON CONFLICT(context,id) DO UPDATE SET status=excluded.status,eligible=excluded.eligible,period_start=excluded.period_start,period_end=excluded.period_end,cancel_at=excluded.cancel_at,updated=excluded.updated`)
           .bind(context, subscription.id, owner.owner, subscription.status, Number(eligible), context, subscription.id,
             item?.current_period_start || 0, item?.current_period_end || 0, subscription.cancel_at || null, new Date().toISOString(), ...lease));
         const results = await this.db.batch(writes);
         requireThat(results.at(-1).meta.changes === 1, 'CONFLICT', 'Billing changed during this update. Please retry.');
+        if (this.config.live && event.type.startsWith('checkout.session.') && object.payment_status === 'paid' && eligible)
+          await this.operations.notify('first-live-paid-checkout', 'first live purchase', 'The first paid Senda Checkout has completed. Review its invoice, subscription and Senda access in the Stripe dashboard today. This notification does not represent a test charge.');
       });
     }
     await this.db.prepare('INSERT OR IGNORE INTO senda_billing_events(context,id,type,processed) VALUES(?,?,?,?)')
       .bind(this.config.context, event.id, event.type, new Date().toISOString()).run();
+    await this.operations.observe();
     return { received: true };
   }
   async handle(request, actor, email) {
