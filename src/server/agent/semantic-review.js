@@ -66,7 +66,7 @@ export function assertLiteralTimers(graph) {
   }));
   requireThat(!invalid.length, 'INVALID_TIMER', 'Use ISO 8601 durations: calendar days are P7D, clock hours are PT7H. Correct every invalid timer before saving.', { timers: invalid });
 }
-export async function reviewCandidate({ model, candidate, overviewTurn = false, userMessage, signal, maxBytes, maxOutputTokens, onUsage, reserveCall = async () => {}, settleCall = async () => {}, failCall = async () => {}, generate = generateText }) {
+export async function reviewCandidate({ model, candidate, overviewTurn = false, userMessage, signal, maxBytes, maxOutputTokens, onUsage, reserveCall = async () => {}, settleCall = async () => {}, failCall = async () => {}, onTiming = () => {}, generate = generateText }) {
   const after = await semanticGraph(candidate.xml);
   const previous = await semanticGraph(candidate.previousXml);
   const flowNode = e => /(?:Task|SubProcess|Event|Gateway)$/.test(e.type);
@@ -102,7 +102,7 @@ export async function reviewCandidate({ model, candidate, overviewTurn = false, 
     'LIMIT', 'This process has too much evidence for one built-in review. Use a shorter process or continue with your connected agent.');
   let result;
   try { result = await generate({
-    model: budgetedModel(model, { reserveCall, settleCall, failCall }), instructions, prompt, output: Output.object({ schema: Verdict }),
+    model: budgetedModel(model, { reserveCall, settleCall, failCall, kind: 'review', onTiming }), instructions, prompt, output: Output.object({ schema: Verdict }),
     maxOutputTokens, maxRetries: 0, abortSignal: signal,
     providerOptions: agentProviderOptions(),
     onStepEnd: step => onUsage(step.usage),

@@ -8,7 +8,8 @@ import {
   usageCost,
 } from "../server/agent/run.js";
 import { requireThat } from "../core/errors.js";
-import { CallBudget, measuredUsage, reserveTurn, serviceLimits } from './agent-budget.js';
+import { CallBudget, measuredUsage, reserveTurn, serviceLimits,MIN_TURN_USD } from './agent-budget.js';
+import {trialStatus,trialMatches,claimTrial,bindTrialProject} from './agent-trial.js';
 import { billingNow, emailListed } from '../server/billing/plan.js';
 import { OperationalAlerts } from './operations.js';
 export { measuredUsage } from './agent-budget.js';
@@ -32,19 +33,41 @@ export class HostedAgent {
     if (row.project) await this.projects.authorize(actor, row.project);
     return row;
   }
+  async trialProjectRoom(actor) {
+    return (await this.projects.list(actor)).length < await this.projects.projectLimit(actor);
+  }
   async handle(request, actor, email) {
-    const path = new URL(request.url).pathname;
+    const url = new URL(request.url), path = url.pathname;
     const operator = agentAllowed(this.env, email);
     const paidEmailAllowed = this.env.PAID_AGENT_ALLOWED_EMAILS === undefined || emailListed(this.env.PAID_AGENT_ALLOWED_EMAILS, email);
-    const entitlement = !operator && paidEmailAllowed && this.env.OPENAI_API_KEY
+    let entitlement = !operator && paidEmailAllowed && this.env.OPENAI_API_KEY
       ? await this.billing?.entitlement(actor) : null;
-    const available = (operator || !!entitlement) && !!(this.env.AGENT_WORKFLOW || this.dispatch);
-    const accessMessage = !available && !operator ? await this.billing?.unavailableMessage?.(actor) : null;
+    const trialEnabled = !operator && !entitlement && !!this.env.OPENAI_API_KEY && this.env.FREE_AGENT_TRIAL_ENABLED === '1' &&
+      !(await this.billing?.reviewHold?.(actor.userId));
+    const trial = trialEnabled ? await trialStatus(this.db, actor.userId) : null;
+    let contextProject = url.searchParams.get('project') || null,
+      contextChat = url.searchParams.get('chat') || null;
+    if (path === '/api/agent/config' && contextChat)
+      contextProject = (await this.chat(actor, contextChat)).project;
+    else if (path === '/api/agent/config' && contextProject)
+      await this.projects.authorize(actor, contextProject);
+    const trialRoom = path !== '/api/agent/config' || !trial || trial.chatId || contextProject || await this.trialProjectRoom(actor);
+    const trialAvailable = trial && trial.remainingUsd >= MIN_TURN_USD && trialRoom;
+    const trialContextAllowed = !trial || (!contextProject && !contextChat) || trialMatches(trial, contextChat, contextProject);
+    const available = !!(operator || entitlement || trialAvailable && trialContextAllowed) && !!(this.env.AGENT_WORKFLOW || this.dispatch);
+    const accessMessage = trial && !trialContextAllowed
+      ? 'Your free Luna trial is for one project. Continue your trial project, or choose Pro for other projects.'
+      : trial && !trialRoom
+        ? 'Your workspace is full. Open an existing project to start your free Luna trial there. Your trial has not been used.'
+      : trial && !trialAvailable
+        ? 'Your free Luna trial allowance is finished or reserved for a reply. Your project, evidence and downloads stay available. Choose Pro to continue with Luna, or use your connected agent.'
+        : !available && !operator ? await this.billing?.unavailableMessage?.(actor) : null;
     if (path === "/api/agent/config")
       return Response.json({
         available,
         message: accessMessage || undefined,
         model: AGENT_MODEL_NAME,
+        ...(trial ? { trial } : {}),
       });
     const read = /^\/api\/agent\/chats\/([^/]+)$/.exec(path);
     if (request.method === 'GET' && read) {
@@ -69,6 +92,12 @@ export class HostedAgent {
         .parse(await request.json());
       if (input.projectId)
         await this.projects.authorize(actor, input.projectId);
+      if (trial && !trial.chatId && !input.projectId)
+        requireThat(await this.trialProjectRoom(actor), 'PROJECT_LIMIT',
+          'Your workspace is full. Open an existing project to start your free Luna trial there. Your trial has not been used.');
+      if (trial)
+        requireThat(trialMatches(trial, null, input.projectId), 'TRIAL_PROJECT',
+          'Your free Luna trial is for one project. Continue that project, or choose Pro to use Luna on other projects.');
       if (input.projectId && !input.newConversation) {
         const prior = await this.db
           .prepare(
@@ -115,6 +144,12 @@ export class HostedAgent {
     );
     row = locked;
     try {
+      if (trial) {
+        if (!trial.chatId && !row.project)
+          requireThat(await this.trialProjectRoom(actor), 'PROJECT_LIMIT',
+            'Your workspace is full. Open an existing project to start your free Luna trial there. Your trial has not been used.');
+        entitlement = await claimTrial(this.db, actor.userId, row);
+      }
       await reserveTurn(this.db, { runId, chatId: row.id, owner: actor.userId, day, entitlement,
         nowMs: billingNow(this.env), limits: serviceLimits(this.env) });
     } catch (error) {
@@ -189,6 +224,8 @@ export class HostedAgent {
       EXISTS(SELECT 1 FROM senda_agent_chats WHERE id=? AND owner=? AND lock_id=? AND lock_until>?) RETURNING id`)
       .bind(runId, chatId, run.owner, runId, Date.now()).first();
     if (!claimed) return { executed: false };
+    const executionStarted=performance.now();
+    console.info('Senda agent timing',{runId,phase:'queue',durationMs:Math.max(0,Date.now()-Date.parse(run.created)),status:'success'});
     const actor = { userId: run.owner }, controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 540000);
     let statusWrites = Promise.resolve();
@@ -212,10 +249,15 @@ export class HostedAgent {
         origin: this.origin, messages: base, projectId: row.project,
         initialModel: displayModel(display) || lastModel(JSON.parse(row.messages)),
         signal: controller.signal, emit,
+        onTiming:event=>console.info('Senda agent timing',{runId,...event}),
+        onProgress:()=>emit({type:'status',text:'A draft is saved. Finishing its checks…'}),
         reserveCall: kind => budget.reserve(kind), settleCall: usage => budget.settle(usage),
         failCall: error => budget.failure(error),
-        onProject: id => this.db.prepare("UPDATE senda_agent_chats SET project=? WHERE id=? AND lock_id=?")
-          .bind(id, row.id, runId).run(),
+        onProject: async id => {
+          if(entitlement?.kind==='trial')await bindTrialProject(this.db,run.owner,row.id,id,runId);
+          else await this.db.prepare("UPDATE senda_agent_chats SET project=? WHERE id=? AND lock_id=?")
+            .bind(id, row.id, runId).run();
+        },
         saveStep: async step => {
           console.info('Senda model step', { finishReason: step.finishReason,
             inputTokens: step.usage?.inputTokens, outputTokens: step.usage?.outputTokens,
@@ -260,6 +302,7 @@ export class HostedAgent {
       clearTimeout(timeout);
       await this.unlock(chatId, runId);
       await this.operations.observe();
+      console.info('Senda agent timing',{runId,phase:'turn',durationMs:performance.now()-executionStarted,status:'finished'});
     }
     return { executed: true };
   }

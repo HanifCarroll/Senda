@@ -64,7 +64,7 @@ function Billing() {
             <progress className="h-2 w-full accent-primary" max={100} value={usage} aria-label="AI allowance used" />
             {!!plan.pendingUsd && <p className="text-sm text-muted-foreground">A reply is being prepared. Its temporary allowance reservation is not shown as used.</p>}
             <p className="text-sm text-muted-foreground">{plan.subscription.cancelAt ? "Access ends" : "Allowance renews"} {new Date(plan.subscription.periodEnd).toLocaleDateString(undefined, { dateStyle: "long" })}.</p>
-          </> : <p className="text-sm text-muted-foreground">{plan.subscription ? `Subscription status: ${plan.subscription.status.replaceAll("_", " ")}.` : "You’re on Free. Create up to 3 saved projects with your connected agent."}</p>}
+          </> : <p className="text-sm text-muted-foreground">{plan.subscription ? `Subscription status: ${plan.subscription.status.replaceAll("_", " ")}.` : "You’re on Free. Try Luna on one project with a $0.50 lifetime allowance, and keep up to 3 saved projects with your connected agent."}</p>}
           {plan.subscription && ["past_due", "unpaid", "incomplete"].includes(plan.subscription.status) && <p className="text-sm leading-6 text-muted-foreground">Your latest payment hasn’t completed. Use Update payment method to save a new card, then open Manage subscription to pay the failed amount. Saving a card alone does not settle an outstanding invoice. Built-in chat resumes after Stripe confirms payment.</p>}
           {search.checkout && !plan.subscription?.active && <p role="status" className="text-sm">Your plan appears here after Stripe confirms payment. You can return to your processes while it updates.</p>}
           <div className="flex flex-wrap gap-3">

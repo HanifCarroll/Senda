@@ -16,6 +16,7 @@ export const Route = createFileRoute("/app/agent")({
   component: AgentChat,
 });
 type Message = { role: "user" | "assistant"; text: string; incomplete?: boolean };
+type Trial={projectId:string|null;chatId:string|null;limitUsd:number;usedUsd:number;pendingUsd:number;remainingUsd:number};
 function AgentChat() {
   const search = Route.useSearch(),
     navigate = Route.useNavigate();
@@ -29,17 +30,28 @@ function AgentChat() {
     [working, setWorking] = useState(false),
     [available, setAvailable] = useState<boolean | null>(null),
     [accessMessage, setAccessMessage] = useState(""),
+    [trial,setTrial]=useState<Trial|null>(null),
     [status, setStatus] = useState(""),
     [error, setError] = useState("");
   const end = useRef<HTMLDivElement>(null),
     abort = useRef<AbortController | null>(null);
   useEffect(() => {
-    void api<{ available: boolean; message?: string }>("/api/agent/config").then(c => { setAvailable(c.available); setAccessMessage(c.message || ""); })
+    if(busy)return;
+    let active=true;
+    const query=new URLSearchParams();
+    if(search.chat)query.set('chat',search.chat);else if(search.project)query.set('project',search.project);
+    void api<{ available: boolean; message?: string;trial?:Trial }>(`/api/agent/config?${query}`).then(c => {
+      if(!active)return;
+      setAvailable(c.available); setAccessMessage(c.message || "");setTrial(c.trial||null);
+      if(!search.chat&&!search.project&&c.trial?.chatId)void navigate({search:{chat:c.trial.chatId,project:undefined},replace:true,resetScroll:false});
+    })
       .catch(e => {
+        if(!active)return;
         if (e instanceof ApiError && e.status === 401) window.location.assign("/sign-in");
         else { setError(e.message); setAvailable(false); }
       });
-  }, []);
+    return()=>{active=false};
+  }, [busy,working,search.chat,search.project]);
   useEffect(() => {
     if (!search.project || search.chat) return;
     let active = true;
@@ -248,6 +260,11 @@ function AgentChat() {
             <a href="/privacy" className="underline underline-offset-4">How your data is used</a>
           </p>
         </div>
+        {trial&&<section aria-label="Free Luna trial" className="space-y-2 rounded-xl border bg-muted/40 p-4 text-sm leading-6">
+          <p className="font-medium">Try Luna on one project — no payment card needed</p>
+          <p>Your ${trial.limitUsd.toFixed(2)} lifetime allowance covers the draft, clarification and separate To-be revisions in this project. ${trial.remainingUsd.toFixed(2)} remains after used or reserved allowance. Saved work and downloads stay available when the trial ends.</p>
+          <p><a className="underline underline-offset-4" href="/usage">How the trial works</a>{' · '}<a className="underline underline-offset-4" href="/app/billing">Continue with Pro</a></p>
+        </section>}
         <div className="flex flex-1 flex-col gap-8" aria-live="polite">
           {messages.map((m, i) => (
             <article
@@ -295,6 +312,7 @@ function AgentChat() {
           <Alert>
             <AlertTitle>{accessMessage ? "Built-in chat needs attention" : "The built-in agent isn’t available for your account yet"}</AlertTitle>
             <AlertDescription>{accessMessage || "You can use Senda with ChatGPT or Claude. Choose Connect your agent above to get started."}</AlertDescription>
+            {trial?.chatId&&trial.chatId!==chat&&<Button variant="outline" className="mt-3 mr-3" asChild><a href={`/app/agent?chat=${trial.chatId}`}>Open your trial project</a></Button>}
             {accessMessage && <Button variant="outline" className="mt-3" asChild><a href="/app/billing">Your plan</a></Button>}
           </Alert>
         ) : <form

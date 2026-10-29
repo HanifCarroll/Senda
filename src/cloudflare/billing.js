@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { createStripeClient, verifyStripeEvent, affectedSubscriptions } from '../server/billing/stripe.js';
 import { requireThat, ScribeError } from '../core/errors.js';
 import { hash } from '../core/hash.js';
-import { paidUsage, budgetPause, MIN_PAID_TURN_USD, serviceLimits } from './agent-budget.js';
+import { paidUsage, budgetPause, MIN_TURN_USD, serviceLimits } from './agent-budget.js';
 import { SENDA_PLAN, billingNow, emailListed } from '../server/billing/plan.js';
 import { OperationalAlerts } from './operations.js';
 
@@ -171,7 +171,7 @@ export class CloudBilling {
     return {
       available: true, checkoutAvailable: this.config.paidAgentEnabled && !held && !subscriptions.some(s => ['active','trialing','past_due','unpaid','paused','incomplete'].includes(s.status)), sandbox: !this.config.live, priceUsd: price.unit_amount / 100,
       includedUsd: this.config.includedUsd, usedUsd: usage?.usedUsd || 0, pendingUsd: usage?.pendingUsd || 0,
-      minimumTurnUsd: MIN_PAID_TURN_USD, pause,
+      minimumTurnUsd: MIN_TURN_USD, pause,
       projectLimit: await this.workspaceLimit(actor),
       managed: !!customer?.customer,
       subscription: current ? {

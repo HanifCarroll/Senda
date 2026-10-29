@@ -415,6 +415,7 @@ export async function createRequestHandler({
           {
             NOT_FOUND: 404,
             FORBIDDEN: 403,
+            TRIAL_PROJECT: 403,
             STALE_REVISION: 409,
             MODEL_EXISTS: 409,
             LIMIT: 413,

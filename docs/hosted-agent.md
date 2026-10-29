@@ -42,10 +42,7 @@ Keep `OPENAI_API_KEY` in an ignored, owner-readable `.env.local`. For local Work
 runs put the key and local auth settings in a private `.dev.vars`. Use a separate configuration directory and state for live-provider qualification.
 Production uses a Cloudflare Worker secret. Never use a `VITE_` variable for keys.
 
-Built-in chat requires a current paid entitlement or an exact operator email
-in the `AGENT_ALLOWED_EMAILS` Worker secret, plus the provider key and Workflow.
-Operator access stays separate from paid access. Free accounts retain their
-connected-agent workflow; there is no public free AI tier.
+Built-in chat requires the provider key and Workflow, plus an eligible paid entitlement, an exact operator email in `AGENT_ALLOWED_EMAILS`, or the free trial enabled by `FREE_AGENT_TRIAL_ENABLED=1`. Each account can claim one trial project on its first message; its As-is and To-be models and all conversations share a US$0.50 lifetime operational allowance. Migration 0010 stores the independent trial grant and run attribution. Claims and project binding are atomic; every model call rechecks both project scope and remaining allowance. Failed and unknown trial calls count conservatively, unlike the paid monthly customer meter. Paid access takes precedence and never resets the trial. Payment review holds cannot be bypassed through the trial. Saved work and connected-agent access remain available after exhaustion.
 
 Each upcoming main call reserves US$0.05; each consistency check reserves US$0.02.
 Turns permit at most sixteen main calls (240 KB of instructions, conversation and
