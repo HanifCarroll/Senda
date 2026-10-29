@@ -22,6 +22,16 @@ Safe timing metadata now separates queue, reservation, provider, settlement, too
 
 Two private experiment capture failures occurred after successful model execution: an export helper used an inspection result without XML, and an in-memory database helper returned the wrong shape for batched SELECT results. Both were corrected without replaying the already completed call merely to recover artifacts. The affected attempts are retained and excluded from speed comparisons.
 
+Production timing from the three-turn Free trial confirms the remaining variation:
+
+| Turn | Queue | Execution | Provider time | Provider calls |
+| --- | ---: | ---: | ---: | ---: |
+| First draft | 5.670 s | 58.024 s | 53.178 s | 8 |
+| Detailed clarification | 3.798 s | 233.017 s | 225.580 s | 12 |
+| Separate future model | 2.767 s | 62.223 s | 56.688 s | 7 |
+
+The detailed revision needed repairs for dangling evidence and claims that mislocated a human availability check or treated unconfirmed reply types as exhaustive. Those proposals were rejected before saving. The final saved behavior passed independent checks. Model processing and repairs still dominate; the optimization does not make every reply fast.
+
 ## ChatGPT consumer response display
 
 The original affected conversation still contains five assistant cards saying “This response couldn’t load,” including after reload. Its visible fallback is in ChatGPT's `DilRenderer`. React hydration warnings were observed, but do not establish the cause. The precise historical-message rendering failure remains unconfirmed.
@@ -35,3 +45,5 @@ The tested recovery is to open a fresh ChatGPT conversation and ask it to read t
 MCP diagnostics now correlate generated server call IDs with result and response-stream completion, cancellation or error. They preserve status, bytes, backpressure and cancellation behavior and exclude request bodies, arguments, headers, client IDs and error text. Stream completion proves server handoff, not that ChatGPT displayed the result. These diagnostics are not represented as a fix for old ChatGPT history. The connector remains a beta.
 
 A private, sanitized support report records the affected conversation and message IDs, comparison controls and screenshots. It has not been sent to a third party. Raw browser archives, credentials and customer sources are not needed for that report. Private investigation artifacts are under `tmp/chatgpt-display-2026-10-29/` and `tmp/luna-speed-2026-10-29/`.
+
+After deployment, a fresh read-only project-list response displayed in ChatGPT and survived reload. Its correlated server delivery completed with status 200, 977 bytes and 128 ms. This verifies the new instrumentation and that individual response; it does not repair the affected historical cards.

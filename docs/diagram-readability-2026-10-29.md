@@ -17,6 +17,14 @@ Fresh app views open at actual size or larger. Explicit Fit and saved camera cho
 
 Review found an additional composition defect: a short collapsed ad-hoc activity with parallel/compensation markers could push one bottom timer outside its host. The new regression first failed with timer center 74 outside host 80..220. Marker-aware sizing and ordered slots now cover one, two and three timers, preserve sibling order and all markers, and keep SVG and both BPMN exports aligned. Existing proof tests and routing/acceptance budgets were not weakened.
 
+## External-label follow-up
+
+Live trial QA found an end-event label overlapping its circle. The renderer wraps external text at a minimum width of 90 pixels even when the saved DI label box is narrower. Layout now reserves that envelope before placing labels, measures the renderer's actual second-pass line count, and checks an eight-pixel symbol gutter. A review regression caught a four-line gateway label that a first-pass estimate treated as three lines; its native line count now controls the conservative height. These changes affect disposable drawing positions and retain canonical model semantics.
+
+The repeated audit covers 20 cases and 34 views, including the new production overview and detailed booking process. Actual browser geometry checked 133 external labels; the smallest measured glyph-to-owner gap was 11.885 pixels. Source hashes, export semantics, boundary docking and the existing activity regressions passed. The suite now has 164 tests. Desktop Billing also has an explicit eight-pixel gap between its icon and text.
+
+Private follow-up artifacts are under `tmp/external-label-audit/`. The external-label browser harness initially failed on an empty diagram-plane array; it was corrected to treat missing plane elements as an empty list, without altering product assertions or source models.
+
 ## Limits
 
 The dense fixture and some multi-part examples still have crossing or long-route advisories. These remain visible rather than being treated as clean text-clearance results. The reported saved diagram has a long corrected-pack return advisory; its text, attached timers and connection crossings passed the checks. This audit is a varied regression set, not a guarantee about every possible imported BPMN model or every user-selected zoom level. Production deployment and provider behavior require separate release verification.

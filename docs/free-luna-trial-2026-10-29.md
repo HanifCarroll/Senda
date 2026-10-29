@@ -28,3 +28,11 @@ Exhaustion was simulated only in the owned local test account, after preserving 
 Regression tests cover racing first claims, lifetime accounting, failed and unknown costs, per-call enforcement, selected-project isolation, a payment hold appearing between calls, paid upgrade and lapse, and a full workspace retaining its unclaimed trial. The existing Cloudflare SDK and browser regression journeys also pass.
 
 Private artifacts are under `tmp/free-trial-qa/`. They contain fictional test sources and local account records and are intentionally excluded from publication. Production rollout is verified separately against the deployed commit and migration receipt.
+
+## Production check
+
+Release `f20f5c4` passed GitHub verification and Cloudflare Workers Builds. Migration 0010 applied before the Worker upload, with ten migrations present and the new Worker receiving all traffic. The provider key remained a Worker secret.
+
+A fresh nonoperator account signed in through an actual email link and completed three live UI turns: transcript-only photo-booking discovery, a clarification and detailed model, and a separate future model with only the requested quote and confirmation automation. All three ran once. Seven immutable snapshots passed exact evidence, hash, reference, history and baseline checks. Independent graph checks confirmed that unavailable dates and declined quotes cannot reserve a date, acceptance precedes reservation, and unanswered quotes retain an untimed wait. Actual current and future browser downloads matched saved model semantics without parsing warnings.
+
+The three turns cost $0.077439625, leaving $0.422560375. Reload during the first reply recovered the running conversation; completion restored the composer and settled balance. No card or paid entitlement was used, and no production accounting rows were fabricated or removed.
