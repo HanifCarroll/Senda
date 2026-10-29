@@ -82,7 +82,13 @@ retrieved and inspected. Do not describe that as a verified browser download.
 
 Separate technical ChatGPT checks exercised all 14 tools, rejected stale and
 invalid writes without advancing the model, and rejected access to the other
-client's test project. Claude's technical connection and first clarification
-worked, including incremental write consent; its remaining tests and fresh
-business-language journey await the account's usage reset. No extra usage was
-purchased. Keep these partial results distinct from completed client coverage.
+client's test project. Claude's technical connection included incremental write
+consent. After the subscription usage reset, a fresh Opus 5.5 High conversation
+completed five ordinary business-language turns for the Orchard process. Its
+As-is revision 5, To-be revision 3 and fixed As-is baseline revision 5 were
+independently checked, together with evidence, separate histories and actual
+Chrome-downloaded BPMN files. No extra usage was purchased.
+
+See the [29 October limitation research](limitations-research-2026-10-29.md) for
+the remaining ChatGPT display investigation, a verified signed-out download
+edge case and proposed browser-file regression coverage.

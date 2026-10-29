@@ -177,3 +177,8 @@ three-project limit, no subscription, denied built-in chat, private-project
 isolation and rejection of an invalid webhook signature. No real test charge was
 made. The live Checkout and signed expiry verify production wiring; completed
 payment and entitlement lifecycle evidence comes from the isolated sandbox.
+
+The [29 October follow-up research](limitations-research-2026-10-29.md) includes
+a fresh successful zero-charge sandbox card update, resolving the earlier
+unverified form interaction in the in-app browser. Normal Chrome form rendering
+was checked separately. It also records the remaining download and ChatGPT work.
