@@ -112,7 +112,7 @@ try {
     for (const label of annotationFonts) {
       assert.ok(label.fontSize >= 12, `${width}px: ${label.text} annotation remains readable`);
       assert.ok(label.connectionGap >= 7.9, `${width}px: ${label.text} clears every connector by eight model pixels`);
-      assert.ok(label.viewBoxInset >= 10, `${width}px: ${label.text} is complete inside the illustration`);
+      assert.ok(label.viewBoxInset >= 10, `${width}px: ${label.text} is complete inside the illustration (${label.viewBoxInset.toFixed(2)}px inset)`);
     }
   }
   await p.setViewportSize({ width: 1440, height: 1000 });
