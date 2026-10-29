@@ -52,6 +52,71 @@ try {
   assert.equal(await ssr.locator("form").getAttribute("method"), "post");
   assert.ok(await ssr.getByRole("button", { name: "Send sign-in link", exact: true }).isDisabled());
   await nojs.close();
+  for (const [width, height] of [[1440, 1000], [1024, 1000], [390, 844], [320, 844]]) {
+    await p.setViewportSize({ width, height });
+    await p.goto(base + "/");
+    await p.getByRole("img", { name: /^Finance subprocess:/ }).waitFor();
+    assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}px: homepage has no horizontal overflow`);
+    const illustration = await p.evaluate(() => {
+      const svg = [...document.querySelectorAll('svg[aria-label^="Finance subprocess:"]')]
+        .find(element => element.getBoundingClientRect().width > 0);
+      const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
+      const distance = (a, b) => Math.hypot(Math.max(a.left - b.right, b.left - a.right, 0), Math.max(a.top - b.bottom, b.top - a.bottom, 0)) / scale;
+      return [...svg.querySelectorAll("g")]
+        .filter(group => group.querySelector(":scope > rect") && group.querySelector("circle"))
+        .map(group => {
+          const border = group.querySelector(":scope > rect").getBoundingClientRect();
+          const badge = group.querySelector("circle").getBoundingClientRect();
+          const icon = [...group.querySelectorAll(":scope > g")].find(child => !child.querySelector("circle"))?.getBoundingClientRect();
+          return {
+            badgeInset: Math.min(badge.left - border.left, border.right - badge.right, badge.top - border.top, border.bottom - badge.bottom) / scale,
+            lines: [...group.querySelectorAll(":scope > text")].map(text => {
+              const label = text.getBoundingClientRect();
+              return {
+                text: text.textContent,
+                fontSize: Number.parseFloat(getComputedStyle(text).fontSize) * scale,
+                borderInset: Math.min(label.left - border.left, border.right - label.right, label.top - border.top, border.bottom - label.bottom) / scale,
+                badgeGap: distance(label, badge),
+                iconGap: icon ? distance(label, icon) : null,
+              };
+            }),
+          };
+        });
+    });
+    await writeFile(`${artifacts}/homepage-spacing-${width}.json`, JSON.stringify(illustration, null, 2));
+    assert.equal(illustration.length, 3);
+    for (const activity of illustration) {
+      assert.ok(activity.badgeInset >= 6.9, "Step badges have seven model pixels of border clearance");
+      for (const line of activity.lines) {
+        assert.ok(line.fontSize >= 12, `${width}px: ${line.text} remains readable`);
+        assert.ok(line.borderInset >= 10, `${width}px: ${line.text} clears the task border`);
+        assert.ok(line.badgeGap >= 8, `${width}px: ${line.text} clears the number badge`);
+        assert.ok(line.iconGap === null || line.iconGap >= 8, `${width}px: ${line.text} clears the task icon`);
+      }
+    }
+    const annotationFonts = await p.evaluate(() => {
+      const svg = [...document.querySelectorAll('svg[aria-label^="Finance subprocess:"]')].find(element => element.getBoundingClientRect().width > 0);
+      const outer = svg.getBoundingClientRect(), view = svg.viewBox.baseVal, scale = outer.width / view.width;
+      const segments = [...svg.querySelectorAll("polyline")].flatMap(line => {
+        const points = line.getAttribute("points").trim().split(/\s+/).map(pair => pair.split(",").map(Number));
+        return points.slice(1).map((point, index) => [points[index], point]);
+      });
+      return [...svg.querySelectorAll(":scope > text")].map(text => {
+        const r = text.getBoundingClientRect();
+        const box = { left: (r.left - outer.left) / scale + view.x, right: (r.right - outer.left) / scale + view.x, top: (r.top - outer.top) / scale + view.y, bottom: (r.bottom - outer.top) / scale + view.y };
+        const connectionGap = Math.min(...segments.map(([a, b]) => Math.hypot(Math.max(box.left - Math.max(a[0], b[0]), Math.min(a[0], b[0]) - box.right, 0), Math.max(box.top - Math.max(a[1], b[1]), Math.min(a[1], b[1]) - box.bottom, 0))));
+        return { text: text.textContent, fontSize: Number.parseFloat(getComputedStyle(text).fontSize) * scale, connectionGap, viewBoxInset: Math.min(box.left - view.x, view.x + view.width - box.right, box.top - view.y, view.y + view.height - box.bottom) };
+      });
+    });
+    await writeFile(`${artifacts}/homepage-annotations-${width}.json`, JSON.stringify(annotationFonts, null, 2));
+    for (const label of annotationFonts) {
+      assert.ok(label.fontSize >= 12, `${width}px: ${label.text} annotation remains readable`);
+      assert.ok(label.connectionGap >= 7.9, `${width}px: ${label.text} clears every connector by eight model pixels`);
+      assert.ok(label.viewBoxInset >= 10, `${width}px: ${label.text} is complete inside the illustration`);
+    }
+  }
+  await p.setViewportSize({ width: 1440, height: 1000 });
+  console.log("Homepage task labels, icons and number badges have clear spacing on desktop and mobile");
   await p.goto(base + "/sign-in");
   await p.getByLabel("Email", { exact: true }).fill(email);
   await p.getByRole("button", { name: "Send sign-in link", exact: true }).click();

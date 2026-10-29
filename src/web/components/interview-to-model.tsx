@@ -22,29 +22,29 @@ const nodes: {
 }[] = [
   { kind: "start", h: [22, 120], v: [150, 22] },
   { kind: "gateway", h: [78, 120], v: [150, 78] },
-  { kind: "task", step: 1, icon: "send", lines: ["Issue deposit", "invoice"], h: [200, 120], v: [150, 150] },
-  { kind: "task", step: 2, icon: "receive", lines: ["Receive", "deposit"], h: [348, 120], v: [150, 236] },
-  { kind: "gateway", h: [448, 120], v: [150, 306] },
-  { kind: "task", step: 3, lines: ["Record financial", "clearance"], h: [556, 120], v: [150, 378] },
-  { kind: "end", h: [660, 120], v: [150, 446] },
+  { kind: "task", step: 1, icon: "send", lines: ["Issue deposit", "invoice"], h: [200, 120], v: [150, 184] },
+  { kind: "task", step: 2, icon: "receive", lines: ["Receive", "deposit"], h: [348, 120], v: [150, 300] },
+  { kind: "gateway", h: [448, 120], v: [150, 386] },
+  { kind: "task", step: 3, lines: ["Record financial", "clearance"], h: [556, 120], v: [150, 472] },
+  { kind: "end", h: [660, 120], v: [150, 558] },
 ];
 
-const task = { h: [116, 62], v: [150, 52] } as const;
+const task = { h: [132, 80], v: [160, 80] } as const;
 
 const edges: { h: Point[]; v: Point[]; step?: Step }[] = [
   { h: [[35, 120], [58, 120]], v: [[150, 35], [150, 58]] },
-  { h: [[98, 120], [142, 120]], v: [[150, 98], [150, 124]] },
-  { h: [[258, 120], [290, 120]], v: [[150, 176], [150, 210]] },
-  { h: [[406, 120], [428, 120]], v: [[150, 262], [150, 286]] },
-  { h: [[468, 120], [498, 120]], v: [[150, 326], [150, 352]] },
-  { h: [[614, 120], [647, 120]], v: [[150, 404], [150, 433]] },
-  { h: [[78, 100], [78, 46], [448, 46], [448, 100]], v: [[170, 78], [268, 78], [268, 306], [170, 306]] },
+  { h: [[98, 120], [134, 120]], v: [[150, 98], [150, 144]] },
+  { h: [[266, 120], [282, 120]], v: [[150, 224], [150, 260]] },
+  { h: [[414, 120], [428, 120]], v: [[150, 340], [150, 366]] },
+  { h: [[468, 120], [490, 120]], v: [[150, 406], [150, 432]] },
+  { h: [[622, 120], [647, 120]], v: [[150, 512], [150, 545]] },
+  { h: [[78, 100], [78, 46], [448, 46], [448, 100]], v: [[170, 78], [268, 78], [268, 386], [170, 386]] },
 ];
 
-const labels: { text: string; step?: Step; h: Point; v: Point; anchor?: { h?: "start" | "middle" | "end"; v?: "start" | "middle" | "end" } }[] = [
-  { text: "No approved terms", h: [78, 158], v: [158, 114], anchor: { v: "start" } },
-  { text: "Approved credit terms", h: [263, 38], v: [176, 70], anchor: { v: "start" } },
-  { text: "Finance cleared", h: [660, 158], v: [172, 450], anchor: { v: "start" } },
+const labels: { text: string; step?: Step; h: Point; v: Point; anchor?: { h?: "start" | "middle" | "end"; v?: "start" | "middle" | "end" }; vLines?: string[] }[] = [
+  { text: "No approved terms", h: [78, 180], v: [164, 114], anchor: { v: "start" }, vLines: ["No approved", "terms"] },
+  { text: "Approved credit terms", h: [263, 34], v: [176, 48], anchor: { v: "start" }, vLines: ["Approved credit", "terms"] },
+  { text: "Finance cleared", h: [648, 180], v: [172, 562], anchor: { v: "start" } },
 ];
 
 function useActiveStep() {
@@ -111,8 +111,8 @@ function Diagram({ layout, active }: { layout: Layout; active: Step | null }) {
   const on = (step?: Step) => step !== undefined && step === active;
   return (
     <svg
-      viewBox={layout === "h" ? "0 0 704 172" : "0 0 300 470"}
-      className={cn("h-auto w-full", layout === "h" ? "hidden md:block" : "mx-auto max-w-[300px] md:hidden")}
+      viewBox={layout === "h" ? "0 0 704 196" : "50 0 240 582"}
+      className={cn("h-auto w-full", layout === "h" ? "hidden xl:block" : "mx-auto max-w-[300px] xl:hidden")}
       role="img"
       aria-label="Finance subprocess: check credit terms; without approved terms, issue the deposit invoice and receive the deposit; then record financial clearance."
       fontFamily="ui-sans-serif, system-ui, sans-serif"
@@ -133,17 +133,19 @@ function Diagram({ layout, active }: { layout: Layout; active: Step | null }) {
           className="transition-[stroke,stroke-width]"
         />
       ))}
-      {labels.map(({ text, step, anchor, ...at }) => (
+      {labels.map(({ text, step, anchor, vLines, ...at }) => (
         <text
           key={text}
           x={at[layout][0]}
           y={at[layout][1]}
           textAnchor={anchor?.[layout] ?? "middle"}
-          fontSize="10.5"
+          fontSize={layout === "v" ? 14 : 12}
           fontWeight={on(step) ? 600 : 400}
           fill={on(step) ? "var(--brand-ink)" : "var(--brand-muted)"}
         >
-          {text}
+          {layout === "v" && vLines
+            ? vLines.map((line, index) => <tspan key={line} x={at.v[0]} y={at.v[1] + index * 18}>{line}</tspan>)
+            : text}
         </text>
       ))}
       {nodes.map((node, i) => {
@@ -187,9 +189,9 @@ function Diagram({ layout, active }: { layout: Layout; active: Step | null }) {
               <text
                 key={line}
                 x={width / 2}
-                y={height / 2 + (n - (node.lines!.length - 1) / 2) * 15 + 7}
+                y={height / 2 + (n - (node.lines!.length - 1) / 2) * (layout === "v" ? 17 : 16) + (layout === "v" ? 13 : 12)}
                 textAnchor="middle"
-                fontSize="12.5"
+                fontSize={layout === "v" ? 14 : 13}
                 fontWeight={lit ? 600 : 500}
                 fill="var(--brand-text)"
               >
