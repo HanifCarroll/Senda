@@ -1,12 +1,13 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { copyFile, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const input = process.argv[2];
-if (!input) throw new Error("Usage: node scripts/build-marketing-previews.js <capture-directory>");
+if (!input) throw new Error("Usage: node scripts/build-marketing-previews.js <capture-directory> [--mobile-only]");
 const destination = new URL("../public/marketing/", import.meta.url);
 const mark = await readFile(new URL("../public/brand/mark.svg", import.meta.url), "utf8");
 const escape = value => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-for (const name of ["evidence", "overview", "clarification", "evidence-mobile"]) {
+const vectorNames = process.argv.includes("--mobile-only") ? [] : ["evidence", "overview", "clarification"];
+for (const name of vectorNames) {
   const capture = JSON.parse(await readFile(path.join(input, name + "-vector.json"), "utf8"));
   if (new URL(capture.sourceUrl).pathname !== "/example" || !capture.html.includes("Brightline client onboarding")) {
     throw new Error(name + " must be captured from the public onboarding example");
@@ -26,3 +27,7 @@ for (const name of ["evidence", "overview", "clarification", "evidence-mobile"])
   await writeFile(new URL(name + ".svg", destination), svg);
   console.log(`${name}: ${crop.width} × ${crop.height}, ${Buffer.byteLength(svg)} vector bytes`);
 }
+// Keep the captured mobile sheet's wrapping and controls consistent across image renderers.
+// The capture comes from /example with the Finance invoice's Step evidence sheet open.
+await copyFile(path.join(input, "evidence-mobile.png"), new URL("evidence-mobile.png", destination));
+console.log("evidence-mobile: copied the captured mobile preview");

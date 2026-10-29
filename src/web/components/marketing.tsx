@@ -7,10 +7,10 @@ import { Brand } from "./brand";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui/accordion";
 import { InterviewToModel } from "./interview-to-model";
 import { PathArt } from "./path-art";
+import { PricingPlans } from "./pricing-plans";
 
 const preview = (name: string) => `/marketing/${name}.svg?v=vector-4`;
 const repository = "https://github.com/HanifCarroll/Senda";
-const methodology = `${repository}/blob/main/skills/process-scribe/references/methodology.md`;
 
 const container = "mx-auto w-full max-w-6xl px-5 sm:px-8";
 const display = "font-display tracking-[-0.02em] text-balance";
@@ -120,7 +120,7 @@ const stories = [
           className={cn(windowFrame, "mx-auto block max-w-sm rounded-b-none sm:max-w-none")}
         >
           <picture>
-            <source media="(max-width: 640px)" srcSet={preview("evidence-mobile")} width="390" height="718" />
+            <source media="(max-width: 640px)" srcSet="/marketing/evidence-mobile.png?v=mobile-1" width="390" height="718" />
             <img
               src={preview("evidence")}
               width="1200"
@@ -228,7 +228,7 @@ export function Marketing() {
               {label}
             </a>
           ))}
-          <a href="/pricing" className="px-2 text-sm text-muted-foreground hover:text-foreground">Pricing</a>
+          <a href="#pricing" className="hidden px-2 text-sm text-muted-foreground hover:text-foreground md:block">Pricing</a>
           <Button variant="ghost" className="rounded-full px-3 md:ml-2" asChild>
             <a href="/sign-in">Sign in</a>
           </Button>
@@ -333,14 +333,14 @@ export function Marketing() {
           <ul className="grid gap-12 md:grid-cols-3 md:gap-12">
             {[
               {
-                title: "Follows the textbook method for process discovery",
+                title: "A clear method for process discovery",
                 text: (
                   <>
-                    The method comes from chapter 5 of <cite>Fundamentals of Business Process Management</cite>.
-                    You start with the process boundaries, then the activities, handoffs and decisions.
+                    Start with the process boundaries, then map the activities, handoffs and decisions.
+                    Keep unanswered questions visible and check each change against the interview.
                   </>
                 ),
-                link: { href: methodology, label: "Read the method summary" },
+                link: { href: "#how-it-works", label: "See how it works" },
               },
               {
                 title: "Know where your transcript goes",
@@ -422,6 +422,16 @@ export function Marketing() {
           </div>
         </Section>
 
+        <Section id="pricing">
+          <div className="flex flex-col gap-10 sm:gap-12">
+            <div className="flex max-w-2xl flex-col gap-5">
+              <h2 className={h2}>Start free. Add built-in AI with Pro.</h2>
+              <p className={lead}>Use your own connected agent on Free, or work directly with the Senda agent in Pro.</p>
+            </div>
+            <PricingPlans />
+          </div>
+        </Section>
+
         <Section id="questions">
           <div className="grid gap-10 md:grid-cols-[0.75fr_1.25fr] md:gap-16">
             <h2 className={h2}>Questions</h2>
@@ -491,9 +501,9 @@ export function Marketing() {
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             {[
               ["Example", "/example"],
-              ["Pricing", "/pricing"],
+              ["Pricing", "#pricing"],
               ["Usage", "/usage"],
-              ["Method", methodology],
+              ["How it works", "#how-it-works"],
               ["Privacy", "/privacy"],
               ["Source code", repository],
             ].map(([label, href]) => (

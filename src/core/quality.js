@@ -126,7 +126,7 @@ export async function assess(snapshot) {
     if (isType(n, 'Gateway') && incoming.length > 1 && outgoing.length > 1) readability.push(issue('MIXED_GATEWAY_ROLE', 'Consider separate joining and splitting gateways if that makes the same behavior clearer.', [n.id]));
     if (typeOf(n) === 'InclusiveGateway') readability.push(issue('INCLUSIVE_ROUTING', 'Check whether simpler routing can express exactly the same behavior.', [n.id]));
     if (['ExclusiveGateway', 'InclusiveGateway'].includes(typeOf(n)) && outgoing.length > 1) {
-      if (n.name?.trim()) readability.push(issue('GATEWAY_LABEL_CONVENTION', 'The selected book-based convention puts the decision in explicit outgoing conditions and normally leaves the split gateway unlabeled.', [n.id]));
+      if (n.name?.trim()) readability.push(issue('GATEWAY_LABEL_CONVENTION', 'The selected modeling convention puts the decision in explicit outgoing conditions and normally leaves the split gateway unlabeled.', [n.id]));
       for (const f of outgoing) {
         if (!f.name?.trim() || /^(yes|no|true|false)$/i.test(f.name.trim())) readability.push(issue('BRANCH_LABEL', 'Use an explicit business condition on the outgoing branch, rather than a generic yes/no label.', [f.id]));
         const businessCondition = f.name?.trim() && !/^(yes|no|true|false)$/i.test(f.name.trim());
@@ -168,7 +168,7 @@ export async function assess(snapshot) {
     completeness, evidence: { uncoveredElements: uncovered, uncertainClaims: uncertain, unresolvedQuestions: unresolved, scope: 'Quote existence and links are checked; factual entailment requires human validation.' },
     readability: { findings: readability, layoutCounts: layout?.counts || null, manual: ['Verb-object activity labels; object-state event labels', 'Shared vocabulary and suitable level of detail', 'One start per trigger and one end per outcome', 'Structured flow where feasible; understandable exceptions', 'Readable direction, labels and handoffs at normal viewing size'] },
     backendWarnings: backend.warnings,
-    overriddenAdvisories: backend.warnings.filter(w => w.code === 'W_GATEWAY_NAME').map(w => ({ ...w, reason: 'The book-based convention favors explicit branch conditions and unlabeled split gateways.' })),
+    overriddenAdvisories: backend.warnings.filter(w => w.code === 'W_GATEWAY_NAME').map(w => ({ ...w, reason: 'The modeling convention favors explicit branch conditions and unlabeled split gateways.' })),
     reviews, scenarios, walkthrough, openConflicts: conflicts.map(c => c.id), readyToFinalize: blockers.length === 0, blockers,
   };
 }
