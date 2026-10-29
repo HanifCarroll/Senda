@@ -5,6 +5,20 @@ import { contentHash, hash } from "../core/hash.js";
 import { parseModel } from "../core/model.js";
 const caches = new Map();
 const assessments = new Map();
+export function reviewHistory(snapshot, id, model, history) {
+  return history.map((h) => ({
+    id: String(h.revision),
+    processKey: `${id}:${model}`,
+    contentKey: `${id}:${model}:${h.revision}`,
+    title: `${snapshot.name} · ${model === "as-is" ? "As-is" : "To-be"}`,
+    label: `Revision ${h.revision}`,
+    revision: h.revision,
+    created: h.createdAt,
+    modified: Date.parse(h.createdAt),
+    summary: h.summary,
+    perspective: snapshot.discovery.context.perspective,
+  }));
+}
 export async function renderReview(
   p,
   id,
@@ -69,17 +83,6 @@ export async function renderReview(
             ?.summary,
         }
       : null,
-    history: history.map((h) => ({
-      id: String(h.revision),
-      processKey: `${id}:${model}`,
-      contentKey: `${id}:${model}:${h.revision}`,
-      title: `${snapshot.name} · ${model === "as-is" ? "As-is" : "To-be"}`,
-      label: `Revision ${h.revision}`,
-      revision: h.revision,
-      created: h.createdAt,
-      modified: Date.parse(h.createdAt),
-      summary: h.summary,
-      perspective: snapshot.discovery.context.perspective,
-    })),
+    history: reviewHistory(snapshot, id, model, history),
   };
 }

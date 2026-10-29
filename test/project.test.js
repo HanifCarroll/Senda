@@ -20,6 +20,38 @@ async function setup(t, modeled = false) {
 }
 const proposal = (p, extra = {}) => ({ expectedRevision: p.read().revision, summary: 'Test change', ...extra });
 
+test('saved-model reads expose the timer, interruption, lane and condition facts an agent must preserve', async t => {
+  const { p } = await setup(t);
+  await p.import({ expectedRevision: 1, summary: 'Read the collaboration fixture', xml: await fixture('collaboration') });
+  const collaboration = (await p.inspect()).model;
+  const reminder = collaboration.find(e => e.id === 'Timer');
+  assert.equal(reminder.attachedTo, 'Wait');
+  assert.equal(reminder.cancelActivity, false);
+  assert.equal(reminder.definitions[0].type, 'bpmn:TimerEventDefinition');
+  assert.equal(reminder.definitions[0].duration, 'P7D');
+  assert.ok(collaboration.find(e => e.id === 'Sales').flowNodes.includes('Wait'));
+  assert.equal(collaboration.find(e => e.id === 'Pool_Designer').process, 'Designer');
+  await p.import({ expectedRevision: 2, summary: 'Read conditional branches', xml: await fixture('branch') });
+  const branches = (await p.inspect()).model;
+  assert.equal(branches.find(e => e.id === 'F_4').condition, 'approved = true');
+  assert.equal(branches.find(e => e.id === 'F_5').condition, 'approved = false');
+});
+
+test('preview validates an entire candidate without appending or changing the saved model', async t => {
+  const { p } = await setup(t);
+  const before = p.read(), history = p.history();
+  const change = proposal(p, { operations: [{ op: 'add', kind: 'task', id: 'Task_Draft', name: 'Review order' }] });
+  const draft = await p.preview(change);
+  assert.match(draft.candidate.xml, /Task_Draft/);
+  assert.equal(draft.previous.xml, before.xml);
+  assert.deepEqual(p.read(), before);
+  assert.deepEqual(p.history(), history);
+  await p.applyPreview(draft);
+  assert.equal(p.read().xml, draft.candidate.xml);
+  await assert.rejects(p.applyPreview(draft), { code: 'STALE_REVISION' });
+  await assert.rejects(p.preview(change), { code: 'STALE_REVISION' });
+});
+
 test('shared drawing geometry keeps evidence and quality bound to each revision', async t => {
   const { p, dir } = await setup(t, true);
   const before = await renderReview(p, dir, 3, 'as-is');
@@ -221,4 +253,19 @@ test('revision storage rejects accidental updates and project reinitialization',
   assert.throws(() => p.store.db.exec("UPDATE revisions SET summary='changed'"), /immutable/);
   await assert.rejects(Project.create(path.join(dir, 'project'), { name: 'Overwrite', purpose: 'Bad', perspective: 'Test' }), { code: 'PROJECT_EXISTS' });
   assert.equal(p.read().name, 'Booking');
+});
+
+test('a rejected model edit reports all dangling evidence references together and preserves the saved revision', async t => {
+  const { p } = await setup(t, true);
+  const before = p.read().revision;
+  await assert.rejects(p.apply(proposal(p, { claims: [
+    { id: 'MissingOne', kind: 'activity', state: 'current', status: 'unknown', statement: 'First unresolved item', elementIds: ['MissingTaskOne'] },
+    { id: 'MissingTwo', kind: 'activity', state: 'current', status: 'unknown', statement: 'Second unresolved item', elementIds: ['MissingTaskTwo'] },
+  ] })), error => {
+    assert.equal(error.code, 'DANGLING_EVIDENCE');
+    assert.ok(error.details.missingElements.some(x => x.entryId === 'MissingOne' && x.elementId === 'MissingTaskOne'));
+    assert.ok(error.details.missingElements.some(x => x.entryId === 'MissingTwo' && x.elementId === 'MissingTaskTwo'));
+    return true;
+  });
+  assert.equal(p.read().revision, before);
 });

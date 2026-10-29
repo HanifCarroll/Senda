@@ -13,7 +13,7 @@ import {
   createModel,
   editModel,
   prepareImport,
-  parseModel,
+  describeModel,
   modelChanges,
   OPS_SCHEMA,
 } from "./model.js";
@@ -86,14 +86,7 @@ export class ProjectCore {
     const { xml, ...data } = s;
     return {
       ...data,
-      model: (await parseModel(xml)).elements.map((e) => ({
-        id: e.id,
-        type: e.$type,
-        name: e.name,
-        parent: e.$parent?.id,
-        source: e.sourceRef?.id,
-        target: e.targetRef?.id,
-      })),
+      model: await describeModel(xml),
     };
   }
   current(expectedRevision) {
@@ -134,7 +127,7 @@ export class ProjectCore {
       quality: await assess(saved),
     };
   }
-  async apply(input) {
+  async prepareRevision(input) {
     const proposal = Proposal.parse(input);
     const previous = this.current(proposal.expectedRevision);
     const edit = await editModel(
@@ -161,11 +154,24 @@ export class ProjectCore {
               basedOnRevision: previous.revision,
             };
     }
-    const result = await this.saveContent(
-      previous,
-      candidate,
-      proposal.summary,
-    );
+    return { previous, candidate, proposal, edit };
+  }
+  async preview(input) {
+    const prepared = await this.prepareRevision(input), { candidate } = prepared;
+    await validateReferences(candidate);
+    const quality = await assess(candidate);
+    requireThat(quality.structural.passed, "INVALID_MODEL", "The candidate failed structural checks; the current revision was kept.", { findings: quality.structural.findings });
+    return prepared;
+  }
+  async applyPreview(prepared) {
+    const previous = this.current(prepared.previous.revision);
+    requireThat(contentHash(previous) === contentHash(prepared.previous), 'STALE_REVISION', 'Read the current project before applying changes.');
+    const result = await this.saveContent(previous, prepared.candidate, prepared.proposal.summary);
+    return { ...result, aliases: prepared.edit.aliases, backend: prepared.edit.report };
+  }
+  async apply(input) {
+    const { previous, candidate, proposal, edit } = await this.prepareRevision(input);
+    const result = await this.saveContent(previous, candidate, proposal.summary);
     return { ...result, aliases: edit.aliases, backend: edit.report };
   }
   async import(input) {

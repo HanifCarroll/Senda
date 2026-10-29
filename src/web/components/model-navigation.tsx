@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Info } from "lucide-react";
 import { post } from "@/lib/api";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogTrigger,
 } from "./ui/dialog";
 import { Field, FieldLabel } from "./ui/field";
 import {
@@ -21,12 +21,6 @@ import {
   SelectItem,
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "./ui/accordion";
 
 export type ModelKind = "as-is" | "to-be";
 export interface Models {
@@ -77,13 +71,13 @@ export function ModelNavigation({
   return (
     <section
       aria-label="Process models"
-      className="project-navigation mx-auto flex max-w-[1800px] flex-col gap-3 px-4 pb-4 sm:px-6"
+      className="project-navigation mx-auto flex max-w-[1800px] flex-col gap-3 px-4 pb-2 sm:px-6"
     >
-      <h1 className="text-lg font-semibold">{models.name}</h1>
       <Tabs
         value={selected}
         onValueChange={(value) => onSelect(value as ModelKind)}
       >
+        <div className="flex flex-wrap items-center justify-between gap-3">
         <TabsList className="h-auto w-full sm:w-fit" aria-label="Process model">
           <TabsTrigger className="min-h-11 flex-1 px-5" value="as-is">
             As-is <span className="hidden sm:inline">· Current process</span>
@@ -92,47 +86,30 @@ export function ModelNavigation({
             To-be <span className="hidden sm:inline">· Planned future</span>
           </TabsTrigger>
         </TabsList>
-        <TabsContent value={selected}>
-          {selected === "as-is" ? (
-            <p className="text-sm text-muted-foreground">
-              How the process works today. Future changes have their own To-be
-              model and history.
+        {selected === "to-be" && models.toBe && <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="sm"><Info data-icon="inline-start" />Planning details</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Future process details</DialogTitle>
+              <DialogDescription>Started from As-is revision {models.toBe.baseline.revision}.</DialogDescription>
+            </DialogHeader>
+            {models.asIs.revision > models.toBe.baseline.revision && <p className="text-sm leading-relaxed">
+              As-is now has revision {models.asIs.revision}. This plan keeps its original starting point.
+            </p>}
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              The initial diagram was copied from the selected As-is revision. Review its steps
+              against the design brief; current-process evidence stays with the As-is model.
             </p>
-          ) : models.toBe ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
-              <Badge variant="secondary">Planned future</Badge>
-              <span>
-                Started from As-is revision {models.toBe.baseline.revision}.
-              </span>
-              <Button
-                size="sm"
-                variant="link"
-                className="h-auto p-0"
-                onClick={() => onBaseline(models.toBe!.baseline.revision)}
-              >
-                View original As-is <ArrowRight className="size-4" />
-              </Button>
-              {models.asIs.revision > models.toBe.baseline.revision && (
-                <span className="w-full">
-                  As-is now has revision {models.asIs.revision}. This plan keeps
-                  its original starting point.
-                </span>
-              )}
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="planning-notes" className="border-0">
-                  <AccordionTrigger className="w-fit gap-2 py-1 text-xs text-muted-foreground">
-                    About this planning draft
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-2 text-sm text-muted-foreground">
-                    The initial diagram was copied from the selected As-is
-                    revision. Review its steps against the design brief;
-                    current-process claims and approvals stay with the As-is
-                    model.
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </div>
-          ) : (
+            <Button variant="outline" onClick={() => onBaseline(models.toBe!.baseline.revision)}>
+              View original As-is <ArrowRight data-icon="inline-end" />
+            </Button>
+          </DialogContent>
+        </Dialog>}
+        </div>
+        <TabsContent value={selected}>
+          {selected === "as-is" || models.toBe ? null : (
             <div className="rounded-xl border bg-card p-5 sm:p-6">
               <h2 className="font-semibold">Plan the future process</h2>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">

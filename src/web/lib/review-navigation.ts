@@ -1,5 +1,10 @@
 import type { DiagramView, ModelElement, ReviewChoice } from "./types";
 
+// Model state is shown by the model switcher, not repeated in the project name.
+export function projectTitle(name: string) {
+  return name.replace(/\s*\((?:as-is|to-be)\)\s*$/i, "");
+}
+
 // Use the same destination for the preview label and the actual navigation.
 export function destinationFor(views: DiagramView[], id: string) {
   return views.find((v) => v.elementId === id) ||

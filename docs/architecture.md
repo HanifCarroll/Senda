@@ -1,6 +1,6 @@
 # Architecture and backend choice
 
-The host agent performs discovery using the skill. It submits structured proposals through the CLI or connected project tools. The service validates evidence references and uses Miragon to apply BPMN operations in memory. It checks the candidate, then appends one snapshot containing both the BPMN XML and the discovery records. `ProjectCore` is shared by local SQLite and Cloudflare D1/R2 storage adapters. Exports are derived from a saved revision.
+A connected host agent or the built-in DeepSeek agent performs discovery using the skill. It submits structured proposals through the CLI or connected project tools. The service validates evidence references and uses Miragon to apply BPMN operations in memory. It checks the candidate, then appends one snapshot containing both the BPMN XML and the discovery records. `ProjectCore` is shared by local SQLite and Cloudflare D1/R2 storage adapters. Exports are derived from a saved revision.
 
 ```text
 Interview / documents / clarification answers
@@ -30,13 +30,19 @@ The projections are laid out through Miragon, then passed through `review-layout
 
 The HTML bundle embeds a small browser viewer with subprocess navigation, zoom/pan, search, message jumps and element evidence. It has no network dependencies, model-editing operations or execution simulation. A content hash authorizes its exact script; JSON is escaped for the script context and SVG is sanitized before entering the document. Static SVG images/downloads remain available without JavaScript.
 
+The Cloudflare review service caches derived drawings in private R2 by model ID, immutable revision digest and a build-time fingerprint of renderer code and dependencies. Authorization runs before every cache lookup. Histories are refreshed from D1 on cache hits; model switching and polling read D1 metadata without fetching transcript snapshots. HTML rendering does not initialize the authentication service.
+
 ## Local snapshot review application
 
 `src/web/` is a TanStack Start application using React, TanStack Router, Vite, Tailwind and shadcn/ui's Radix components. The route loader calls validated Start server functions to list or read saved review bundles. `src/core/review-library.js` limits reads to the configured export root, rejects traversal and symlink escapes, and caches at most ten drawing results by model digest. File access, BPMN parsing and layout stay in server code; they are not bundled into the browser. Library metadata includes the process title, revision creation date and change summary. Process grouping uses title, mode, perspective and the initial immutable source digest; exact duplicates additionally match full model/evidence/review content and revision number. Grouping is navigation only and does not merge or delete exports.
 
 The React app owns navigation, selection, evidence, sources, clarifications, walkthroughs and review checks. Validated URL search fields preserve the section, view, selected step and source. Session storage contains only per-view camera coordinates and scale. The diagram remains mounted across section changes; a focus request runs once after navigation, so source visits do not recenter the camera. Evidence is collapsed by default, with a resizable desktop panel and a shadcn bottom sheet on mobile. A small SVG controller owns geometry, hit areas, camera transforms and input handlers inside a React ref; listeners and resize observers are disposed on view changes. Imported SVG passes an element/attribute whitelist before DOM insertion. Source text is rendered as React text. Stale walkthroughs are explicitly withheld from the current review.
 
-Answer and correction dialogs prepare editable requests for manual clipboard transfer to the host agent. The app does not send messages or append model changes or human approvals. Review cases and automation findings remain distinct, and the detailed model diff is disclosed separately from the revision summary.
+Users can save clarification answers directly with a project or continue in their
+connected agent. Operator accounts can also use the built-in conversation. The
+service appends evidence and model revisions through the shared core; it never
+invents human approval. Review cases and automation findings remain distinct,
+and the detailed model diff is disclosed separately from the business summary.
 
 Local snapshot mode runs on loopback and reads exported revisions. New CLI revisions must be exported and selected in that library. The page-header BPMN download uses fresh portable DI; the view download dialog offers SVG and standalone BPMN. The offline bundle remains a portable fallback with its own content security policy. Hosted account projects use the authorized service described below and do not expose the local filesystem library.
 
@@ -81,7 +87,7 @@ A private project has an As-is model and an optional To-be model with separate s
 
 The internal `#senda/skill` import selects the skill reader for each runtime. Node resolves it through `package.json` to the filesystem reader; the Cloudflare build aliases it to the bundled Markdown reader. The Worker regression checks the same skill contents through MCP, the HTTP endpoint and the ZIP download.
 
-The public Senda marketing page uses real application screenshots. Production runs on Cloudflare Workers at `senda.hanifcarroll.com`, with D1 accounts/catalog/revision records, private R2 snapshots and Email Service. The local Node service remains available. See [Cloudflare storage and concurrency](cloudflare.md), [hosted configuration and verification boundaries](hosted.md) and [marketing design/provenance](marketing-design.md). A custom editor, billing, execution engine and broader process analytics remain outside this workflow.
+The public Senda marketing page uses real application screenshots. Production runs on Cloudflare Workers at `senda.hanifcarroll.com`, with D1 accounts/catalog/revision records, private R2 snapshots and Email Service. The local Node service remains available. See [Cloudflare storage and concurrency](cloudflare.md), [hosted configuration and verification boundaries](hosted.md) and [marketing design/provenance](marketing-design.md). The optional built-in agent runs in the Worker through the direct DeepSeek provider in Vercel AI SDK. Authenticated, project-scoped tools share the existing core; D1 stores chat checkpoints, run locks and atomic spend reservations. The initial rollout is restricted to operator accounts pending paid entitlements. See [agent architecture and limits](hosted-agent.md). A custom editor, execution engine and broader process analytics remain outside this workflow.
 
 ## Verification scope
 

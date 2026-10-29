@@ -4,16 +4,18 @@ import { contentHash } from "../core/hash.js";
 import { parseModel } from "../core/model.js";
 import { requireThat, ScribeError } from "../core/errors.js";
 import { UUID, ModelKind, Create, Plan } from "../server/contracts.js";
-import { renderReview } from "../server/review.js";
+import { renderReview, reviewHistory } from "../server/review.js";
+import { ReviewCache, cacheResult } from "./review-cache.js";
 import { CloudStore, prepareSnapshot } from "./store.js";
 
 import { ProjectModels } from "../server/project-models.js";
 
 export class CloudProjects extends ProjectModels {
   revokesAuthTokens = true;
-  constructor(db, bucket) {
+  constructor(db, bucket, { reviewVersion } = {}) {
     super();
     Object.assign(this, { db, bucket });
+    this.reviewCache = new ReviewCache(bucket, reviewVersion);
   }
   async authorize(actor, id) {
     UUID.parse(id);
@@ -107,7 +109,7 @@ export class CloudProjects extends ProjectModels {
       )
       .bind(...prepared.values);
   }
-  async open(actor, id, model = "as-is", revision) {
+  async open(actor, id, model = "as-is", revision, options) {
     await this.authorize(actor, id);
     ModelKind.parse(model);
     const row = await this.db
@@ -120,23 +122,28 @@ export class CloudProjects extends ProjectModels {
       "This project has no To-be model yet. Start a plan from an As-is revision.",
     );
     return new ProjectCore(
-      await CloudStore.open(this.db, this.bucket, row.id, revision),
+      await CloudStore.open(this.db, this.bucket, row.id, revision, options),
     );
   }
   async models(actor, id) {
-    const project = await this.authorize(actor, id),
-      asIs = await this.open(actor, id);
-    const plan = await this.db
-      .prepare("SELECT * FROM senda_project_plans WHERE project_id=?")
-      .bind(id)
-      .first();
+    const project = await this.authorize(actor, id);
+    // Model switching and polling need metadata, not transcript blobs or parsing.
+    const [revisions, plans] = await this.db.batch([
+      this.db.prepare("SELECT m.kind,r.revision,r.parent,r.created AS createdAt,r.summary FROM senda_models m JOIN senda_revisions r ON r.model_id=m.id WHERE m.project_id=? ORDER BY m.kind,r.revision").bind(id),
+      this.db.prepare("SELECT * FROM senda_project_plans WHERE project_id=?").bind(id),
+    ]);
+    const history = revisions.results.filter(r => r.kind === "as-is")
+      .map(({ kind, ...record }) => record);
+    const plan = plans.results[0];
+    const future = revisions.results.filter(r => r.kind === "to-be");
+    requireThat(history.length && (!plan || future.length), "NOT_FOUND", "This model is not available.");
     return {
       projectId: id,
       name: project.name,
-      asIs: { revision: asIs.read().revision, history: asIs.history() },
+      asIs: { revision: history.at(-1).revision, history },
       toBe: plan
         ? {
-            revision: (await this.head(actor, id, "to-be")).revision,
+            revision: future.at(-1).revision,
             baseline: {
               revision: plan.baseline_revision,
               digest: plan.baseline_digest,
@@ -254,17 +261,28 @@ export class CloudProjects extends ProjectModels {
     }
   }
   async review(actor, id, revision, model = "as-is") {
-    const p = await this.open(actor, id, model, revision),
-      snapshot = p.read(revision);
+    const p = await this.open(actor, id, model, revision, { load: false });
+    const wanted = revision ?? p.store.records.at(-1).revision;
+    const record = p.store.records.find(r => r.revision === wanted);
+    requireThat(record, "REVISION_NOT_FOUND", "The requested revision does not exist.");
+    const context = { projectId: id, modelId: p.store.modelId, model, record };
+    const cached = await this.reviewCache.get(context);
+    if (cached) {
+      cached.history = reviewHistory({ name: cached.title, discovery: cached.discovery }, id, model, p.history());
+      return cacheResult(cached, "hit");
+    }
+    const snapshot = await p.store.load(wanted);
     const prior = p.store.records.findLast(
       (r) =>
         r.revision < snapshot.revision &&
         r.content_hash !== contentHash(snapshot),
     );
     if (prior) await p.store.load(prior.revision);
-    return renderReview(p, id, revision, model, {
+    const value = await renderReview(p, id, wanted, model, {
       previousRevision: prior?.revision ?? null,
     });
+    await this.reviewCache.put(context, value);
+    return cacheResult(value, "miss");
   }
   // Connection consent can precede the first project grant.
   async grant(owner, client, id) {

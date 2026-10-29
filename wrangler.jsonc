@@ -12,6 +12,7 @@
   "d1_databases": [{ "binding": "DB", "database_name": "senda", "database_id": "f3c795ce-d98c-4d64-b26b-0cd0b72a21c7", "migrations_dir": "src/cloudflare/migrations" }],
   "r2_buckets": [{ "binding": "SNAPSHOTS", "bucket_name": "senda-private" }],
   "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["accounts@mail.senda.hanifcarroll.com"] }],
+  "workflows": [{ "binding": "AGENT_WORKFLOW", "name": "senda-agent-turns", "class_name": "SendaAgentWorkflow" }],
   "ratelimits": [{ "name": "REQUEST_LIMITER", "namespace_id": "1306187460", "simple": { "limit": 240, "period": 60 } }],
   "limits": { "cpu_ms": 120000 },
   "observability": { "enabled": true, "redact_query_string": true },

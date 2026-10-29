@@ -72,15 +72,16 @@ export async function validateReferences(snapshot) {
   }
   const steps = currentWalkthrough(snapshot)?.steps || [];
   unique(steps, 'walkthrough step');
-  for (const entry of [...discovery.claims, ...discovery.questions, ...(discovery.scenarios || []), ...steps]) {
-    for (const id of entry.elementIds || [])
-      requireThat(ids.has(id), 'DANGLING_EVIDENCE', `${entry.id} refers to missing BPMN element ${id}. Update the reference in the same proposal.`);
-    checkEvidence(entry);
-  }
-  for (const entry of [...discovery.questions, ...(discovery.conflicts || []), ...steps]) {
-    for (const id of entry.claimIds)
-      requireThat(claims.has(id), 'DANGLING_CLAIM', `${entry.id} refers to missing claim ${id}.`);
-  }
+  const entries = [...discovery.claims, ...discovery.questions, ...(discovery.scenarios || []), ...steps];
+  const missingElements = entries.flatMap(entry => (entry.elementIds || [])
+    .filter(id => !ids.has(id)).map(elementId => ({ entryId: entry.id, elementId })));
+  requireThat(!missingElements.length, 'DANGLING_EVIDENCE',
+    `${missingElements[0]?.entryId} refers to missing BPMN element ${missingElements[0]?.elementId}. Update all missing references in the same proposal.`,
+    { missingElements });
+  for (const entry of entries) checkEvidence(entry);
+  const missingClaims = [...discovery.questions, ...(discovery.conflicts || []), ...steps]
+    .flatMap(entry => (entry.claimIds || []).filter(id => !claims.has(id)).map(claimId => ({ entryId: entry.id, claimId })));
+  requireThat(!missingClaims.length, 'DANGLING_CLAIM', `${missingClaims[0]?.entryId} refers to missing claim ${missingClaims[0]?.claimId}.`, { missingClaims });
   for (const question of discovery.questions) {
     checkEvidence(question, question.answerEvidence || []);
     if (question.status === 'answered')

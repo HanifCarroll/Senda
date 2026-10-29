@@ -7,6 +7,7 @@ import { unzipSync, strFromU8 } from "fflate";
 import path from "node:path";
 import { onboardingProposals } from "../examples/complex-onboarding/proposals.js";
 import { hash } from "../src/core/hash.js";
+import { CloudProjects } from "../src/cloudflare/projects.js";
 
 // Run against a local Worker started with LOCAL_EMAIL_OUTBOX=1. Its private R2
 // binding captures real signed mail links; no fixture email is sent externally.
@@ -21,6 +22,7 @@ const proxy = await getPlatformProxy({
   persist: { path: path.join(state, "v3") },
 });
 const checks = [];
+const timings = {};
 const clients = [];
 async function request(url, cookie, body, options = {}) {
   return fetch(url.startsWith("http") ? url : origin + url, {
@@ -244,7 +246,21 @@ try {
     projectId: p.id,
     model: "as-is",
   });
-  const review = await value(request(`/api/projects/${p.id}/review`, alice.cookie));
+  const started = performance.now();
+  const firstReviewResponse = await request(`/api/projects/${p.id}/review`, alice.cookie);
+  const review = await value(firstReviewResponse);
+  timings.firstReviewMs = Math.round(performance.now() - started);
+  assert.equal(firstReviewResponse.headers.get("x-senda-review-cache"), "miss");
+  const warmStarted = performance.now();
+  const cachedReviewResponse = await request(`/api/projects/${p.id}/review`, alice.cookie);
+  assert.equal(cachedReviewResponse.headers.get("x-senda-review-cache"), "hit");
+  assert.deepEqual(await value(cachedReviewResponse), review);
+  timings.cachedReviewMs = Math.round(performance.now() - warmStarted);
+  assert.equal((await request(`/api/projects/${p.id}/review`, bob.cookie)).status, 404);
+  const ownerId = (await value(request("/api/session", alice.cookie))).user.id;
+  const metadataOnly = new CloudProjects(proxy.env.DB, { get: async () => { throw new Error("Metadata must not fetch transcript blobs"); } });
+  assert.equal((await metadataOnly.models({ userId: ownerId }, p.id)).asIs.revision, 5);
+  checks.push("persistent private review cache, authorization on cache hits and metadata without transcript reads");
   assert.equal(review.views.length, 6);
   assert.equal(review.views[0].layoutCounts.crossings, 1);
   assert.equal(
@@ -380,6 +396,19 @@ try {
     ],
   });
   assert.equal(many.status, 413);
+  await tool("add_source", { projectId: p.id, model: "as-is", expectedRevision: 5,
+    source: { id: "Cache_Notes", title: "Additional notes", kind: "document", text: "Additional notes saved after the earlier review." } });
+  const historicalResponse = await request(`/api/projects/${p.id}/review?revision=5`, alice.cookie);
+  assert.equal(historicalResponse.headers.get("x-senda-review-cache"), "hit");
+  const historical = await value(historicalResponse);
+  assert.equal(historical.revision, 5);
+  assert.equal(historical.exportXml, review.exportXml);
+  assert.equal(historical.history.length, 6);
+  assert.ok(!historical.discovery.sources.some(s => s.id === "Cache_Notes"));
+  const newerResponse = await request(`/api/projects/${p.id}/review`, alice.cookie);
+  assert.equal(newerResponse.headers.get("x-senda-review-cache"), "miss");
+  assert.ok((await value(newerResponse)).discovery.sources.some(s => s.id === "Cache_Notes"));
+  checks.push("cached historical diagrams retain their saved evidence and show fresh revision history");
   checks.push("D1 conditional writes, source atomicity, active-model binding and body limits");
   const revoke = await fetch(origin + "/api/connections", {
     method: "DELETE",
@@ -411,9 +440,9 @@ try {
   checks.push("password sign-in is disabled and new magic links remain available");
   await writeFile(
     path.join(state, "workflow-result.json"),
-    JSON.stringify({ projectId: p.id, checks, passed: checks.length }, null, 2),
+    JSON.stringify({ projectId: p.id, checks, timings, passed: checks.length }, null, 2),
   );
-  console.log(JSON.stringify({ passed: checks.length, checks }, null, 2));
+  console.log(JSON.stringify({ passed: checks.length, checks, timings }, null, 2));
 } finally {
   for (const c of clients) await c.close().catch(() => {});
   await proxy.dispose();
