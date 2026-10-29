@@ -182,3 +182,5 @@ The [29 October follow-up research](limitations-research-2026-10-29.md) includes
 a fresh successful zero-charge sandbox card update, resolving the earlier
 unverified form interaction in the in-app browser. Normal Chrome form rendering
 was checked separately. It also records the remaining download and ChatGPT work.
+The same follow-up captured and inspected three actual authenticated production
+BPMN downloads in a fresh browser, matching their saved model revisions.

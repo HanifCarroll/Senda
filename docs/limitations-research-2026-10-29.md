@@ -103,6 +103,26 @@ also distinguishes download behavior from its optional progress events. A manage
 browser observer timing out is not sufficient evidence of corrupt BPMN. Keep
 actual user-browser interaction tests alongside the automated file assertions.
 
+The documented order was also tested during this research in a fresh in-app
+browser. The production example's actual downloaded BPMN was 47,770 bytes,
+matched the published export exactly, and parsed with zero warnings, six
+diagrams and 122 diagram elements. A fresh ordinary email sign-in then allowed
+three authenticated production downloads through the saved project's actual UI:
+
+| Model and revision | Downloaded bytes | Diagram elements | Parse warnings |
+| --- | ---: | ---: | ---: |
+| As-is revision 7 | 19,769 | 44 | 0 |
+| To-be revision 4 | 22,491 | 49 | 0 |
+| To-be revision 7 | 24,753 | 53 | 0 |
+
+Each private file matched the process semantics of its independently retained
+saved snapshot. These are real browser-downloaded files, extending the earlier
+HTTP-only evidence. No provider inference call was made. The temporary browser
+session was signed out. The successful fresh-browser procedure does not identify
+the earlier Chrome observer's cause, qualify downloads inside the ChatGPT
+consumer UI, or fix the signed-out export-link behavior. Promote these file
+assertions into the regular browser regression suite.
+
 ## ChatGPT response-display failure
 
 Sources and revisions saved during the earlier realistic ChatGPT journey, while

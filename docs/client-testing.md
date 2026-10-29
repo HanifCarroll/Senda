@@ -92,3 +92,8 @@ Chrome-downloaded BPMN files. No extra usage was purchased.
 See the [29 October limitation research](limitations-research-2026-10-29.md) for
 the remaining ChatGPT display investigation, a verified signed-out download
 edge case and proposed browser-file regression coverage.
+That follow-up also verified actual Senda browser downloads of the production
+Willow project's As-is revision 7 and To-be revisions 4 and 7 in a fresh in-app
+browser. All three files parsed without warnings and matched the saved process
+semantics. This qualifies Senda's signed-in download path separately from the
+ChatGPT consumer UI's earlier download observation.
