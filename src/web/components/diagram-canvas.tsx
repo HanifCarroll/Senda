@@ -130,13 +130,13 @@ export function DiagramCanvas({
           height / original.height,
         );
         camera =
-          initial && scale < 0.65
+          initial && scale < 1
             ? { x: original.x, y: original.y, scale: 1, fitted: false }
             : {
                 scale,
                 x: original.x + original.width / 2 - width / scale / 2,
                 y: original.y + original.height / 2 - height / scale / 2,
-                fitted: true,
+                fitted: !initial,
               };
         draw();
       }

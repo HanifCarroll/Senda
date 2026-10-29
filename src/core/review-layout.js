@@ -1,6 +1,7 @@
 import { BpmnModdle } from 'bpmn-moddle';
-import { layoutXml, metricsXml } from '@miragon/bpmn-cli';
+import { layoutXml, metricsXml, renderSvg } from '@miragon/bpmn-cli';
 import { collect } from './model.js';
+import { activityProblems, isActivity, sizeReviewActivities } from './activity-presentation.js';
 
 const soft = new Set(['crossings', 'segmentOverlap', 'parallelRun', 'branchLabelFar', 'longDetour']);
 const score = counts => Object.entries(counts).reduce((sum, [key, value]) => sum + value * (key === 'crossings' ? 100 : soft.has(key) ? 10 : 10000), 0);
@@ -53,15 +54,17 @@ const searchBudget = elements => ({ remaining: elements.filter(e=>['bpmn:Sequenc
 
 // Extra presentation checks complement the library's DI metrics. Distances are
 // conservative app heuristics in model pixels, not BPMN validity constraints.
-async function measure(xml, definitions) {
+async function measure(xml, definitions, { native = false } = {}) {
   const result = await metricsXml(xml);
-  result.counts = { ...result.counts, titleIntrusion: 0, branchLabelFar: 0, longDetour: 0, tangentEntry: 0, labelOnControl: 0 };
+  const nativeSvg = native ? (await renderSvg(xml)).svg : undefined;
+  result.counts = { ...result.counts, titleIntrusion: 0, branchLabelFar: 0, longDetour: 0, tangentEntry: 0, labelOnControl: 0, activityLabelBorder: 0, activityLabelIcon: 0, activityLabelMarker: 0, activityLabelBoundary: 0 };
   result.problems = [...result.problems];
   result.effort = 0;
   const add = (kind, ids) => { result.counts[kind]++; result.problems.push({ kind, ids }); };
   for (const diagram of definitions.diagrams || []) {
     const all = diagram.plane.planeElement || [], shapes = all.filter(e=>e.bounds), edges = all.filter(e=>e.waypoint?.length>=2);
     const headers = headerBands(shapes);
+    for (const shape of shapes.filter(isActivity)) for (const problem of activityProblems(shape,shapes.filter(s=>s.bpmnElement?.attachedToRef===shape.bpmnElement),{native,nativeSvg})) add(problem.kind,problem.ids);
     for (const edge of edges) {
       const length = lengthOf(edge), turns = edge.waypoint.length - 2;
       result.effort += length + turns * 24;
@@ -114,16 +117,20 @@ function route(edge, shapes, edges, budget) {
   const obstacles = [...shapes.filter(s => s.bpmnElement?.$type !== 'bpmn:Lane' && (!isFrame(s) || (!contains(s.bounds,start) && !contains(s.bounds,end)))).map(s => s.bounds), ...headers];
   const labels = [...shapes, ...edges].filter(s => s !== edge && s.label?.bounds).map(s => ({ x:s.label.bounds.x-8, y:s.label.bounds.y-4, width:s.label.bounds.width+16, height:s.label.bounds.height+8 }));
   const lines = edges.filter(e => e !== edge).flatMap(segments);
-  const coordinates = axis => [...new Set([
+  const crossingPenalty = Math.max(1500,area.width+area.height);
+  const coordinates = (axis, lineGutters = true) => [...new Set([
     start[axis], end[axis], ...edge.waypoint.map(p => p[axis]),
     ...stubs.map(p=>p[axis]),
     area[axis] + 16, area[axis] + area[axis === 'x' ? 'width' : 'height'] - 16,
     ...bounds.flatMap(b => [b[axis] - 22, b[axis] + b[axis === 'x' ? 'width' : 'height'] + 22]),
     ...headers.flatMap(b => [b[axis] - 16, b[axis] + b[axis === 'x' ? 'width' : 'height'] + 16]),
-    ...lines.flatMap(line => line.flatMap(p => [p[axis] - 16, p[axis] + 16])),
+    ...labels.flatMap(b => [b[axis]-8,b[axis]+b[axis === 'x' ? 'width' : 'height']+8]),
+    ...(lineGutters ? lines.flatMap(line => line.flatMap(p => [p[axis] - 16, p[axis] + 16])) : []),
   ])].filter(v => v >= area[axis] && v <= area[axis] + area[axis === 'x' ? 'width' : 'height']).sort((a,b) => a-b);
-  const xs = coordinates('x'), ys = coordinates('y'), width = xs.length;
-  if (width * ys.length > 30000) return null; // Bounded work on unusually large imported views.
+  let xs = coordinates('x'), ys = coordinates('y');
+  if (xs.length * ys.length > 30000) { xs=coordinates('x',false); ys=coordinates('y',false); }
+  const width=xs.length;
+  if (width * ys.length > 30000) return null;
   const index = (x,y,dir) => (y*width+x)*2+dir;
   const queue = new Queue(), distances = new Map(), previous = new Map();
   for (const dir of [0,1]) { const x=xs.indexOf(start.x), y=ys.indexOf(start.y), key=index(x,y,dir); queue.push({x,y,dir,key,cost:0}); distances.set(key,0); }
@@ -143,7 +150,7 @@ function route(edge, shapes, edges, budget) {
       if(to && b.x===end.x && b.y===end.y && dot(a,b,to)>=0) continue;
       if (blockers.some(box => through(a,b,box))) continue;
       const cost=current.cost + Math.abs(a.x-b.x)+Math.abs(a.y-b.y)+(dir===current.dir?0:24)
-        + lines.filter(([c,d])=>collision(a,b,c,d)).length*1500;
+        + lines.filter(([c,d])=>collision(a,b,c,d)).length*crossingPenalty;
       const key=index(x,y,dir);
       if (cost >= (distances.get(key) ?? Infinity)) continue;
       distances.set(key,cost); previous.set(key,current.key); queue.push({x,y,dir,key,cost});
@@ -165,9 +172,18 @@ function moveLabel(item, shapes, edges) {
   const cost = b => blockers.filter(o=>overlaps(b,o)).length*100 + lines.filter(([a,c])=>through(a,c,{x:b.x-12,y:b.y-5,width:b.width+24,height:b.height+10})).length*30;
   const original = { x:box.x,y:box.y,width:box.width,height:box.height };
   const isBranch = branch(item);
-  const anchor = isBranch ? item.waypoint[0] : {x:box.x+box.width/2,y:box.y+box.height/2};
+  const owner=item.bounds;
+  const anchor = isBranch ? item.waypoint[0] : owner ? {x:owner.x+owner.width/2,y:owner.y+owner.height/2} : {x:box.x+box.width/2,y:box.y+box.height/2};
   const home = shapes.filter(isFrame).filter(s=>contains(s.bounds,anchor)).sort((a,b)=>a.bounds.width*a.bounds.height-b.bounds.width*b.bounds.height)[0]?.bounds;
   const candidates = [];
+  const sourceOwner=isBranch?shapes.find(s=>s.bpmnElement?.id===item.bpmnElement.sourceRef?.id)?.bounds:null;
+  if(sourceOwner) for(const gap of [12,28,48,72]) for(const gutter of [12,28,48]) for(const x of [sourceOwner.x-box.width-gutter,sourceOwner.x+sourceOwner.width+gutter]) {
+    candidates.push({x,y:sourceOwner.y+sourceOwner.height+gap},{x,y:sourceOwner.y-box.height-gap});
+  }
+  if(owner) for(const gap of [12,28,48,72]) {
+    candidates.push({x:owner.x+(owner.width-box.width)/2,y:owner.y+owner.height+gap},{x:owner.x+(owner.width-box.width)/2,y:owner.y-box.height-gap},{x:owner.x-box.width-gap,y:owner.y+(owner.height-box.height)/2},{x:owner.x+owner.width+gap,y:owner.y+(owner.height-box.height)/2});
+    for(const offset of [-box.width-16,box.width+16]) candidates.push({x:owner.x+(owner.width-box.width)/2+offset,y:owner.y+owner.height+gap});
+  }
   if (item.waypoint) for (const [a,b] of segments(item)) {
     const x=(a.x+b.x)/2, y=(a.y+b.y)/2;
     candidates.push({x:x-box.width/2,y:y-box.height-10},{x:x-box.width/2,y:y+10},{x:x+10,y:y-box.height/2},{x:x-box.width-10,y:y-box.height/2});
@@ -176,16 +192,27 @@ function moveLabel(item, shapes, edges) {
       candidates.push({x:near.x+12,y:near.y-box.height/2},{x:near.x-box.width-12,y:near.y-box.height/2},{x:near.x-box.width/2,y:near.y-box.height-12},{x:near.x-box.width/2,y:near.y+12});
     }
   }
-  for (const dx of [0,-20,20,-40,40,-60,60,-80,80]) for (const dy of [-12,12,-28,28,-48,48,-64,64]) candidates.push({x:box.x+dx,y:box.y+dy});
-  const placement = b => isBranch ? distanceTo(b,item.waypoint[0])*2 : Math.hypot(b.x-original.x,b.y-original.y);
-  let best=original, bestCost=cost(original)*1000+placement(original);
+  for (const dx of [0,-6,6,-12,12,-20,20,-40,40,-60,60,-80,80]) for (const dy of [-12,12,-28,28,-48,48,-64,64]) candidates.push({x:box.x+dx,y:box.y+dy});
+  const placement = b => isBranch ? distanceTo(b,item.waypoint[0])*2 : owner ? distanceTo(b,anchor)*2+Math.hypot(b.x-original.x,b.y-original.y)*.05 : Math.hypot(b.x-original.x,b.y-original.y);
+  const quality = b => cost(b) + (isBranch && distanceTo(b,anchor)>140 ? 40 : 0);
+  let best=original, bestCost=quality(original)*1000+placement(original);
+  const nearby=[];
   for (const p of candidates) {
     const candidate={...original,...p};
     if (home && (!contains(home,candidate)||!contains(home,{x:candidate.x+box.width,y:candidate.y+box.height}))) continue;
-    const nextCost=cost(candidate)*1000 + placement(candidate);
+    if(!blockers.some(obstacle=>overlaps(candidate,obstacle,0))) nearby.push(candidate);
+    const nextCost=quality(candidate)*1000 + placement(candidate);
     if (nextCost<bestCost) { best=candidate; bestCost=nextCost; }
   }
   box.x=best.x; box.y=best.y;
+  const alternatives=nearby.sort((a,b)=>placement(a)-placement(b));
+  const origin=owner || {...anchor,width:0,height:0},sides=new Map();
+  for(const candidate of alternatives) {
+    const side=candidate.x>=origin.x+origin.width?'right':candidate.x+candidate.width<=origin.x?'left':candidate.y>=origin.y+origin.height?'below':candidate.y+candidate.height<=origin.y?'above':'over';
+    if(!sides.has(side)) sides.set(side,candidate);
+  }
+  const unique=new Map([best,...sides.values(),...alternatives].map(candidate=>[`${candidate.x}:${candidate.y}`,candidate]));
+  return [...unique.values()].slice(0,5);
 }
 
 export async function optimizeReviewLayout(xml, { routingBudget } = {}) {
@@ -197,8 +224,9 @@ export async function optimizeReviewLayout(xml, { routingBudget } = {}) {
   for (const diagram of definitions.diagrams || []) {
     const all=diagram.plane.planeElement || [], shapes=all.filter(e=>e.bounds), edges=all.filter(e=>e.waypoint?.length>=2);
     for (let pass=0;pass<3;pass++) {
-      const ids=new Set(current.problems.filter(p=>['crossings','segmentOverlap','parallelRun','titleIntrusion','longDetour','labelOnLine','tangentEntry'].includes(p.kind)).flatMap(p=>p.ids));
-      for (const edge of edges.filter(e=>ids.has(e.bpmnElement?.id))) {
+      const ids=new Set(current.problems.filter(p=>['through','detachedEdge','diagonal','crossings','segmentOverlap','parallelRun','titleIntrusion','longDetour','labelOnLine','tangentEntry'].includes(p.kind)).flatMap(p=>p.ids));
+      const priority = edge => current.problems.filter(p=>p.ids.includes(edge.bpmnElement.id)).reduce((n,p)=>n+(['through','detachedEdge','diagonal'].includes(p.kind)?100:soft.has(p.kind)?1:10),0);
+      for (const edge of edges.filter(e=>ids.has(e.bpmnElement?.id)).sort((a,b)=>priority(b)-priority(a))) {
         const points=route(edge,shapes,edges,routingBudget); if (!points) continue;
         const saved=edge.waypoint, label=edge.label?.bounds, oldLabel=label?{x:label.x,y:label.y}:null;
         edge.waypoint=points.map(p=>moddle.create('dc:Point',p)); moveLabel(edge,shapes,edges);
@@ -207,10 +235,17 @@ export async function optimizeReviewLayout(xml, { routingBudget } = {}) {
         else { edge.waypoint=saved; if(label) Object.assign(label,oldLabel); }
       }
       for (const item of [...shapes,...edges].filter(e=>e.label?.bounds)) {
-        const label=item.label.bounds, saved={x:label.x,y:label.y}; moveLabel(item,shapes,edges);
-        if (label.x===saved.x && label.y===saved.y) continue;
-        const candidate=await serialize(), measured=await measure(candidate,definitions);
-        if (improves(current,measured)) { current=measured; currentXml=candidate; } else Object.assign(label,saved);
+        const label=item.label.bounds, saved={x:label.x,y:label.y};
+        const defective=current.problems.some(p=>p.ids.includes(item.bpmnElement.id)&&['labelClash','labelOnLine','labelOutsideFrame','titleIntrusion','labelOnControl','branchLabelFar'].includes(p.kind));
+        const placements=moveLabel(item,shapes,edges);
+        let accepted=false;
+        for(const placement of defective?placements:placements.slice(0,1)) {
+          Object.assign(label,placement);
+          if(label.x===saved.x && label.y===saved.y) continue;
+          const candidate=await serialize(), measured=await measure(candidate,definitions);
+          if(improves(current,measured)) { current=measured; currentXml=candidate; accepted=true; break; }
+        }
+        if(!accepted) Object.assign(label,saved);
       }
     }
   }
@@ -243,7 +278,10 @@ export async function layoutReviewProjection(xml, collapsed = []) {
   const routingBudget = searchBudget(elements);
   const layout = async projection => {
     const native=await layoutXml(projection,{platform:'none',collapse:collapsed});
-    return optimizeReviewLayout(native.xml, { routingBudget });
+    const nativeDefinitions=(await new BpmnModdle().fromXML(native.xml)).rootElement;
+    const before=await measure(native.xml,nativeDefinitions,{native:true});
+    const sized=await sizeReviewActivities(native.xml);
+    return {...await optimizeReviewLayout(sized, { routingBudget }),before:before.counts};
   };
   let best=await layout(xml), original=best;
   for (const option of options) {

@@ -1,20 +1,40 @@
 import { BpmnModdle } from 'bpmn-moddle';
-import { renderSvg, metricsXml } from '@miragon/bpmn-cli';
+import { metricsXml } from '@miragon/bpmn-cli';
 import { collect, typeOf } from './model.js';
+import { renderReviewSvg } from './activity-presentation.js';
+import { escapeSvg } from './diagram-text.js';
 import { layoutReviewProjection } from './review-layout.js';
 import { portableBpmn, standaloneBpmn } from './bpmn-export.js';
 
 const is = (element, type) => element?.$instanceOf?.(`bpmn:${type}`);
-const escapeAttribute = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const processOf = element => {
   for (let current = element; current; current = current.$parent) if (is(current, 'Process')) return current;
 };
+const colorKeys = ['bioc:fill','bioc:stroke','color:background-color','color:border-color','color:color'];
+const colorsOf = element => Object.fromEntries(colorKeys.map(key=>[key,element?.get?.(key)]).filter(([,value])=>value!==undefined));
+async function retainColors(xml, palette) {
+  if(!palette.size) return xml;
+  const moddle=new BpmnModdle(),{rootElement:d}=await moddle.fromXML(xml);
+  for(const diagram of d.diagrams || []) for(const item of diagram.plane.planeElement || []) {
+    const colors=palette.get(item.bpmnElement?.id); if(!colors) continue;
+    for(const [key,value] of Object.entries(colors.shape)) item.set(key,value);
+    if(Object.keys(colors.label).length) {
+      item.label ||= moddle.create('bpmndi:BPMNLabel');
+      for(const [key,value] of Object.entries(colors.label)) item.label.set(key,value);
+    }
+  }
+  return (await moddle.toXML(d,{format:true})).xml;
+}
 const within = (element, scope) => {
   for (let current = element; current; current = current.$parent) if (current === scope) return true;
   return false;
 };
 
 const layoutAdvice = {
+  activityLabelBorder: 'Activity text crowds a border or the reserved badge band.',
+  activityLabelIcon: 'Activity text crowds its task icon.',
+  activityLabelMarker: 'Activity text crowds a bottom activity marker.',
+  activityLabelBoundary: 'Activity text crowds an attached boundary event.',
   crossings: 'Connections cross. Follow each route through the intersection.',
   overlaps: 'Shapes overlap. Their boundaries must remain distinguishable.',
   through: 'A connection passes through an unrelated shape.',
@@ -37,6 +57,7 @@ const layoutAdvice = {
 export async function diagramViews(xml) {
   const parsed = await new BpmnModdle().fromXML(xml);
   const original = collect(parsed.rootElement);
+  const palette=new Map((parsed.rootElement.diagrams || []).flatMap(d=>d.plane.planeElement || []).map(item=>[item.bpmnElement?.id,{shape:colorsOf(item),label:colorsOf(item.label)}]).filter(([id,colors])=>id&&(Object.keys(colors.shape).length||Object.keys(colors.label).length)));
   if (!original.some(e => is(e, 'FlowNode') || is(e, 'Participant'))) return { diagrams: [], bpmnXml: xml, rendering: { totalMessages: 0, drawnMessages: 0, missingMessageIds: [], sourceMissingIds: [], recoveredSourceIds: [], views: [] } };
   const collaborations = original.filter(e => is(e, 'Collaboration'));
   const participants = original.filter(e => is(e, 'Participant'));
@@ -108,9 +129,10 @@ export async function diagramViews(xml) {
     const projection = (await moddle.toXML(definitions, { format: true })).xml;
     const collapsed = visible.filter(e => is(e, 'SubProcess')).map(e => e.id);
     const optimized = await layoutReviewProjection(projection, collapsed);
+    optimized.xml = await retainColors(optimized.xml,palette);
     layouts.push({ elementId: root.id, title: root.name, xml: optimized.xml });
-    const rendered = await renderSvg(optimized.xml);
-    const drawn = id => rendered.svg.includes(`data-id="${escapeAttribute(id)}"`);
+    const rendered = await renderReviewSvg(optimized.xml);
+    const drawn = id => rendered.svg.includes(`data-id="${escapeSvg(id)}"`);
     const elementIds = original.filter(e => drawn(e.id)).map(e => e.id);
     const childIds = specs.filter(s => s.parentId === root.id).map(s => s.root.id);
     const enclosing = [];

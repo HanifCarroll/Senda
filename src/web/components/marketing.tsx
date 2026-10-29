@@ -9,7 +9,7 @@ import { InterviewToModel } from "./interview-to-model";
 import { PathArt } from "./path-art";
 import { PricingPlans } from "./pricing-plans";
 
-const preview = (name: string) => `/marketing/${name}.svg?v=vector-4`;
+const preview = (name: string) => `/marketing/${name}.svg?v=vector-5`;
 const repository = "https://github.com/HanifCarroll/Senda";
 
 const container = "mx-auto w-full max-w-6xl px-5 sm:px-8";
@@ -120,7 +120,7 @@ const stories = [
           className={cn(windowFrame, "mx-auto block max-w-sm rounded-b-none sm:max-w-none")}
         >
           <picture>
-            <source media="(max-width: 640px)" srcSet="/marketing/evidence-mobile.png?v=mobile-1" width="390" height="718" />
+            <source media="(max-width: 640px)" srcSet="/marketing/evidence-mobile.png?v=mobile-2" width="390" height="718" />
             <img
               src={preview("evidence")}
               width="1200"
@@ -146,7 +146,7 @@ const stories = [
           <img
             src={preview("clarification")}
             width="544"
-            height="309"
+            height="249"
             loading="lazy"
             alt="An open question asking whether Finance and Delivery start together and what must finish before setup starts."
             className="w-full"

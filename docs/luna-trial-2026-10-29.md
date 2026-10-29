@@ -1,6 +1,6 @@
 # GPT-6 Luna workflow qualification — 29 October 2026
 
-The current candidate passed an independently inspected six-turn business workflow through the actual local Cloudflare Worker and chat UI. Production promotion remains pending the renderer readability fixes, final checks and deployment verification. Production still uses DeepSeek at this checkpoint.
+The candidate passed an independently inspected six-turn business workflow through the actual local Cloudflare Worker and chat UI. The separate [diagram readability audit](diagram-readability-2026-10-29.md) records the rendering fixes and varied-view checks. This report establishes model qualification; it does not itself establish a production deployment.
 
 ## Configuration
 
@@ -49,6 +49,6 @@ Backend processing took 134 / 172 / 92 / 114 / 60 / 255 seconds, totaling 13 min
 
 Free hosted AI remains disabled. Operator and paid-account access rules, the agreed plans, the $6 allowance, daily/service caps and no-overage policy are unchanged. No real Stripe test charge, extra Claude usage, credit purchase or automatic recharge was used.
 
-## Remaining release work
+## Release verification
 
-The existing renderer still crowds task icons and labels. One future retry connection also has a long-detour advisory. These require the separate renderer fix and varied-diagram audit before release; the old zero-clash metrics do not prove readable activity interiors. The chat composer overlap is fixed and verified on desktop/mobile, with reader scroll preserved across unchanged polls. Final release evidence must identify the pushed commit, automatic Cloudflare deployment, migrations and production checks before describing Luna as live.
+The separate renderer changes reserve activity interiors, keep attached events docked and improve the future retry route. The varied-diagram audit checks actual browser text bounds rather than relying on the old zero-clash metrics. The chat composer overlap is fixed and verified on desktop/mobile, with reader scroll preserved across unchanged polls. Final release evidence must identify the pushed commit, automatic Cloudflare deployment, migrations and production checks before describing Luna as live.
