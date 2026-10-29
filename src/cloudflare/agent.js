@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { AGENT_MODEL_NAME } from "../server/agent/provider.js";
 import { randomUUID } from "node:crypto";
 import {
   AGENT_LIMITS,
   agentAllowed,
-  runDeepSeek,
+  runAgent,
   usageCost,
-} from "../server/agent/deepseek.js";
+} from "../server/agent/run.js";
 import { requireThat } from "../core/errors.js";
 import { CallBudget, measuredUsage, reserveTurn, serviceLimits } from './agent-budget.js';
 import { billingNow, emailListed } from '../server/billing/plan.js';
@@ -17,7 +18,7 @@ const Turn = z.strictObject({
   text: z.string().trim().min(1).max(60000),
 });
 export class HostedAgent {
-  constructor(env, projects, origin, { run = runDeepSeek, billing, dispatch, pollMs = 1000 } = {}) {
+  constructor(env, projects, origin, { run = runAgent, billing, dispatch, pollMs = 1000 } = {}) {
     Object.assign(this, { env, projects, origin, run, billing, dispatch, pollMs });
     this.db = env.DB;
     this.operations = new OperationalAlerts(env);
@@ -35,7 +36,7 @@ export class HostedAgent {
     const path = new URL(request.url).pathname;
     const operator = agentAllowed(this.env, email);
     const paidEmailAllowed = this.env.PAID_AGENT_ALLOWED_EMAILS === undefined || emailListed(this.env.PAID_AGENT_ALLOWED_EMAILS, email);
-    const entitlement = !operator && paidEmailAllowed && this.env.DEEPSEEK_API_KEY
+    const entitlement = !operator && paidEmailAllowed && this.env.OPENAI_API_KEY
       ? await this.billing?.entitlement(actor) : null;
     const available = (operator || !!entitlement) && !!(this.env.AGENT_WORKFLOW || this.dispatch);
     const accessMessage = !available && !operator ? await this.billing?.unavailableMessage?.(actor) : null;
@@ -43,7 +44,7 @@ export class HostedAgent {
       return Response.json({
         available,
         message: accessMessage || undefined,
-        model: "DeepSeek Flash",
+        model: AGENT_MODEL_NAME,
       });
     const read = /^\/api\/agent\/chats\/([^/]+)$/.exec(path);
     if (request.method === 'GET' && read) {
@@ -207,7 +208,7 @@ export class HostedAgent {
       display = JSON.parse(row.display);
       base = display.map(message => ({ role: message.role, content: message.text }));
       const result = await this.run({
-        apiKey: this.env.DEEPSEEK_API_KEY, projects: this.projects, actor,
+        apiKey: this.env.OPENAI_API_KEY, projects: this.projects, actor,
         origin: this.origin, messages: base, projectId: row.project,
         initialModel: displayModel(display) || lastModel(JSON.parse(row.messages)),
         signal: controller.signal, emit,

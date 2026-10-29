@@ -12,7 +12,7 @@ const plans = [
   {
     name: "Pro", price: "$29", detail: "USD per month · cancel any time",
     intro: "Work directly with the Senda agent.",
-    features: ["Create up to 100 saved cloud projects", "Everything in Free", "Built-in chat powered by DeepSeek Flash", "$6 monthly AI allowance, with usage shown", "No automatic overage charges"],
+    features: ["Create up to 100 saved cloud projects", "Everything in Free", "Built-in chat powered by GPT-6 Luna", "$6 monthly AI allowance, with usage shown", "No automatic overage charges"],
     href: "/app/billing", action: "Choose Pro",
   },
 ];

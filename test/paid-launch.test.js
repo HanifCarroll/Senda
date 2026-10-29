@@ -51,7 +51,7 @@ function entitlement(db, owner, { start = Math.floor(Date.now()/1000)-100, end =
 test('aggregate admission includes operators and prevents concurrent accounts from exceeding the shared cap', async () => {
   const db = database();
   try {
-    spend(db,'operator',9.8);
+    spend(db,'operator',9.92);
     const attempts = await Promise.allSettled(['one','two'].map(owner => reserveTurn(db,{runId:owner,chatId:'chat',owner,day})));
     assert.equal(attempts.filter(r=>r.status==='fulfilled').length,1);
     assert.equal(attempts.filter(r=>r.status==='rejected'&&r.reason.code==='LIMIT').length,1);
@@ -62,7 +62,7 @@ test('aggregate admission includes operators and prevents concurrent accounts fr
 test('unknown failed-call reservations still block the monthly service budget', async () => {
   const db = database();
   try {
-    spend(db,'uncertain',99.9,{date:monthStart,status:'failed',known:false});
+    spend(db,'uncertain',99.98,{date:monthStart,status:'failed',known:false});
     await assert.rejects(reserveTurn(db,{runId:'new',chatId:'chat',owner:'new',day}),{code:'LIMIT'});
     assert.equal((await budgetPause(db,'new',day)).reason,'capacity');
   } finally { db.close(); }
@@ -153,7 +153,7 @@ test('operator emails are deduplicated, include aggregate capacity and growth, a
 
 test('a QA paid allowlist cannot be bypassed by buying a sandbox subscription, while production uses the paid entitlement', async () => {
   let reads=0;
-  const env={DB:{},DEEPSEEK_API_KEY:'fixture',AGENT_WORKFLOW:{},PAID_AGENT_ALLOWED_EMAILS:'qa@example.test'};
+  const env={DB:{},OPENAI_API_KEY:'fixture',AGENT_WORKFLOW:{},PAID_AGENT_ALLOWED_EMAILS:'qa@example.test'};
   const billing={entitlement:async()=>{reads++;return{subscriptionId:'sub'};}};
   const check=async(email,settings=env)=>new HostedAgent(settings,{},'https://qa.example',{billing}).handle(new Request('https://qa.example/api/agent/config'),{userId:'owner'},email).then(r=>r.json());
   assert.equal((await check('stranger@example.test')).available,false);assert.equal(reads,0);

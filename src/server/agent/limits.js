@@ -8,10 +8,11 @@ export const AGENT_LIMITS = Object.freeze({
   reservationUsd: 1,
   dailyUsd: 2,
 });
-// Conservative peak pricing: cache discounts are not needed to stay inside limits.
+// Fixed application ceiling for GPT-6 Luna with an explicit 30-minute cache TTL.
+// All input is charged as a new cache write; cache reads cost less at the provider.
 export function usageCost(usage = {}) {
   return (
-    ((usage.inputTokens || 0) * 0.3 + (usage.outputTokens || 0) * 1.2) /
+    ((usage.inputTokens || 0) * 0.125 + (usage.outputTokens || 0) * 0.5) /
     1_000_000
   );
 }
