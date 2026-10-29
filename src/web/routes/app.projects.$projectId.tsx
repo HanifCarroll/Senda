@@ -224,7 +224,7 @@ function Workspace() {
         historical={!!location.revision || !models}
         visible={{ ...location, revision: review?.revision }}
       />
-      <div className="project-navigation app-header mx-auto flex max-w-[1800px] items-center gap-4 px-4 py-6 sm:px-6">
+      <div className="project-navigation app-header mx-auto flex max-w-[1800px] items-center gap-2 px-4 py-4 sm:gap-4 sm:px-6 sm:py-6">
         <Button variant="ghost" size="icon" asChild>
           <a href="/app" aria-label="Your processes">
             <ArrowLeft data-icon="inline-start" />
