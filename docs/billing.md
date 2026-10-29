@@ -159,3 +159,21 @@ form interaction is not claimed as passed. The hosted Checkout itself completed.
 No real test charge was made. The owned sandbox billing customer was removed to invalidate its temporary
 portal addresses. The QA webhook and public endpoint are disabled after testing;
 saved model evidence is retained in private storage.
+
+## Production activation on 28 October 2026
+
+The paid release passed GitHub verification and automatic Cloudflare deployment,
+with all nine D1 migrations independently checked in production. The live webhook
+and both release flags were then enabled for HC Studio LLC's US$29 monthly price.
+Production leaves the optional paid-account email restriction and sandbox clock
+offset unset; paid access requires the verified subscription entitlement.
+
+A regular account followed the actual production purchase UI into live Stripe
+Checkout. The page displayed Senda Pro at US$29 per month. The exact app-created
+session was expired unpaid, without a payment intent or subscription. Stripe's
+real signed `checkout.session.expired` notification was recorded by production.
+Independent authenticated checks before and after expiry confirmed Free's
+three-project limit, no subscription, denied built-in chat, private-project
+isolation and rejection of an invalid webhook signature. No real test charge was
+made. The live Checkout and signed expiry verify production wiring; completed
+payment and entitlement lifecycle evidence comes from the isolated sandbox.
