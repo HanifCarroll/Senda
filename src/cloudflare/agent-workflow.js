@@ -10,8 +10,11 @@ export class SendaAgentWorkflow extends WorkflowEntrypoint {
       const [{ HostedAgent }, { CloudProjects }] = await Promise.all([
         import('./agent.js'), import('./projects.js'),
       ]);
+      const { CloudBilling } = await import('./billing.js');
+      const billing = new CloudBilling(this.env, this.env.APP_URL);
       const projects = new CloudProjects(this.env.DB, this.env.SNAPSHOTS, {
         reviewVersion: process.env.SENDA_REVIEW_VERSION,
+        projectLimit: actor => billing.workspaceLimit(actor),
       });
       const origin = this.env.LOCAL_EMAIL_OUTBOX === '1' &&
         ['127.0.0.1', 'localhost'].includes(new URL(event.payload.origin).hostname)

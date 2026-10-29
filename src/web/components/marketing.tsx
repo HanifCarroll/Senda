@@ -228,6 +228,7 @@ export function Marketing() {
               {label}
             </a>
           ))}
+          <a href="/pricing" className="px-2 text-sm text-muted-foreground hover:text-foreground">Pricing</a>
           <Button variant="ghost" className="rounded-full px-3 md:ml-2" asChild>
             <a href="/sign-in">Sign in</a>
           </Button>
@@ -243,7 +244,7 @@ export function Marketing() {
             Turn interviews into process diagrams people can agree on.
           </h1>
           <p className={cn(lead, "max-w-xl sm:text-xl")}>
-            Bring a transcript and the AI agent you already use. Every step links back to the interview, and
+            Bring a transcript. Use Senda’s built-in agent or connect your own. Every step links back to the interview, and
             anything it leaves unclear becomes a question.
           </p>
           <StartButtons />
@@ -342,13 +343,13 @@ export function Marketing() {
                 link: { href: methodology, label: "Read the method summary" },
               },
               {
-                title: "Senda never sends your transcripts to an AI model",
-                text: "Only the agent you connect can read them, and only in the projects you choose. You can disconnect it at any time.",
+                title: "Know where your transcript goes",
+                text: "Built-in chat sends relevant sources and models to DeepSeek. Your connected agent reads only the projects you approve, under its provider’s privacy practices.",
                 link: { href: "/privacy", label: "Read the privacy notice" },
               },
               {
-                title: "Free and open source",
-                text: "The hosted app is free. You can also run it yourself, since the app, command-line tool and agent skill are MIT-licensed.",
+                title: "Start free, keep your work",
+                text: "Create up to three hosted projects for free with your own agent, or choose Pro for built-in chat and more projects. The app, command-line tool and agent skill are MIT-licensed.",
                 link: { href: repository, label: "View the source" },
               },
             ].map(({ title, text, link }) => (
@@ -388,6 +389,7 @@ export function Marketing() {
                 ))}
               </ol>
               <p className="text-sm leading-relaxed text-muted-foreground">
+                Claude is supported. ChatGPT is in beta: it can save a change but sometimes cannot display its reply. Check the saved diagram before repeating a request.{" "}
                 Works with any AI agent that can connect to a remote MCP server with OAuth sign-in (many assistants
                 call this a custom connector). If you prefer
                 a terminal, the{" "}
@@ -431,7 +433,7 @@ export function Marketing() {
                 ],
                 [
                   "Can I start in ChatGPT or Claude?",
-                  "Yes. Connect Senda, sign in and choose New projects. Then give your agent the transcript and ask it to map the process. It creates the project for you. Continue answering questions and requesting changes in the same chat; open Senda whenever you want to review the diagram or its history.",
+                  "Yes. Claude is supported and ChatGPT is in beta. Connect Senda, sign in and choose New projects. Give your agent the transcript and ask it to map the process. Continue answering questions in the same chat and review the saved diagram in Senda. ChatGPT can save changes but fail to display its reply, so check the saved model before repeating a request.",
                 ],
                 [
                   "Which AI agents can connect?",
@@ -439,7 +441,7 @@ export function Marketing() {
                 ],
                 [
                   "Does Senda run AI on my transcripts?",
-                  "No. Senda stores your transcripts, model and history, and checks each revision. The agent you connect does the reading and drafting.",
+                  "When you choose the built-in agent in Pro, Senda sends relevant messages, sources and models to DeepSeek Flash. If you connect your own agent, that agent and its provider do the drafting. Senda keeps the evidence and revision history in either workflow.",
                 ],
                 [
                   "Who can read my transcripts?",
@@ -447,7 +449,7 @@ export function Marketing() {
                 ],
                 [
                   "Is it free?",
-                  "Yes. The hosted app is free to use and the source is MIT-licensed. Each project holds up to 40 sources and 1 MB of transcript text.",
+                  "Free lets you create up to three saved cloud projects with your own agent. Pro is $29 USD per month for up to 100 projects and built-in chat with a monthly AI allowance. Daily and shared service limits apply, with no automatic overage charges. Read Pricing for details. The source is MIT-licensed.",
                 ],
                 [
                   "How do I plan a future process?",
@@ -489,6 +491,8 @@ export function Marketing() {
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             {[
               ["Example", "/example"],
+              ["Pricing", "/pricing"],
+              ["Usage", "/usage"],
               ["Method", methodology],
               ["Privacy", "/privacy"],
               ["Source code", repository],

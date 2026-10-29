@@ -302,6 +302,46 @@ try {
     ),
   );
   console.log("UI returning-account login, token reuse rejection and Google OAuth start passed");
+  // A plan selection must survive first-time email sign-in without accepting
+  // an arbitrary callback URL or starting a purchase before the user chooses it.
+  const buyerContext = await browser.newContext({ viewport: { width: 390, height: 844 } }),
+    buyer = await buyerContext.newPage(), buyerEmail = `buyer-${Date.now()}@example.test`;
+  await buyer.goto(base + "/pricing");
+  await buyer.getByRole("link", { name: "Choose Pro", exact: false }).waitFor();
+  assert.ok(await buyer.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await buyer.screenshot({ path: artifacts + "/pricing-mobile.png", fullPage: true });
+  await buyer.getByRole("link", { name: "Choose Pro", exact: false }).click();
+  await buyer.waitForURL(base + "/sign-in?plan=pro");
+  await buyer.getByLabel("Email", { exact: true }).fill(buyerEmail);
+  await buyer.getByRole("button", { name: "Send sign-in link", exact: true }).click();
+  await buyer.getByText("Your sign-in link is on its way", { exact: true }).waitFor();
+  const buyerMessage = await (await proxy.env.SNAPSHOTS.get("test-outbox/" + hash(buyerEmail) + ".json")).json();
+  await buyer.goto(buyerMessage.text.match(/http[^\s]+/)[0]);
+  await buyer.getByRole("button", { name: "Continue to Senda", exact: true }).click();
+  await buyer.waitForURL(base + "/app/billing");
+  await buyer.getByRole("heading", { name: "Your plan", exact: true }).waitFor();
+  await buyer.getByText("Paid plans aren’t available yet.", { exact: false }).waitFor();
+  assert.ok(await buyer.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await buyer.route("**/api/billing", route => route.fulfill({ json: {
+    available: true, checkoutAvailable: false, managed: true, priceUsd: 29,
+    includedUsd: 6, usedUsd: 0, pendingUsd: 0, projectLimit: 3,
+    subscription: { status: "past_due", active: false, periodEnd: "2026-12-29T00:00:00Z" },
+  } }));
+  await buyer.reload();
+  await buyer.getByText("Your latest payment hasn’t completed.", { exact: false }).waitFor();
+  assert.ok(await buyer.getByRole("button", { name: "Manage subscription", exact: false }).isVisible());
+  assert.equal(await buyer.getByRole("button", { name: "Choose Pro", exact: true }).count(), 0);
+  assert.ok(await buyer.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await buyer.screenshot({ path: artifacts + "/billing-recovery-mobile.png", fullPage: true });
+  await buyer.goto(base + "/usage");
+  await buyer.getByRole("heading", { name: "Usage and subscription terms", exact: true }).waitFor();
+  assert.ok(await buyer.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await buyer.screenshot({ path: artifacts + "/usage-mobile.png", fullPage: true });
+  await buyer.setViewportSize({ width: 1440, height: 1000 });
+  await buyer.goto(base + "/pricing");
+  await buyer.screenshot({ path: artifacts + "/pricing-desktop.png", fullPage: true });
+  await buyerContext.close();
+  console.log("Public pricing, mobile terms and plan selection through first-time email sign-in passed");
 } catch (e) {
   console.error("Page", p.url(), (await p.locator("body").innerText()).slice(0, 1500));
   await p.screenshot({ path: artifacts + "/cf-ui-error.png" });

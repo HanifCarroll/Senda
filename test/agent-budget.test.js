@@ -7,7 +7,7 @@ import { memoryD1 } from './fixtures/d1.js';
 
 function setup() {
   const db = memoryD1();
-  for (const name of ['0004_hosted_agent.sql', '0005_billing.sql', '0006_agent_meter.sql', '0008_agent_billing_period.sql'])
+  for (const name of ['0004_hosted_agent.sql', '0005_billing.sql', '0006_agent_meter.sql', '0008_agent_billing_period.sql', '0009_service_budget.sql'])
     db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
   const day = new Date().toISOString().slice(0, 10);
   db.prepare("INSERT INTO senda_agent_runs(id,chat,owner,day,status,reserved_usd,created) VALUES('run','chat','owner',?,'running',?,?)")

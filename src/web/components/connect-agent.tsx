@@ -61,6 +61,7 @@ export function ConnectAgent({ label = "Connect your agent" }: { label?: string 
             and revises the diagram as you talk. Senda keeps the sources and history together.
           </DialogDescription>
         </DialogHeader>
+        <p className="text-sm leading-relaxed text-muted-foreground">Claude is supported. ChatGPT is in beta: it can save changes but sometimes fails to display its reply. Check the saved model in Senda before repeating a request. You supply your own agent subscription. Pro also offers <a className="underline underline-offset-4" href="/app/agent">Senda’s built-in chat</a>.</p>
         {error && (
           <Alert variant="destructive">
             <AlertTitle>Connection could not be loaded</AlertTitle>

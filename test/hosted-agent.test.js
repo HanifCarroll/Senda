@@ -324,7 +324,7 @@ function fixtureAgent(env, projects, origin, options = {}) {
 
 test('provider authentication failures survive reload and release unused budget; uncertain failures retain it', async () => {
   const db = memoryD1();
-  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql']) db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
+  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql', '0009_service_budget.sql']) db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
   const actor = { userId: 'owner' }, email = 'owner@example.test';
   const origin = 'https://senda.example';
   const agent = fixtureAgent({ DB: db, DEEPSEEK_API_KEY: 'fixture', AGENT_ALLOWED_EMAILS: email }, {}, origin, {
@@ -352,7 +352,7 @@ test('provider authentication failures survive reload and release unused budget;
 
 test('paid turns reserve atomically within both monthly allowance and current entitlement, with no duplicate request execution', async () => {
   const db = memoryD1();
-  for (const name of ['0004_hosted_agent.sql', '0005_billing.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql'])
+  for (const name of ['0004_hosted_agent.sql', '0005_billing.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql', '0009_service_budget.sql'])
     db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
   const actor = { userId: 'paid-owner' }, email = 'paid@example.test', origin = 'https://senda.example';
   const start = Math.floor(Date.now() / 1000) - 100, end = start + 10000;
@@ -397,7 +397,7 @@ test('native provider tool notation cannot escape into the saved public reply', 
 
 test('a failed turn without saved progress records operational spend while using zero customer allowance', async () => {
   const db = memoryD1();
-  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql']) db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
+  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql', '0009_service_budget.sql']) db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
   const actor = { userId: 'owner' }, email = 'owner@example.test', origin = 'https://senda.example';
   const agent = fixtureAgent({ DB: db, DEEPSEEK_API_KEY: 'fixture', AGENT_ALLOWED_EMAILS: email }, {}, origin, {
     run: async ({ reserveCall, settleCall }) => {
@@ -421,7 +421,7 @@ test('a failed turn without saved progress records operational spend while using
 
 test('successful replies without complete provider usage retain their conservative reservation', async () => {
   const db = memoryD1();
-  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql']) db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
+  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql', '0009_service_budget.sql']) db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
   const actor = { userId: 'owner' }, email = 'owner@example.test', origin = 'https://senda.example';
   const agent = fixtureAgent({ DB: db, DEEPSEEK_API_KEY: 'fixture', AGENT_ALLOWED_EMAILS: email }, {}, origin, {
     run: async () => ({ text: 'Saved reply', messages: [], usage: { outputTokens: 20 } }),
@@ -441,7 +441,7 @@ test('successful replies without complete provider usage retain their conservati
 
 test('an incomplete turn keeps measured operational usage but consumes no customer allowance after reload', async () => {
   const db = memoryD1();
-  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql'])
+  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql', '0009_service_budget.sql'])
     db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
   const actor = { userId: 'owner' }, email = 'owner@example.test', origin = 'https://senda.example';
   const agent = fixtureAgent({ DB: db, DEEPSEEK_API_KEY: 'fixture', AGENT_ALLOWED_EMAILS: email }, {}, origin, {
@@ -463,7 +463,7 @@ test('an incomplete turn keeps measured operational usage but consumes no custom
 
 test('a saved future-model conversation keeps its active model through prose-only turns and reloads', async () => {
   const db = memoryD1();
-  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql']) db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
+  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql', '0009_service_budget.sql']) db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
   const actor = { userId: 'owner' }, email = 'owner@example.test', origin = 'https://senda.example', seen = [];
   const agent = fixtureAgent({ DB: db, DEEPSEEK_API_KEY: 'fixture', AGENT_ALLOWED_EMAILS: email }, {}, origin, {
     run: async options => {
@@ -484,7 +484,7 @@ test('a saved future-model conversation keeps its active model through prose-onl
 
 test('disconnecting the response cannot cancel a queued job; duplicate delivery cannot execute it twice', async () => {
   const db = memoryD1();
-  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql'])
+  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql', '0009_service_budget.sql'])
     db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
   const actor = { userId: 'owner' }, email = 'owner@example.test', origin = 'https://senda.example';
   let queued, calls = 0, release;
@@ -514,7 +514,7 @@ test('disconnecting the response cannot cancel a queued job; duplicate delivery 
 
 test('an expired job reports an interruption after reload and cannot later contact the provider', async () => {
   const db = memoryD1();
-  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql'])
+  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql', '0009_service_budget.sql'])
     db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
   const actor = { userId: 'owner' }, email = 'owner@example.test', origin = 'https://senda.example';
   let queued, calls = 0;
@@ -540,7 +540,7 @@ test('an expired job reports an interruption after reload and cannot later conta
 
 test('removing hosted-agent access blocks new provider work while keeping the owner’s saved conversation readable', async () => {
   const db = memoryD1();
-  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql'])
+  for (const name of ['0004_hosted_agent.sql', '0006_agent_meter.sql', '0007_agent_workflow.sql', '0008_agent_billing_period.sql', '0009_service_budget.sql'])
     db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
   const actor = { userId: 'owner' }, email = 'owner@example.test', origin = 'https://senda.example';
   const env = { DB: db, DEEPSEEK_API_KEY: 'fixture', AGENT_ALLOWED_EMAILS: email };

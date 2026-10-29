@@ -1,11 +1,31 @@
 # Billing integration
 
-Billing is being prepared for the optional built-in agent. The requested review
-with Claude Opus 5.5 agreed proposed commercial numbers: US$15/month with a
-US$3 monthly allowance on the fixed rate card, a separate US$3 absorbed-cost
-ceiling, and a temporary US$0.35 minimum remaining allowance to start a turn.
-This agreement is conditional on qualification; it is not a launched price.
-Checkout and paid entitlements are not enabled yet.
+Launch plans were reviewed from first principles with Claude Opus 5.5 on
+28 October 2026. Free permits creation of 3 saved cloud projects; Pro costs
+US$29/month for up to 100 saved projects and built-in chat with a US$6 monthly
+allowance. Existing projects stay readable, editable through a connected agent,
+and exportable after a lapse. Creation is enforced atomically across UI, MCP
+and built-in agent. There is currently no archive/delete UI. Annual plans,
+trials, top-ups, overages and allowance rollover are not offered.
+
+The fixed rate card is documented in [hosted agent limits](hosted-agent.md).
+Paid operating limits are US$3/day, US$1/turn and a US$0.35 admission minimum.
+Unsuccessful/incomplete turns use no customer allowance; a separate US$3
+absorbed-cost limit can pause service until renewal. Shared admission budgets
+include all accounts, operators, pending and unknown outcomes: US$10/UTC day
+and US$100/calendar month. Migration 0009 adds the service window and deduplicated
+operator alerts. A running turn conservatively moves its full reservation into
+the current service window before another provider call; this is a safety
+accounting rule, not a provider invoice report. Alerts fire at 60% capacity,
+at paid allowances exceeding 80% of monthly capacity, and on the first real
+paid Checkout. No automatic funding or spending-limit increase occurs.
+Customers can request a manual prorated refund for an interrupting service pause.
+
+The public [usage policy](../src/web/routes/usage.tsx) and pricing page describe
+these limits. Release remains gated on actual sandbox lifecycle qualification,
+then exact live account/catalog/secret checks and an unpaid live Checkout expiry.
+Real test charges are forbidden. A push or a paid redirect alone is not proof
+of a working deployment or entitlement.
 
 ## Stripe foundation
 
@@ -57,7 +77,9 @@ override daily and period resets. Distinct messages explain each pause.
 No metered Stripe price is created. The paid feature requires both
 `BILLING_ENABLED=1` and `PAID_AGENT_ENABLED=1`, the exact approved Stripe account,
 an application key, signing secret, monthly price and bounded included allowance.
-Both real release flags remain off during qualification.
+Both real release flags remain off during qualification. Live mode also requires the
+operator notification recipient to match an operator allowlist entry, the exact
+US$29 monthly catalog price and the US$6 allowance.
 
 An explicitly named sandbox-only $1 monthly qualification price and an isolated
 Senda portal configuration have been created in HC Studio LLC's approved sandbox.
@@ -65,18 +87,75 @@ That amount is not a proposed commercial price. The portal allows payment-method
 updates, invoices and cancellation at period end, with plan switching disabled.
 A real hosted Checkout session using Stripe's published test card completed with
 `livemode=false`, a paid invoice and an active flexible subscription. This is
-provider-side evidence; application key provisioning and signed end-to-end
-webhook/entitlement tests are still outstanding.
+provider-side evidence. A service-specific restricted application key and isolated
+webhook were then provisioned, and signed application lifecycle qualification
+passed in the isolated sandbox.
 
-## Remaining qualification
+## Release verification
 
-- Confirm the paid plan and hosted-agent allowance with Claude.
-- Provision a service-specific restricted key and signing secret in Workers secrets.
-- Cover renewals, cancellation, failed payments, refunds, disputes and fraud
-  signals, including event retries and out-of-order delivery.
+- Keep the agreed plan and customer policy aligned with enforced limits.
+- Recheck renewals, cancellation, failed payments, refunds, disputes and fraud
+  signals when changing reconciliation, including retries and delayed events.
 - Verify tax settings and registrations separately from payment activation.
-- Exercise the full sandbox flow, then configure and verify production.
+- Exercise the full sandbox flow before configuring production. Verify an unpaid
+  live Checkout expiry and its signed receipt, then the deployed purchase UI.
 
 References: [Stripe subscription events](https://docs.stripe.com/billing/subscriptions/webhooks),
 [subscription Checkout](https://docs.stripe.com/billing/subscriptions/build-subscriptions),
 and [customer portal](https://docs.stripe.com/customer-management/integrate-customer-portal).
+
+
+## Isolated sandbox qualification
+
+The `senda-billing-qa` Worker uses its own D1 database and private R2 bucket.
+It has no inference credential or Workflow until the paid-account gate is
+verified. `PAID_AGENT_ALLOWED_EMAILS`, when set, restricts paid inference without
+granting operator bypass; production leaves it unset. This prevents public
+sandbox subscriptions from spending real inference funds.
+
+A server-only `BILLING_SANDBOX_CLOCK_OFFSET_SECONDS` can align the app with
+Stripe Test Clocks for renewal qualification. It is accepted only when
+`STRIPE_LIVEMODE=false`; live mode always uses wall time, with regression coverage.
+Never expose this value as a client option. Operational service windows remain
+real UTC time even during simulated billing periods.
+
+## Qualification on 28 October 2026
+
+The isolated Worker completed an actual app Checkout using Stripe's published
+sandbox card, signed subscription/invoice notifications, natural Test Clock
+renewal, a failed renewal, payment recovery and a fresh allowance period.
+The account completed five built-in-agent turns from an ordinary interview:
+two clarification rounds, a separate To-be model, and a later To-be revision.
+Eleven immutable snapshots passed independent hashes, evidence-quote/reference,
+history and BPMN checks. Three actual authenticated HTTP BPMN exports matched
+the saved semantics, included geometry and parsed without warnings. Those five
+turns used US$0.4733049 on the fixed peak rate card, not a promised per-process cost.
+
+Partial/full refunds, a dispute, a winning dispute and an actionable early-fraud
+warning reached the actual application. Review holds blocked replacement Checkout
+and hosted work while preserving saved models. A previously failed, old paid
+Checkout notification was manually resent by Stripe after the newer holds;
+canonical reconciliation preserved the holds. Replaying the same signed event
+retained one receipt. Account-lease contention can return 503 to concurrent
+notifications; Stripe retries these events. The qualification also exercised
+explicit operator review of the known sandbox fixtures before restoring access.
+
+Cancellation through the app-created portal retained access to the paid end
+date. After simulated expiry, two parallel project creations filled the remaining
+Free slots and three excess attempts were rejected. Existing edits and BPMN
+exports continued to work. Unit tests cover global admission races, unknown
+operating costs, billing-period attribution, quota races, sandbox-clock isolation,
+notification deduplication and paid access. Real Worker/MCP and browser checks
+cover desktop/mobile, slow loading, reloads, first-account sign-in and purchase
+intent through sign-in.
+
+Known external limitations remain explicit: ChatGPT can save changes while its
+consumer UI fails to display the reply; automated browser download observation
+can time out despite verified HTTP attachments. The Stripe sandbox portal's
+embedded card-update form was blank in the controlled browser. Portal identity,
+invoices and cancellation were verified, and failed-payment recovery was
+completed through Stripe's Dashboard with the existing sandbox card. Card-update
+form interaction is not claimed as passed. The hosted Checkout itself completed.
+No real test charge was made. The owned sandbox billing customer was removed to invalidate its temporary
+portal addresses. The QA webhook and public endpoint are disabled after testing;
+saved model evidence is retained in private storage.

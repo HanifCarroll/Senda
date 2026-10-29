@@ -7,7 +7,9 @@ import {
   usageCost,
 } from "../server/agent/deepseek.js";
 import { requireThat } from "../core/errors.js";
-import { CallBudget, measuredUsage, reserveTurn } from './agent-budget.js';
+import { CallBudget, measuredUsage, reserveTurn, serviceLimits } from './agent-budget.js';
+import { billingNow, emailListed } from '../server/billing/plan.js';
+import { OperationalAlerts } from './operations.js';
 export { measuredUsage } from './agent-budget.js';
 
 const Turn = z.strictObject({
@@ -18,6 +20,7 @@ export class HostedAgent {
   constructor(env, projects, origin, { run = runDeepSeek, billing, dispatch, pollMs = 1000 } = {}) {
     Object.assign(this, { env, projects, origin, run, billing, dispatch, pollMs });
     this.db = env.DB;
+    this.operations = new OperationalAlerts(env);
   }
   async chat(actor, id) {
     const row = await this.db
@@ -31,7 +34,8 @@ export class HostedAgent {
   async handle(request, actor, email) {
     const path = new URL(request.url).pathname;
     const operator = agentAllowed(this.env, email);
-    const entitlement = !operator && this.env.DEEPSEEK_API_KEY
+    const paidEmailAllowed = this.env.PAID_AGENT_ALLOWED_EMAILS === undefined || emailListed(this.env.PAID_AGENT_ALLOWED_EMAILS, email);
+    const entitlement = !operator && paidEmailAllowed && this.env.DEEPSEEK_API_KEY
       ? await this.billing?.entitlement(actor) : null;
     const available = (operator || !!entitlement) && !!(this.env.AGENT_WORKFLOW || this.dispatch);
     const accessMessage = !available && !operator ? await this.billing?.unavailableMessage?.(actor) : null;
@@ -110,8 +114,10 @@ export class HostedAgent {
     );
     row = locked;
     try {
-      await reserveTurn(this.db, { runId, chatId: row.id, owner: actor.userId, day, entitlement });
+      await reserveTurn(this.db, { runId, chatId: row.id, owner: actor.userId, day, entitlement,
+        nowMs: billingNow(this.env), limits: serviceLimits(this.env) });
     } catch (error) {
+      await this.operations.observe();
       await this.unlock(row.id, runId);
       throw error;
     }
@@ -133,6 +139,7 @@ export class HostedAgent {
       if (!known) await this.interrupt(row.id, runId,
         'Senda could not confirm that this reply started. Your saved work is safe. Please try again.', { unstartedOnly: true });
     }
+    await this.operations.observe();
     return this.observe(request, row.id, runId);
   }
   async observe(request, chatId, runId) {
@@ -189,7 +196,10 @@ export class HostedAgent {
         this.db.prepare("UPDATE senda_agent_runs SET progress=? WHERE id=? AND status='running'")
           .bind(event.text, runId).run());
     };
-    const budget = new CallBudget(this.db, { runId, owner: run.owner, day: run.day, entitlement });
+    const budget = new CallBudget(this.db, { runId, owner: run.owner, day: run.day, entitlement,
+      now: () => billingNow(this.env), limits: serviceLimits(this.env),
+      onExceeded: () => this.operations.notify(`reservation-${runId}`, 'reservation review', 'A measured model call exceeded its conservative reservation. The customer charge was capped; review the operational rate card before continuing.'),
+    });
     const pending = [], used = { inputTokens: 0, outputTokens: 0 };
     let usageKnown = true, row, display, base;
     try {
@@ -248,6 +258,7 @@ export class HostedAgent {
     } finally {
       clearTimeout(timeout);
       await this.unlock(chatId, runId);
+      await this.operations.observe();
     }
     return { executed: true };
   }

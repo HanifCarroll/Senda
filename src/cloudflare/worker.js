@@ -6,10 +6,13 @@ async function application(env, origin) {
   ]);
   // Authentication initialization and D1 work belong to this request. Cache
   // immutable drawing data, never an authentication context with live I/O.
-  const projects = new CloudProjects(env.DB, env.SNAPSHOTS, { reviewVersion: process.env.SENDA_REVIEW_VERSION }),
+  const billing = new (await import("./billing.js")).CloudBilling(env, origin);
+  const projects = new CloudProjects(env.DB, env.SNAPSHOTS, {
+      reviewVersion: process.env.SENDA_REVIEW_VERSION,
+      projectLimit: actor => billing.workspaceLimit(actor),
+    }),
     auth = cloudAuth(env, origin, projects);
   await auth.$context;
-  const billing = new (await import("./billing.js")).CloudBilling(env, origin);
   return createRequestHandler({
     origin,
     projects,

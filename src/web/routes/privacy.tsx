@@ -14,7 +14,7 @@ function Privacy() {
         <h1 className="text-3xl font-semibold tracking-tight">Privacy</h1>
         <p className="text-sm text-muted-foreground">Updated 28 October 2026</p>
         <p className="leading-relaxed">
-          Senda is operated by Hanif Carroll. It stores process transcripts, supporting evidence,
+          Senda is operated by HC Studio LLC, with support from Hanif Carroll. It stores process transcripts, supporting evidence,
           and separate As-is and To-be diagrams so you can review and revise them with your own agent.
         </p>
       </header>
@@ -73,6 +73,10 @@ function Privacy() {
           Senda uses cookies to keep you signed in and complete authentication. It does not use
           advertising cookies or embed advertising trackers.
         </p>
+      </section>
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Subscriptions and payments</h2>
+        <p className="leading-relaxed">Stripe processes subscription payments for HC Studio LLC. Senda stores Stripe customer and subscription identifiers, payment status and billing periods to manage access. Card details are entered on Stripe’s hosted pages and are not stored by Senda. Stripe has its own privacy and retention practices.</p>
       </section>
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Access, correction, and deletion</h2>
