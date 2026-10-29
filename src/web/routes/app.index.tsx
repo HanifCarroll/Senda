@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { SendaAgentLink } from "@/components/senda-agent-link";
 import { Plus, ArrowUpRight } from "lucide-react";
 import { api, post, ApiError } from "@/lib/api";
 import { AccountFrame } from "@/components/account-frame";
 import { ConnectAgent } from "@/components/connect-agent";
+import { projectTitle } from "@/lib/review-navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,7 +74,7 @@ function Projects() {
               Give your transcript to your agent. Review the diagrams and revisions here.
             </p>
           </div>
-          <Dialog open={open} onOpenChange={setOpen}>
+          <div className="flex gap-3"><SendaAgentLink /><Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
                 <Plus data-icon="inline-start" />
@@ -157,7 +159,7 @@ function Projects() {
                 </Button>
               </form>
             </DialogContent>
-          </Dialog>
+          </Dialog></div>
         </div>
         {error && !open && (
           <Alert variant="destructive">
@@ -168,7 +170,7 @@ function Projects() {
         {projects === null ? (
           <Skeleton className="h-40 w-full" />
         ) : projects.length ? (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2">
             {projects.map((project) => (
               <Card key={project.id}>
                 <CardHeader>
@@ -177,7 +179,7 @@ function Projects() {
                       className="flex items-center justify-between gap-3 hover:underline"
                       href={`/app/projects/${project.id}`}
                     >
-                      {project.name}
+                      {projectTitle(project.name)}
                       <ArrowUpRight className="size-5 shrink-0" />
                     </a>
                   </CardTitle>
@@ -185,11 +187,6 @@ function Projects() {
                     Created {new Date(project.created).toLocaleDateString()}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Private to your account and the agent connections you authorize.
-                  </p>
-                </CardContent>
               </Card>
             ))}
           </div>

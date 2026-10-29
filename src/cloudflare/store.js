@@ -8,7 +8,7 @@ export class CloudStore {
   constructor(db, bucket, modelId, records, snapshots) {
     Object.assign(this, { db, bucket, modelId, records, snapshots });
   }
-  static async open(db, bucket, modelId, revision) {
+  static async open(db, bucket, modelId, revision, { load = true } = {}) {
     const { results } = await db
       .prepare(
         "SELECT revision,parent,created AS createdAt,summary,object_key,digest,content_hash FROM senda_revisions WHERE model_id=? ORDER BY revision",
@@ -17,8 +17,10 @@ export class CloudStore {
       .all();
     requireThat(results.length, "NOT_FOUND", "This model is not available.");
     const store = new CloudStore(db, bucket, modelId, results, new Map());
-    await store.load(results.at(-1).revision);
-    if (revision !== undefined) await store.load(revision);
+    if (load) {
+      await store.load(results.at(-1).revision);
+      if (revision !== undefined) await store.load(revision);
+    }
     return store;
   }
   async load(revision) {

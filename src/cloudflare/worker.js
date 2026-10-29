@@ -1,18 +1,21 @@
 import start from "@tanstack/react-start/server-entry";
-import { createRequestHandler } from "../server/handler.js";
-import { CloudProjects } from "./projects.js";
-import { cloudAuth } from "./auth.js";
 
 async function application(env, origin) {
+  const [{ createRequestHandler }, { CloudProjects }, { cloudAuth }] = await Promise.all([
+    import("../server/handler.js"), import("./projects.js"), import("./auth.js"),
+  ]);
   // Authentication initialization and D1 work belong to this request. Cache
   // immutable drawing data, never an authentication context with live I/O.
-  const projects = new CloudProjects(env.DB, env.SNAPSHOTS),
+  const projects = new CloudProjects(env.DB, env.SNAPSHOTS, { reviewVersion: process.env.SENDA_REVIEW_VERSION }),
     auth = cloudAuth(env, origin, projects);
   await auth.$context;
+  const billing = new (await import("./billing.js")).CloudBilling(env, origin);
   return createRequestHandler({
     origin,
     projects,
     auth,
+    billing,
+    hostedAgent: new (await import("./agent.js")).HostedAgent(env, projects, origin, { billing }),
     localJwks: true,
     features: {
       accountEmail: true,
@@ -25,6 +28,8 @@ async function application(env, origin) {
     },
   });
 }
+export { SendaAgentWorkflow } from './agent-workflow.js';
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -85,8 +90,10 @@ export default {
     const headers = new Headers(request.headers);
     headers.set("x-scribe-client-ip", headers.get("cf-connecting-ip") || "local");
     request = new Request(request, { headers });
-    const app = await application(env, origin);
-    const response = (await app.handle(request)) || (await start.fetch(request));
+    const apiRequest = url.pathname.startsWith("/api/") || url.pathname === "/mcp" || url.pathname.startsWith("/.well-known/");
+    const response = apiRequest
+      ? (await (await application(env, origin)).handle(request)) || (await start.fetch(request))
+      : await start.fetch(request);
     const result = new Response(response.body, response);
     result.headers.set("x-content-type-options", "nosniff");
     result.headers.set("referrer-policy", "same-origin");

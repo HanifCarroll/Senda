@@ -13,6 +13,7 @@ import {
   Crosshair,
   Layers,
   ArrowUpRight,
+  Search,
 } from "lucide-react";
 import type {
   Review,
@@ -65,7 +66,6 @@ import {
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbSeparator,
-  BreadcrumbPage,
 } from "./ui/breadcrumb";
 import {
   Accordion,
@@ -122,6 +122,7 @@ export function ReviewApp({
   revisionId,
   onAnswer,
   embedded = false,
+  hideHeader = false,
 }: {
   review: Review;
   reviews: ReviewChoice[];
@@ -132,9 +133,11 @@ export function ReviewApp({
   revisionId?: string;
   onAnswer?: (id: string) => void;
   embedded?: boolean;
+  hideHeader?: boolean;
 }) {
   const [focusRequest, setFocusRequest] = useState(0);
   const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [zoom, setZoom] = useState(100);
   const [inspecting, setInspecting] = useState(false);
   const [mobileEvidence, setMobileEvidence] = useState(false);
@@ -144,6 +147,7 @@ export function ReviewApp({
     location.source ? [location.source] : [],
   );
   const canvas = useRef<CanvasControls>(null);
+  const searchNavigation = useRef(false);
   const workspace = useRef<HTMLDivElement>(null);
   const tab = location.section || "diagram";
   const view =
@@ -269,12 +273,15 @@ export function ReviewApp({
   ) : null;
   const sourceOpen = !!location.source && tab !== "sources";
   const Heading = embedded ? "h2" : "h1";
+  const viewTitle = (id: string) => id === review.views[0]?.elementId
+    ? "Process overview"
+    : review.views.find(v => v.elementId === id)?.title || "Diagram";
   return (
     <TooltipProvider>
       <div
-        className={cn("review-shell min-h-screen", expanded && "focus-mode")}
+        className={cn("review-shell", !hideHeader && "min-h-screen", expanded && "focus-mode")}
       >
-        <header className="app-header border-b bg-card">
+        {!hideHeader && <header className="app-header border-b bg-card">
           <div className="mx-auto flex max-w-[1800px] items-center gap-3 px-4 py-3 sm:px-6">
             <a
               href="/"
@@ -342,7 +349,7 @@ export function ReviewApp({
               <span className="hidden sm:inline">Download BPMN</span>
             </Button>
           </div>
-        </header>
+        </header>}
         <main className="review-main mx-auto flex max-w-[1800px] flex-col gap-3 px-3 py-3 sm:px-6">
           <Tabs
             value={tab}
@@ -407,69 +414,35 @@ export function ReviewApp({
                 </Card>
               ) : (
                 <>
-                  <div className="diagram-breadcrumbs flex flex-wrap items-center justify-between gap-2">
+                  {breadcrumbs.length > 1 && <div className="diagram-breadcrumbs flex flex-wrap items-center justify-between gap-2">
                     <Breadcrumb>
                       <BreadcrumbList>
-                        {breadcrumbs.map((b, i) => (
+                        {breadcrumbs.slice(0, -1).map((b, i) => (
                           <Fragment key={b.elementId}>
                             {i ? <BreadcrumbSeparator /> : null}
                             <BreadcrumbItem>
-                              {b.elementId === view.elementId ? (
-                                <BreadcrumbPage>{b.title}</BreadcrumbPage>
-                              ) : (
                                 <BreadcrumbLink asChild>
                                   <button onClick={() => showView(b.elementId)}>
-                                    {b.title}
+                                    {viewTitle(b.elementId)}
                                   </button>
                                 </BreadcrumbLink>
-                              )}
                             </BreadcrumbItem>
                           </Fragment>
                         ))}
                       </BreadcrumbList>
                     </Breadcrumb>
-                    <span className="hidden text-xs text-muted-foreground sm:inline">
-                      {review.quality.rendering.drawnMessages}/
-                      {review.quality.rendering.totalMessages} message exchanges
-                      shown
-                    </span>
-                  </div>
-                  <FieldGroup className="view-controls grid gap-2 sm:grid-cols-2">
-                    <Field>
-                      <FieldLabel htmlFor="view-choice" className="sr-only">
-                        View
-                      </FieldLabel>
-                      <Select value={view.elementId} onValueChange={showView}>
-                        <SelectTrigger id="view-choice" className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent position="popper">
-                          <SelectGroup>
-                            {review.views.map((v) => (
-                              <SelectItem key={v.elementId} value={v.elementId}>
-                                {v.title}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="element-search" className="sr-only">
-                        Find a step or message
-                      </FieldLabel>
-                      <Input
-                        id="element-search"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Find a step or message…"
-                        type="search"
-                      />
-                    </Field>
-                  </FieldGroup>
-                  {search.trim() ? (
-                    <Card className="search-results">
-                      <CardContent
+                  </div>}
+                  <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+                    <DialogContent onCloseAutoFocus={event => { if (searchNavigation.current) { event.preventDefault(); searchNavigation.current = false; } }}>
+                      <DialogHeader>
+                        <DialogTitle>Find a step or message</DialogTitle>
+                        <DialogDescription>Search this process, including its subprocesses.</DialogDescription>
+                      </DialogHeader>
+                      <FieldGroup><Field>
+                        <FieldLabel htmlFor="element-search">Search</FieldLabel>
+                        <Input id="element-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Find a step or message…" type="search" />
+                      </Field></FieldGroup>
+                      {search.trim() && <div
                         className="flex flex-col gap-2"
                         aria-live="polite"
                       >
@@ -479,7 +452,7 @@ export function ReviewApp({
                               key={e.id}
                               variant="ghost"
                               className="h-auto justify-start whitespace-normal py-2 text-left"
-                              onClick={() => go(e.id)}
+                              onClick={() => { searchNavigation.current = true; setSearchOpen(false); void go(e.id); }}
                             >
                               {readableLabel(e)}
                               <Badge variant="outline">
@@ -490,9 +463,9 @@ export function ReviewApp({
                         ) : (
                           <p>No matching steps or messages.</p>
                         )}
-                      </CardContent>
-                    </Card>
-                  ) : null}
+                      </div>}
+                    </DialogContent>
+                  </Dialog>
                   <div ref={workspace} className="diagram-workspace">
                     <ResizablePanelGroup
                       orientation="horizontal"
@@ -510,20 +483,25 @@ export function ReviewApp({
                             aria-label="Diagram controls"
                           >
                             <div className="flex min-w-0 items-center gap-1">
-                              <Button
+                              {view.parentId && <Button
                                 variant="ghost"
                                 size="icon"
                                 aria-label="Parent view"
-                                disabled={!view.parentId}
                                 onClick={() =>
                                   view.parentId && showView(view.parentId)
                                 }
                               >
                                 <ArrowLeft />
-                              </Button>
-                              <h2 className="truncate text-sm font-medium">
-                                {view.title}
-                              </h2>
+                              </Button>}
+                              {review.views.length > 1 ? (
+                                <Select value={view.elementId} onValueChange={showView}>
+                                  <SelectTrigger aria-label="View" className="max-w-72"><SelectValue /></SelectTrigger>
+                                  <SelectContent position="popper"><SelectGroup>
+                                    {review.views.map(v => <SelectItem key={v.elementId} value={v.elementId}>{viewTitle(v.elementId)}</SelectItem>)}
+                                  </SelectGroup></SelectContent>
+                                </Select>
+                              ) : <span className="text-sm font-medium">Diagram</span>}
+                              <Button variant="ghost" size="icon" aria-label="Find a step or message" onClick={() => setSearchOpen(true)}><Search /></Button>
                             </div>
                             <div className="flex items-center gap-1">
                               <Button
@@ -534,12 +512,9 @@ export function ReviewApp({
                               >
                                 <Minus />
                               </Button>
-                              <output
-                                className="min-w-10 text-center text-xs tabular-nums"
-                                aria-label="Zoom level"
-                              >
-                                {zoom}%
-                              </output>
+                              <Button variant="ghost" aria-label="Reset zoom to actual size" title="Reset to actual size" onClick={() => canvas.current?.actual()}>
+                                <output className="min-w-10 text-center text-xs tabular-nums" aria-label="Zoom level">{zoom}%</output>
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -553,13 +528,6 @@ export function ReviewApp({
                                 onClick={() => canvas.current?.fit()}
                               >
                                 Fit
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                title="Read labels at actual size"
-                                onClick={() => canvas.current?.actual()}
-                              >
-                                100%
                               </Button>
                               <Tooltip>
                                 <TooltipTrigger asChild>

@@ -25,6 +25,27 @@ export async function parseModel(xml) {
   const p = await new BpmnModdle().fromXML(xml);
   return { ...p, elements: collect(p.rootElement) };
 }
+// Agent reads need the control-flow semantics, not the diagram's coordinates.
+export async function describeModel(xml) {
+  const { elements } = await parseModel(xml);
+  return elements.map(e => ({
+    id: e.id, type: e.$type, name: e.name, parent: e.$parent?.id,
+    source: e.sourceRef?.id, target: e.targetRef?.id,
+    condition: e.conditionExpression?.body, default: e.default?.id,
+    attachedTo: e.attachedToRef?.id, cancelActivity: e.cancelActivity,
+    triggeredByEvent: e.triggeredByEvent,
+    flowNodes: e.flowNodeRef?.map(n => n.id),
+    process: e.processRef?.id,
+    errorCode: e.errorCode, escalationCode: e.escalationCode,
+    definitions: e.eventDefinitions?.map(d => ({
+      type: d.$type, duration: d.timeDuration?.body, date: d.timeDate?.body,
+      cycle: d.timeCycle?.body, message: d.messageRef?.name,
+      messageId: d.messageRef?.id, error: d.errorRef?.id,
+      signal: d.signalRef?.id, escalation: d.escalationRef?.id,
+      condition: d.condition?.body,
+    })),
+  }));
+}
 export async function createModel(name) {
   return (await newXml({ processId: 'Process_Main', processName: name, platform: 'none', target: 'none', executable: false })).xml;
 }

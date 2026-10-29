@@ -1,6 +1,8 @@
+import { SendaAgentLink } from "@/components/senda-agent-link";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, MessageSquare, ArrowLeft } from "lucide-react";
+import { Plus, MessageSquare, ArrowLeft, MoreHorizontal, Download, RefreshCw } from "lucide-react";
+import { projectTitle } from "@/lib/review-navigation";
 import { api, post, ApiError } from "@/lib/api";
 import type { Review, ReviewChoice, Section } from "@/lib/types";
 import { AccountFrame } from "@/components/account-frame";
@@ -31,7 +33,6 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardContent,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -81,6 +82,7 @@ function Workspace() {
     [notice, setNotice] = useState(""),
     [sourceOpen, setSourceOpen] = useState(false),
     [answerOpen, setAnswerOpen] = useState(false),
+    [detailsOpen, setDetailsOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [text, setText] = useState(""),
     [question, setQuestion] = useState("");
@@ -94,13 +96,17 @@ function Workspace() {
     const id = ++requestId.current;
     refreshing.current++;
     try {
+      // Start independent requests together. Metadata can paint the header while
+      // the first render is prepared; an absent To-be model is a normal state.
+      const rendered = api<ProjectReview>(
+        `/api/projects/${projectId}/review?model=${location.model}${location.revision ? `&revision=${location.revision}` : ""}`,
+      ).then(value => ({ value, error: null }), error => ({ value: null, error }));
       const list = await api<Models>(`/api/projects/${projectId}/models`);
+      if (id === requestId.current && activeProject.current === projectId) setModels(list);
       const exists = location.model === "as-is" || !!list.toBe;
-      const value = exists
-        ? await api<ProjectReview>(
-            `/api/projects/${projectId}/review?model=${location.model}${location.revision ? `&revision=${location.revision}` : ""}`,
-          )
-        : null;
+      const result = await rendered;
+      if (exists && result.error) throw result.error;
+      const value = exists ? result.value : null;
       if (id !== requestId.current || activeProject.current !== projectId)
         return;
       latest.current = value?.revision || 0;
@@ -140,6 +146,7 @@ function Workspace() {
         const revision =
           (location.model === "as-is" ? list.asIs : list.toBe)?.revision || 0;
         setModels(list);
+        setNotice(previous => previous === "Updates paused. Use Refresh to reconnect." ? "" : previous);
         if (revision !== latest.current && refreshing.current === 0) {
           await refresh();
           setNotice("The latest revision is ready.");
@@ -209,7 +216,7 @@ function Workspace() {
   const openQuestions =
     review?.discovery.questions.filter((q) => q.status !== "answered") || [];
   return (
-    <AccountFrame>
+    <AccountFrame wide>
       <BrowserAgent
         projectId={projectId}
         model={location.model}
@@ -217,14 +224,31 @@ function Workspace() {
         historical={!!location.revision || !models}
         visible={{ ...location, revision: review?.revision }}
       />
-      <div className="project-navigation mx-auto flex max-w-[1800px] flex-wrap items-center gap-3 px-4 py-4 sm:px-6">
-        <Button variant="ghost" asChild>
+      <div className="project-navigation app-header mx-auto flex max-w-[1800px] items-center gap-4 px-4 py-6 sm:px-6">
+        <Button variant="ghost" size="icon" asChild>
           <a href="/app" aria-label="Your processes">
             <ArrowLeft data-icon="inline-start" />
-            <span className="hidden sm:inline">Your processes</span>
           </a>
         </Button>
-        <div className="ml-auto flex flex-wrap gap-2">
+        {models ? <h1 className="min-w-0 flex-1 text-xl font-semibold tracking-tight">{projectTitle(models.name)}</h1>
+          : <Skeleton className="h-7 w-64" />}
+        <div className="ml-auto flex flex-wrap gap-2"><SendaAgentLink projectId={projectId} />
+          <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+            <DialogTrigger asChild><Button variant="ghost" size="icon" aria-label="Project actions"><MoreHorizontal /></Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Project details</DialogTitle>
+                <DialogDescription>{review?.discovery.context.purpose || "Sources and project updates."}</DialogDescription>
+              </DialogHeader>
+              {review?.discovery.context.scopeNotes && <p className="text-sm leading-relaxed">{review.discovery.context.scopeNotes}</p>}
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" disabled={!review || !!location.revision} onClick={() => { setDetailsOpen(false); setText(""); setSourceOpen(true); }}><Plus data-icon="inline-start" />Add transcript</Button>
+                <Button variant="outline" disabled={!openQuestions.length || !!location.revision} onClick={() => { setDetailsOpen(false); setText(""); setAnswerOpen(true); }}><MessageSquare data-icon="inline-start" />Add an answer</Button>
+                <Button variant="outline" onClick={() => { setDetailsOpen(false); void refresh(); }}><RefreshCw data-icon="inline-start" />Refresh project</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          {review ? <Button asChild><a aria-label="Download BPMN" download={review.exportFilename} href={`/api/projects/${projectId}/bpmn?model=${location.model}&revision=${review.revision}`}><Download data-icon="inline-start" /><span className="hidden sm:inline">Download BPMN</span></a></Button>
+            : <Button disabled aria-label="Download BPMN"><Download data-icon="inline-start" /><span className="hidden sm:inline">Download BPMN</span></Button>}
           <Dialog
             open={sourceOpen}
             onOpenChange={(value) => {
@@ -232,15 +256,6 @@ function Workspace() {
               setText("");
             }}
           >
-            <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                disabled={!review || !!location.revision}
-              >
-                <Plus data-icon="inline-start" />
-                Add transcript
-              </Button>
-            </DialogTrigger>
             <DialogContent className="max-h-[90dvh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add another transcript</DialogTitle>
@@ -309,15 +324,6 @@ function Workspace() {
               setText("");
             }}
           >
-            <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                disabled={!openQuestions.length || !!location.revision}
-              >
-                <MessageSquare data-icon="inline-start" />
-                Add an answer
-              </Button>
-            </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Clarify the process</DialogTitle>
@@ -459,12 +465,14 @@ function Workspace() {
       {models && location.model === "to-be" && !models.toBe ? null : !review ? (
         error ? null : (
           <main className="mx-auto max-w-6xl px-4">
+            <p role="status" className="mb-4 text-sm text-muted-foreground">Preparing the diagram…</p>
             <Skeleton className="h-80 w-full" />
           </main>
         )
       ) : review.views.length ? (
         <ReviewApp
           embedded
+          hideHeader
           review={review}
           reviews={review.history}
           revisionId={String(review.revision)}
@@ -500,10 +508,7 @@ function Workspace() {
         <main className="mx-auto max-w-3xl px-4 py-10">
           <Card>
             <CardHeader>
-              <CardTitle>{review.title}</CardTitle>
-              <CardDescription>
-                Ready for your first process draft.
-              </CardDescription>
+              <CardTitle>Ready for your first process draft</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-5">
               <p>

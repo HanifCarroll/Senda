@@ -129,15 +129,26 @@ try {
   });
   for (const proposal of proposals) await post("/api/projects/" + project.id, proposal);
   let reviewRequests = 0;
+  p.on('request', request => { if (/\/api\/projects\/[^/]+\/review\?/.test(new URL(request.url()).pathname + new URL(request.url()).search)) reviewRequests++; });
   await p.route("**/api/projects/*/review?**", async (route) => {
-    reviewRequests++;
     await new Promise((resolve) => setTimeout(resolve, 6500));
     await route.continue();
   });
   await p.goto(base + "/app/projects/" + project.id + "?section=diagram");
   await p.locator("#diagram-stage svg").waitFor({ timeout: 60000 });
+  assert.equal(await p.getByRole("heading", { name: "Cloudflare browser walkthrough", exact: true }).count(), 1);
   assert.equal(reviewRequests, 1, "A slow initial review must finish without a poll replacing it.");
   await p.unrouteAll({ behavior: "wait" });
+  let metadataPolls = 0;
+  await p.route(`**/api/projects/${project.id}/models`, async route => {
+    if (++metadataPolls === 1) await route.fulfill({ status: 503, json: { message: 'Temporary synthetic interruption' } });
+    else await route.continue();
+  });
+  const paused = p.getByText("Updates paused. Use Refresh to reconnect.", { exact: true });
+  await paused.waitFor({ timeout: 15000 });
+  await paused.waitFor({ state: 'hidden', timeout: 15000 });
+  await p.unroute(`**/api/projects/${project.id}/models`);
+  assert.equal(reviewRequests, 1, 'Recovering metadata updates does not reload an unchanged diagram');
   const messages = p.locator(".messages-panel");
   await messages.locator('[data-slot="accordion-trigger"]').click();
   const intakeMessage = p.locator("[data-message-id]").filter({ hasText: "Request missing items" });
@@ -157,12 +168,14 @@ try {
     .getByLabel("What should change?", { exact: true })
     .fill("Synthetic plan: Finance should check each deposit invoice before sending it.");
   await p.getByRole("button", { name: "Create planning draft", exact: true }).click();
-  await p
-    .locator(".app-header")
-    .getByText(/Revision 1 ·/)
-    .waitFor();
+  await p.getByRole("combobox", { name: "Revision", exact: true }).getByText("Revision 1", { exact: true }).waitFor();
+  await p.getByRole("button", { name: "Planning details", exact: true }).click();
   await p.getByRole("button", { name: "View original As-is", exact: true }).waitFor();
   assert.ok(await p.getByRole("button", { name: "View original As-is", exact: true }).isVisible());
+  await p.getByRole("button", { name: "View original As-is", exact: true }).click();
+  await p.waitForURL(url => url.searchParams.get("model") === "as-is" && url.searchParams.get("revision") === "5");
+  await p.getByRole("tab", { name: /^To-be/ }).click();
+  await p.getByRole("combobox", { name: "Revision", exact: true }).getByText("Revision 1", { exact: true }).waitFor();
   for (const [w, h] of [
     [1440, 1000],
     [390, 844],
@@ -181,11 +194,61 @@ try {
   assert.ok(await evidence.getByText("Send handover pack", { exact: true }).isVisible());
   assert.match(await evidence.innerText(), /Client Success reviews it and acknowledges acceptance/);
   assert.equal(await requestPage.getByRole("button", { name: "Request a correction", exact: true }).count(), 0);
+  await requestPage.getByRole("button", { name: "Find a step or message", exact: true }).click();
+  await requestPage.getByRole("searchbox", { name: "Search", exact: true }).fill("deposit invoice");
+  await requestPage.getByRole("dialog").getByRole("button", { name: "Issue deposit invoice Step", exact: true }).click();
+  await requestPage.waitForURL(url => url.searchParams.get("view") === "FinanceWork" && url.searchParams.get("element") === "Invoice");
+  assert.ok(await evidence.getByText("Issue deposit invoice", { exact: true }).isVisible());
   await requestPage.getByRole("tab", { name: "Clarifications", exact: true }).click();
   assert.equal(await requestPage.getByRole("button", { name: /Copy question|Prepare my answer|Clarify this answer/ }).count(), 0);
   await requestPage.screenshot({ path: artifacts + "/cf-agent-chat-review.png" });
   await requestPage.close();
   console.log("Evidence follows the selected step; review has no prompt-copy handoff");
+
+  // Client recovery checks use a controlled transport; real model persistence is
+  // covered by the Worker workflow and separately opted-in provider journey.
+  const chatId = "5a1ce263-893b-41d9-9d42-9c8171471085";
+  const nextChatId = "d47e95db-b4d5-4c01-936f-5d9759a334e0";
+  let replyReady = false;
+  await p.route("**/api/agent/config", route => route.fulfill({ json: { available: true } }));
+  const savedMessages = [{ role: "user", text: "Please improve our invoice process." }];
+  await p.route("**/api/agent/chats**", async route => {
+    const req = route.request(), url = new URL(req.url());
+    const isNext = url.pathname.endsWith(nextChatId);
+    if (req.method() === "POST" && url.pathname.endsWith("/chats"))
+      return route.fulfill({ json: { id: nextChatId } });
+    return route.fulfill({ json: {
+      id: isNext ? nextChatId : chatId, projectId: project.id,
+      model: "to-be", working: !isNext && !replyReady,
+      messages: isNext ? [] : [...savedMessages, ...(replyReady ? [{ role: "assistant", text: "Saved the **future diagram**." }] : [])],
+    } });
+  });
+  await p.goto(base + "/app/agent?chat=" + chatId);
+  await p.getByRole("status").getByText(/A reply is being prepared/).waitFor();
+  assert.ok(await p.getByLabel("Continue the conversation", { exact: true }).isDisabled());
+  assert.ok(await p.getByRole("button", { name: "Working…", exact: true }).isDisabled());
+  replyReady = true;
+  await p.getByText("Saved the", { exact: false }).waitFor();
+  assert.equal(await p.getByRole("link", { name: "Open diagram", exact: false }).getAttribute("href"), `/app/projects/${project.id}?model=to-be`);
+  await p.reload();
+  await p.getByText("Saved the", { exact: false }).waitFor();
+  await p.getByLabel("Continue the conversation", { exact: true }).fill("A later detail.");
+  assert.ok(await p.getByRole("button", { name: "Send message", exact: true }).isEnabled());
+  for (const [width, height] of [[1440,1000],[390,844]]) {
+    await p.setViewportSize({ width, height });
+    assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await p.screenshot({ path: `${artifacts}/agent-chat-${width}.png` });
+  }
+  await p.getByRole("button", { name: "New conversation", exact: true }).click();
+  await p.getByLabel("Your transcript or process notes", { exact: true }).waitFor();
+  assert.equal(await p.getByText("Saved the", { exact: false }).count(), 0);
+  assert.equal(await p.getByLabel("Your transcript or process notes", { exact: true }).inputValue(), "");
+  await p.goto(base + "/app/agent");
+  await p.getByLabel("Your transcript or process notes", { exact: true }).waitFor();
+  assert.equal(await p.getByRole("link", { name: "Open diagram", exact: false }).count(), 0);
+  await p.unroute("**/api/agent/chats**");
+  await p.unroute("**/api/agent/config");
+  console.log("Agent UI transport checks: active reply polling, reload, model link, fresh conversation and desktop/mobile passed");
   await p.getByRole("button", { name: "Sign out", exact: true }).click();
   await p.waitForURL(base + "/");
   await p.goto(firstLink);

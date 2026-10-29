@@ -12,7 +12,7 @@ function Privacy() {
       <a href="/" aria-label="Senda home" className="w-fit"><Brand className="h-10" /></a>
       <header className="space-y-3">
         <h1 className="text-3xl font-semibold tracking-tight">Privacy</h1>
-        <p className="text-sm text-muted-foreground">Updated 27 October 2026</p>
+        <p className="text-sm text-muted-foreground">Updated 28 October 2026</p>
         <p className="leading-relaxed">
           Senda is operated by Hanif Carroll. It stores process transcripts, supporting evidence,
           and separate As-is and To-be diagrams so you can review and revise them with your own agent.
@@ -43,10 +43,20 @@ function Privacy() {
         <h2 className="text-xl font-semibold">Your connected agent</h2>
         <p className="leading-relaxed">
           An agent can read or update the projects you approve. Sources and models it reads are
-          shared with that agent and its provider. Senda makes no AI model requests itself.
+          shared with that agent and its provider.
           Disconnecting agents prevents further access through those connections; it cannot remove
           information an agent has already received. Your agent provider has its own privacy and
           retention practices.
+        </p>
+      </section>
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">The Senda agent</h2>
+        <p className="leading-relaxed">
+          When you use the built-in Senda agent, your messages and relevant process sources and
+          models are sent to DeepSeek to draft or revise your diagrams. Conversations and usage
+          records are saved with your account on Cloudflare so you can continue the work later.
+          API credentials remain on the server. DeepSeek processes these requests under its own
+          privacy and retention practices.
         </p>
       </section>
       <section className="space-y-3">

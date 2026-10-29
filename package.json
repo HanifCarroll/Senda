@@ -45,6 +45,7 @@
     "deploy:cloudflare": "wrangler deploy --config dist-cloudflare/server/wrangler.json"
   },
   "dependencies": {
+    "@ai-sdk/deepseek": "3.0.75",
     "@better-auth/cimd": "1.7.14",
     "@better-auth/mcp": "1.7.14",
     "@better-auth/oauth-provider": "1.7.14",
@@ -53,6 +54,7 @@
     "@modelcontextprotocol/server": "2.4.0",
     "@tanstack/react-router": "1.170.46",
     "@tanstack/react-start": "1.169.4",
+    "ai": "7.0.156",
     "better-auth": "1.7.14",
     "bpmn-moddle": "10.3.1",
     "class-variance-authority": "0.7.1",
@@ -63,6 +65,7 @@
     "radix-ui": "1.8.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "react-markdown": "10.1.0",
     "react-resizable-panels": "^4.15.0",
     "sonner": "^2.0.8",
     "stripe": "23.0.1",

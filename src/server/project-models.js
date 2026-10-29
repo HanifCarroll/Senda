@@ -27,6 +27,26 @@ export class ProjectModels {
     }, model);
   }
 
+  async preview(actor, id, input, model = "as-is") {
+    const proposal = Proposal.parse(input);
+    requireThat(proposal.operations.length <= 500, "LIMIT", "Submit at most 500 model operations per revision.");
+    return this.withProject(actor, id, async project => {
+      this.checkSources([...project.read().discovery.sources, ...proposal.sources]);
+      return { ...(await project.preview(proposal)), context: { projectId: id, model, owner: actor.userId } };
+    }, model);
+  }
+
+  // Internal only: persist the exact candidate that the hosted preflight read.
+  // Re-authorize and re-open after the provider call; never hold a DB lock over it.
+  async applyPreview(actor, id, prepared, model = 'as-is') {
+    requireThat(prepared.context?.projectId === id && prepared.context.model === model && prepared.context.owner === actor.userId,
+      'FORBIDDEN', 'Use the project for this conversation.');
+    return this.withProject(actor, id, project => {
+      this.checkSources(prepared.candidate.discovery.sources);
+      return project.applyPreview(prepared);
+    }, model);
+  }
+
   async addSource(actor, id, input, model = "as-is") {
     const data = z.strictObject({
       expectedRevision: z.number().int().positive(),

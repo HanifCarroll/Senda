@@ -18,6 +18,8 @@ export async function createRequestHandler({
   origin,
   projects,
   auth,
+  hostedAgent,
+  billing,
   localJwks = false,
   features = {
     accountEmail: false,
@@ -122,6 +124,16 @@ export async function createRequestHandler({
       return mcp(request);
     }
     if (!pathname.startsWith("/api/")) return null;
+    if (pathname === "/api/billing/webhook") {
+      if (request.method !== "POST") return new Response(null, { status: 405, headers: { Allow: "POST" } });
+      if (!billing) return json({ message: "Billing is not configured." }, 503);
+      try { return json(await billing.webhook(request)); }
+      catch (error) {
+        const invalid = ["BAD_SIGNATURE", "BILLING_CONTEXT_MISMATCH", "INVALID_REQUEST"].includes(error.code);
+        console.error("Senda billing notification stopped", { code: error.code, name: error.name });
+        return json({ message: invalid ? "This billing notification could not be verified." : "Please retry this billing notification." }, invalid ? 400 : 503);
+      }
+    }
     if (pathname === "/api/skill" || pathname === "/api/skill.zip") {
       const references = await skillBundle();
       if (pathname.endsWith(".zip"))
@@ -176,6 +188,15 @@ export async function createRequestHandler({
         );
       const actor = { userId: session.user.id };
       const body = async () => Body.parse(await request.json());
+      if (pathname === "/api/billing" || pathname.startsWith("/api/billing/")) {
+        if (!billing && ["/api/billing", "/api/billing/config"].includes(pathname) && request.method === "GET") return json({ available: false });
+        requireThat(billing, "BILLING_UNAVAILABLE", "Paid plans are not available yet.");
+        return await billing.handle(request, actor, session.user.email);
+      }
+      if (pathname.startsWith("/api/agent/")) {
+        requireThat(hostedAgent, "NOT_FOUND", "The Senda agent is not available here.");
+        return await hostedAgent.handle(request, actor, session.user.email);
+      }
       if (pathname === "/api/session" && request.method === "GET")
         return json({
           user: {
@@ -319,7 +340,14 @@ export async function createRequestHandler({
           if (action === "models") return json(await projects.models(actor, id));
           if (action === "head") return json(await projects.head(actor, id, model));
           if (action === "read") return json(await projects.read(actor, id, revision, model));
-          if (action === "review") return json(await projects.review(actor, id, revision, model));
+          if (action === "review") {
+            const started = performance.now();
+            const value = await projects.review(actor, id, revision, model);
+            const response = json(value);
+            response.headers.set("server-timing", `review;dur=${(performance.now() - started).toFixed(1)}`);
+            if (value.cacheStatus) response.headers.set("x-senda-review-cache", value.cacheStatus);
+            return response;
+          }
           if (action === "sources") return json(await projects.sources(actor, id, model));
           if (action === "questions") return json(await projects.questions(actor, id, model));
           if (action === "checks") return json(await projects.checks(actor, id, model));

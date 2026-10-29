@@ -4,7 +4,7 @@ Turn process interviews into clear BPMN diagrams. Clarify decisions, trace each 
 
 Explore the current process, plan a separate future version, and compare saved revisions. Senda keeps the diagram, source material and clarification answers together in a private project.
 
-The project includes a TanStack Start app, an agent skill, a local CLI and a JavaScript library. Your agent interprets the conversation; Senda stores the evidence and revisions, applies BPMN edits through [Miragon bpmn-cli](https://github.com/Miragon/bpmn-cli), and exports portable diagrams. The CLI and skill use the `process-scribe` command.
+The project includes a TanStack Start app, an agent skill, a local CLI and a JavaScript library. A connected agent or the built-in Senda agent interprets the conversation; Senda stores the evidence and revisions, applies BPMN edits through [Miragon bpmn-cli](https://github.com/Miragon/bpmn-cli), and exports portable diagrams. The CLI and skill use the `process-scribe` command.
 
 The discovery method follows Chapter 5 of *Fundamentals of Business Process Management*, second edition: boundaries → activities and events → resources and handoffs → control flow → relevant additional detail, with iteration and review throughout. Chapters 1–4 inform interview preparation, abstraction and modeling patterns. [Read the methodology summary](skills/process-scribe/references/methodology.md).
 
@@ -34,7 +34,7 @@ npm run build
 npm run serve
 ```
 
-Open `http://127.0.0.1:3000`. The homepage explains the workflow and links to a public example. Connect Senda in your agent's settings, sign in and choose **New projects**. Share the transcript directly in ChatGPT or Claude and ask it to map the process in Senda. The agent creates the private project; clarification answers, corrections and future-process requests can stay in that same chat. Open Senda to explore the diagram, inspect sources, compare revisions and export BPMN. You can also create projects and upload transcripts in the app. The app uses **TanStack Start + React**, **shadcn/ui (Radix)** and the Ink + Teal palette. [Hosted architecture, compatibility, limits and deployment](docs/hosted.md).
+Open `http://127.0.0.1:3000`. The homepage explains the workflow and links to a public example. Connect Senda in your agent's settings, sign in and choose **New projects**. Share the transcript directly in ChatGPT or Claude and ask it to map the process in Senda. The agent creates the private project; clarification answers, corrections and future-process requests can stay in that same chat. Open Senda to explore the diagram, inspect sources, compare revisions and export BPMN. Accounts with the built-in agent enabled can also choose **Talk to Senda** and work directly in the app. You can create projects and upload transcripts there. See [built-in agent setup and limits](docs/hosted-agent.md). The app uses **TanStack Start + React**, **shadcn/ui (Radix)** and the Ink + Teal palette. [Hosted architecture, compatibility, limits and deployment](docs/hosted.md).
 
 Each project separates **As-is · Current process** from **To-be · Planned future**. Start a To-be draft from a selected As-is revision and a design brief, then clarify and revise it with your agent. Each model keeps its own sources, questions and revision history; future edits leave the As-is process intact. The plan retains its original baseline when the As-is process changes. [Future-process modeling method](skills/process-scribe/references/planning.md).
 
