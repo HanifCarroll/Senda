@@ -83,7 +83,12 @@ function AgentChat() {
         setChat(c.id);
         setProject(c.projectId);
         setModel(c.model || "as-is");
-        setMessages(c.messages);
+        setMessages(previous => {
+          const next = c.messages as Message[];
+          return previous.length === next.length && previous.every((m, i) =>
+            m.role === next[i].role && m.text === next[i].text && !!m.incomplete === !!next[i].incomplete)
+            ? previous : next;
+        });
         setWorking(c.working);
         setLoading(false);
         setStatus(c.working ? "A reply is being prepared. Your saved progress will appear here." : "");
@@ -103,7 +108,7 @@ function AgentChat() {
   const pending = busy || loading || working || available === null;
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, status]);
+  }, [messages]);
   useEffect(() => () => abort.current?.abort(), []);
   async function newConversation() {
     if (pending || !project) return;
@@ -239,7 +244,7 @@ function AgentChat() {
             Share an interview, clarify the details and plan what comes next.
           </p>
           <p className="mt-3 text-xs leading-5 text-muted-foreground">
-            Your messages and relevant process records are sent to DeepSeek.{' '}
+            Your messages and relevant process records are sent to OpenAI.{' '}
             <a href="/privacy" className="underline underline-offset-4">How your data is used</a>
           </p>
         </div>
@@ -279,7 +284,6 @@ function AgentChat() {
               {status}
             </p>
           )}
-          <div ref={end} />
         </div>
         {error && (
           <Alert variant="destructive">
@@ -349,6 +353,7 @@ function AgentChat() {
             </Button>
           </div>
         </form>}
+        <div ref={end} />
       </main>
     </AccountFrame>
   );

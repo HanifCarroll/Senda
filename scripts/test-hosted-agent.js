@@ -13,7 +13,7 @@ assert.ok(
 assert.equal(
   process.env.SENDA_TEST_LIVE_AGENT,
   "1",
-  "Opt in explicitly: this test uses the configured DeepSeek account.",
+  "Opt in explicitly: this test uses the configured provider account.",
 );
 const state = process.env.SENDA_TEST_STATE || "/tmp/senda-workspace.Jgc3oD";
 const proxy = await getPlatformProxy({

@@ -1,5 +1,7 @@
 import { generateText, tool, stepCountIs, jsonSchema } from "ai";
-import { createDeepSeek } from "@ai-sdk/deepseek";
+import { createAgentModel, agentProviderOptions } from './provider.js';
+import { mainInstructions, firstOverviewInstructions, stageOutcomeInstructions } from './instructions.js';
+import { budgetedModel } from './budgeted-model.js';
 import { toolDefinitions } from "../tools.js";
 import { skillBundle } from "#senda/skill";
 import { reviewCandidate, semanticGraph, assertLiteralTimers } from "./semantic-review.js";
@@ -7,11 +9,11 @@ import { hash } from "../../core/hash.js";
 import { publicError, requireThat } from "../../core/errors.js";
 import { schema } from '../../core/project-core.js';
 
-import { AGENT_LIMITS, usageCost } from './limits.js';
+import { AGENT_LIMITS } from './limits.js';
 export { AGENT_LIMITS, usageCost } from './limits.js';
 export function agentAllowed(env, email) {
   return (
-    !!env.DEEPSEEK_API_KEY &&
+    !!env.OPENAI_API_KEY &&
     String(env.AGENT_ALLOWED_EMAILS || "")
       .split(",")
       .some((x) => x.trim().toLowerCase() === email?.toLowerCase())
@@ -23,7 +25,7 @@ function describesBehavior(proposal = {}) {
     proposal.removeClaimIds?.length || proposal.removeAbstractionIds?.length ||
     proposal.removeQuestionIds?.length || proposal.questions?.some(q => q.status === 'answered'));
 }
-export async function runDeepSeek({
+export async function runAgent({
   apiKey,
   projects,
   actor,
@@ -68,6 +70,9 @@ export async function runDeepSeek({
     bundle["references/planning.md"],
     !selected ? "FIRST DRAFT FOR THIS TURN: Save a small overview of 3–8 meaningful stages, with a start and end. Use tasks or opaque subprocesses, with abstraction contracts describing summarized behavior. Do not add lanes, pools, gateways, boundary events, or detailed finance/exception branches in this initial overview. Confirmed internal branching can remain summarized in a stage; retain its facts in evidence. An uncertain multi-team stage must stay opaque until its ordering is answered. Ask the key business questions after saving that visible overview. Later turns will expand the confirmed details. This scope rule takes precedence over examples in the reference material." : "CLARIFICATION TURN: Expand the relevant summarized stage using the user's new answer; saving an answer alone does not update the diagram. Preserve unchanged evidence and correct all references when replacing a stage. Keep confirmed rules from earlier sources.",
     "Create referenced nodes and containers before connecting them in an operation batch; do not refer forward to an element that will only be created later. In the final reply use ordinary business language, under 120 words plus at most three questions. Ask about unresolved business behavior only. Never ask the user to choose diagram labels, gateway types or other drawing decisions; derive those from the confirmed business facts.",
+    mainInstructions,
+    firstOverviewInstructions,
+    stageOutcomeInstructions,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -83,7 +88,7 @@ export async function runDeepSeek({
     }
     return [def.name, value];
   }));
-  const provider = createDeepSeek({ apiKey })("deepseek-flash");
+  const provider = createAgentModel(apiKey);
   let planningBaseline;
   async function readPlanningBaseline() {
     if (!planningBaseline) {
@@ -148,9 +153,9 @@ export async function runDeepSeek({
             if (prepared && describesBehavior(input.proposal)) {
               const candidate = { ...prepared.candidate, previousXml: prepared.previous.xml,
                 ...(input.model === 'to-be' ? { planningBaseline: await readPlanningBaseline() } : {}) };
-              assertLiteralTimers(await semanticGraph(candidate.xml));
+              const graph = await semanticGraph(candidate.xml);
+              assertLiteralTimers(graph);
               if (createdNow && !savedDiagram) {
-                const graph = await semanticGraph(candidate.xml);
                 const nodes = graph.filter(e => /(?:Task|SubProcess|Event|Gateway)$/.test(e.type));
                 const process = graph.find(e => e.type === 'bpmn:Process');
                 requireThat(nodes.length <= 12 && nodes.every(n => n.parent === process?.id) && !graph.some(e => /(?:Lane|Participant|Gateway|BoundaryEvent)$/.test(e.type)),
@@ -164,7 +169,7 @@ export async function runDeepSeek({
                 emit({ type: "status", text: "Checking the draft against your interview…" });
                 let accounted = false;
                 try {
-                  verdict = await review({ model: provider, candidate, userMessage: currentUserText, signal,
+                  verdict = await review({ model: provider, candidate, overviewTurn: createdNow, userMessage: currentUserText, signal,
                     maxBytes: AGENT_LIMITS.reviewBytes, maxOutputTokens: AGENT_LIMITS.reviewOutputTokens,
                     reserveCall: () => reserveCall('review'), settleCall, failCall,
                     onUsage: async usage => {
@@ -250,7 +255,7 @@ export async function runDeepSeek({
   ).length;
   let result;
   try { result = await generate({
-    model: provider,
+    model: budgetedModel(provider, { reserveCall: () => reserveCall('main'), settleCall, failCall }),
     instructions,
     messages: structuredClone(conversation),
     tools,
@@ -259,9 +264,7 @@ export async function runDeepSeek({
     maxRetries: 0,
     stopWhen: stepCountIs(AGENT_LIMITS.steps),
     abortSignal: signal,
-    providerOptions: {
-      deepseek: { thinking: { type: "enabled" }, reasoningEffort: "low" },
-    },
+    providerOptions: agentProviderOptions(true),
     prepareStep: ({ messages: current, stepNumber }) => {
       const size = (value) =>
         new TextEncoder().encode(instructions + JSON.stringify(value)).length +
@@ -316,8 +319,6 @@ export async function runDeepSeek({
     onStepEnd: async (step) => {
       await saveStep(step);
     },
-    onLanguageModelCallStart: () => reserveCall('main'),
-    onLanguageModelCallEnd: event => settleCall(event.usage),
   }); } catch (error) { await failCall(error); throw error; }
   const reply = agentReply(result.text, selected, selectedModel, origin);
   return {

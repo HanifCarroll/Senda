@@ -344,7 +344,7 @@ export function Marketing() {
               },
               {
                 title: "Know where your transcript goes",
-                text: "Built-in chat sends relevant sources and models to DeepSeek. Your connected agent reads only the projects you approve, under its provider’s privacy practices.",
+                text: "Built-in chat sends relevant sources and models to OpenAI. Your connected agent reads only the projects you approve, under its provider’s privacy practices.",
                 link: { href: "/privacy", label: "Read the privacy notice" },
               },
               {
@@ -451,7 +451,7 @@ export function Marketing() {
                 ],
                 [
                   "Does Senda run AI on my transcripts?",
-                  "When you choose the built-in agent in Pro, Senda sends relevant messages, sources and models to DeepSeek Flash. If you connect your own agent, that agent and its provider do the drafting. Senda keeps the evidence and revision history in either workflow.",
+                  "When you choose the built-in agent in Pro, Senda sends relevant messages, sources and models to GPT-6 Luna. If you connect your own agent, that agent and its provider do the drafting. Senda keeps the evidence and revision history in either workflow.",
                 ],
                 [
                   "Who can read my transcripts?",

@@ -212,12 +212,13 @@ try {
   // covered by the Worker workflow and separately opted-in provider journey.
   const chatId = "5a1ce263-893b-41d9-9d42-9c8171471085";
   const nextChatId = "d47e95db-b4d5-4c01-936f-5d9759a334e0";
-  let replyReady = false;
+  let replyReady = false, chatPolls = 0;
   await p.route("**/api/agent/config", route => route.fulfill({ json: { available: true } }));
-  const savedMessages = [{ role: "user", text: "Please improve our invoice process." }];
+  const savedMessages = [{ role: "user", text: "Please improve our invoice process.\n\n" + "Finance checks the billing details, asks for anything missing and checks the reply again before sending the invoice. ".repeat(18) }];
   await p.route("**/api/agent/chats**", async route => {
     const req = route.request(), url = new URL(req.url());
     const isNext = url.pathname.endsWith(nextChatId);
+    if (req.method() === "GET") chatPolls++;
     if (req.method() === "POST" && url.pathname.endsWith("/chats"))
       return route.fulfill({ json: { id: nextChatId } });
     return route.fulfill({ json: {
@@ -230,8 +231,28 @@ try {
   await p.getByRole("status").getByText(/A reply is being prepared/).waitFor();
   assert.ok(await p.getByLabel("Continue the conversation", { exact: true }).isDisabled());
   assert.ok(await p.getByRole("button", { name: "Working…", exact: true }).isDisabled());
+  const latestMessageClear = async () => p.waitForFunction(() => {
+    const message = document.querySelector('main article:last-of-type')?.getBoundingClientRect();
+    const composer = document.querySelector('main form')?.getBoundingClientRect();
+    return message && composer && message.bottom > 0 && message.bottom <= composer.top + 1;
+  });
+  for (const [width, height] of [[1440,1000],[390,844]]) {
+    await p.setViewportSize({ width, height });
+    await p.reload();
+    await p.getByRole("status").getByText(/A reply is being prepared/).waitFor();
+    await latestMessageClear();
+    await p.screenshot({ path: `${artifacts}/agent-pending-clear-${width}.png` });
+    // Let the initial load and its scroll finish before testing unchanged polls.
+    await p.waitForResponse(response => response.url().includes('/api/agent/chats/') && response.request().method() === 'GET');
+    await p.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    assert.ok(await p.evaluate(() => window.scrollY <= 1), 'The reader can move to the beginning of the conversation');
+    const beforePoll = chatPolls;
+    while (chatPolls < beforePoll + 2) await p.waitForResponse(response => response.url().includes('/api/agent/chats/') && response.request().method() === 'GET');
+    assert.ok(await p.evaluate(() => window.scrollY <= 1), "Unchanged progress polling must not move a reader away from earlier messages");
+  }
   replyReady = true;
   await p.getByText("Saved the", { exact: false }).waitFor();
+  await latestMessageClear();
   assert.equal(await p.getByRole("link", { name: "Open diagram", exact: false }).getAttribute("href"), `/app/projects/${project.id}?model=to-be`);
   await p.reload();
   await p.getByText("Saved the", { exact: false }).waitFor();
@@ -239,6 +260,9 @@ try {
   assert.ok(await p.getByRole("button", { name: "Send message", exact: true }).isEnabled());
   for (const [width, height] of [[1440,1000],[390,844]]) {
     await p.setViewportSize({ width, height });
+    await p.reload();
+    await p.getByText("Saved the", { exact: false }).waitFor();
+    await latestMessageClear();
     assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await p.screenshot({ path: `${artifacts}/agent-chat-${width}.png` });
   }
@@ -251,7 +275,7 @@ try {
   assert.equal(await p.getByRole("link", { name: "Open diagram", exact: false }).count(), 0);
   await p.unroute("**/api/agent/chats**");
   await p.unroute("**/api/agent/config");
-  console.log("Agent UI transport checks: active reply polling, reload, model link, fresh conversation and desktop/mobile passed");
+  console.log("Agent UI transport checks: reader scroll preserved during polling, composer clearance, reload, model link, fresh conversation and desktop/mobile passed");
   await p.getByRole("button", { name: "Sign out", exact: true }).click();
   await p.waitForURL(base + "/");
   await p.goto(firstLink);

@@ -45,7 +45,7 @@
     "deploy:cloudflare": "wrangler deploy --config dist-cloudflare/server/wrangler.json"
   },
   "dependencies": {
-    "@ai-sdk/deepseek": "3.0.75",
+    "@ai-sdk/openai": "4.0.104",
     "@better-auth/cimd": "1.7.14",
     "@better-auth/mcp": "1.7.14",
     "@better-auth/oauth-provider": "1.7.14",

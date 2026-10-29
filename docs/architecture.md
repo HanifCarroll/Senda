@@ -1,6 +1,6 @@
 # Architecture and backend choice
 
-A connected host agent or the built-in DeepSeek agent performs discovery using the skill. It submits structured proposals through the CLI or connected project tools. The service validates evidence references and uses Miragon to apply BPMN operations in memory. It checks the candidate, then appends one snapshot containing both the BPMN XML and the discovery records. `ProjectCore` is shared by local SQLite and Cloudflare D1/R2 storage adapters. Exports are derived from a saved revision.
+A connected host agent or the built-in GPT-6 Luna agent performs discovery using the skill. It submits structured proposals through the CLI or connected project tools. The service validates evidence references and uses Miragon to apply BPMN operations in memory. It checks the candidate, then appends one snapshot containing both the BPMN XML and the discovery records. `ProjectCore` is shared by local SQLite and Cloudflare D1/R2 storage adapters. Exports are derived from a saved revision.
 
 ```text
 Interview / documents / clarification answers
@@ -87,7 +87,7 @@ A private project has an As-is model and an optional To-be model with separate s
 
 The internal `#senda/skill` import selects the skill reader for each runtime. Node resolves it through `package.json` to the filesystem reader; the Cloudflare build aliases it to the bundled Markdown reader. The Worker regression checks the same skill contents through MCP, the HTTP endpoint and the ZIP download.
 
-The public Senda marketing page uses real application screenshots. Production runs on Cloudflare Workers at `senda.hanifcarroll.com`, with D1 accounts/catalog/revision records, private R2 snapshots and Email Service. The local Node service remains available. See [Cloudflare storage and concurrency](cloudflare.md), [hosted configuration and verification boundaries](hosted.md) and [marketing design/provenance](marketing-design.md). The optional built-in agent runs in the Worker through the direct DeepSeek provider in Vercel AI SDK. Authenticated, project-scoped tools share the existing core; D1 stores chat checkpoints, run locks and atomic spend reservations. The initial rollout is restricted to operator accounts pending paid entitlements. See [agent architecture and limits](hosted-agent.md). A custom editor, execution engine and broader process analytics remain outside this workflow.
+The public Senda marketing page uses real application screenshots. Production runs on Cloudflare Workers at `senda.hanifcarroll.com`, with D1 accounts/catalog/revision records, private R2 snapshots and Email Service. The local Node service remains available. See [Cloudflare storage and concurrency](cloudflare.md), [hosted configuration and verification boundaries](hosted.md) and [marketing design/provenance](marketing-design.md). The optional built-in agent runs in the Worker through the direct OpenAI Responses provider in Vercel AI SDK. Authenticated, project-scoped tools share the existing core; D1 stores chat checkpoints, run locks and atomic spend reservations. Access is limited to operators and accounts with eligible paid entitlements; Free has no hosted-agent allowance. See [agent architecture and limits](hosted-agent.md). A custom editor, execution engine and broader process analytics remain outside this workflow.
 
 ## Verification scope
 

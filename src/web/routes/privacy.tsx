@@ -53,9 +53,9 @@ function Privacy() {
         <h2 className="text-xl font-semibold">The Senda agent</h2>
         <p className="leading-relaxed">
           When you use the built-in Senda agent, your messages and relevant process sources and
-          models are sent to DeepSeek to draft or revise your diagrams. Conversations and usage
+          models are sent to OpenAI to draft or revise your diagrams. Conversations and usage
           records are saved with your account on Cloudflare so you can continue the work later.
-          API credentials remain on the server. DeepSeek processes these requests under its own
+          API credentials remain on the server. OpenAI processes these requests under its own
           privacy and retention practices.
         </p>
       </section>

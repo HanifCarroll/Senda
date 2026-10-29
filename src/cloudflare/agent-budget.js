@@ -5,11 +5,11 @@ import { SENDA_PLAN } from '../server/billing/plan.js';
 // Include prompt/protocol overhead beyond the bounded application payload.
 // Reserve each call's maximum before dispatch, then settle measured usage.
 // Extra repair calls fit only while the atomic $1 turn ceiling still permits them.
-export const CALL_RESERVES = Object.freeze({ main: .12, review: .04 });
-export const RATE_CARD = 'deepseek-flash-2026-10-28-peak';
+export const CALL_RESERVES = Object.freeze({ main: .05, review: .02 });
+export const RATE_CARD = 'gpt-6-luna-2026-10-29-30m-ceiling';
 export const measuredUsage = usage => usage &&
   [usage.inputTokens, usage.outputTokens].every(n => Number.isSafeInteger(n) && n >= 0);
-export const MIN_PAID_TURN_USD = .35;
+export const MIN_PAID_TURN_USD = .10;
 export const absorbedLimit = allowance => Math.min(allowance, Math.max(3, allowance * .5));
 const operational = 'COALESCE(cost_usd,reserved_usd)';
 const customer = "COALESCE(meter_usd,CASE WHEN status='running' THEN reserved_usd ELSE 0 END)";
@@ -105,10 +105,10 @@ export async function budgetPause(db, owner, day, e, { nowMs = Date.now(), limit
 
 export async function reserveTurn(db, { runId, chatId, owner, day, entitlement: e, nowMs = Date.now(), limits = serviceLimits() }) {
   const check = constraints({ owner, day, entitlement: e, delta: CALL_RESERVES.main, admission: true, nowMs, limits });
-  const row = await db.prepare(`INSERT INTO senda_agent_runs(id,chat,owner,day,status,reserved_usd,created,billing_context,billing_subscription,billing_period_start,billing_period_end,service_day)
-    SELECT ?,?,?,?,'running',?,?,?,?,?,?,? WHERE ${check.sql} RETURNING id`)
+  const row = await db.prepare(`INSERT INTO senda_agent_runs(id,chat,owner,day,status,reserved_usd,created,billing_context,billing_subscription,billing_period_start,billing_period_end,service_day,rate_card)
+    SELECT ?,?,?,?,'running',?,?,?,?,?,?,?,? WHERE ${check.sql} RETURNING id`)
     .bind(runId, chatId, owner, day, CALL_RESERVES.main, new Date().toISOString(), e?.context || null,
-      e?.subscriptionId || null, e?.periodStart || null, e?.periodEnd || null, day, ...check.args).first();
+      e?.subscriptionId || null, e?.periodStart || null, e?.periodEnd || null, day, RATE_CARD, ...check.args).first();
   const pause = !row && await budgetPause(db, owner, day, e, { nowMs, limits });
   requireThat(row, 'LIMIT', pause?.message || 'Your account access changed. Check Billing before starting another reply.');
 }

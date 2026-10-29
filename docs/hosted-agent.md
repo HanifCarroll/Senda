@@ -1,7 +1,7 @@
 # Built-in agent
 
-Senda uses Vercel AI SDK with the direct `@ai-sdk/deepseek` provider and
-`deepseek-flash`. Requests run in the existing Cloudflare Worker. No Vercel
+Senda uses Vercel AI SDK with the direct `@ai-sdk/openai` Responses provider and
+`gpt-6-luna`. Requests run in the existing Cloudflare Worker. No Vercel
 hosting, gateway account, or Workers AI model is needed.
 
 The agent invokes the same server operations as the MCP integration. Each chat
@@ -9,7 +9,7 @@ is owned by the authenticated account and restricted to one project; an initial
 transcript can create that project. The discovery skill, actual operation
 schemas, evidence validation and optimistic revision checks apply equally to
 As-is and To-be. Models keep separate histories and a fixed planning baseline.
-The first draft is a small overview. Uncertain work stays in an opaque stage
+The first draft is a small overview. Its trusted review phase also applies to metadata repairs during the same first turn, provided the diagram is still compact; later detailed revisions retain the full semantic checks. Uncertain work stays in an opaque stage
 until the user clarifies it. Later turns expand the supported details. Before
 diagram changes are saved, a separate bounded provider call compares the
 candidate's actual graph with the sources. Structural and evidence validation
@@ -19,8 +19,9 @@ Claims, abstraction contracts and written walkthrough changes pass the same
 consistency check, including revisions that change only those explanations.
 The checker must return a factual finding for every claim, walkthrough step and
 abstraction; missing or contradictory check results cannot authorize a save.
+Event attachments, interruption flags and reachable boundary-branch flow targets are derived from that graph. The reviewer must return the same facts in its structured audit; a misread target cannot authorize a save.
 Its bounded request keeps the complete candidate graph and all source text,
-while omitting duplicate unchanged elements from the previous graph.
+and excludes the historical diagram so old event definitions cannot be mistaken for the candidate. The previous graph is used locally to identify the first overview, and the fixed As-is planning baseline remains available for To-be evidence.
 
 D1 holds conversations, per-chat run locks and usage reservations. Successful
 tool steps are checkpointed. Each new turn starts from saved user-facing conversation
@@ -37,8 +38,8 @@ lease expires, with saved revisions retained.
 
 ## Configuration
 
-Keep `DEEPSEEK_API_KEY` in an ignored, owner-readable `.env`. For local Worker
-runs use `--env-file .env` and a private `.dev.vars` for local auth settings.
+Keep `OPENAI_API_KEY` in an ignored, owner-readable `.env.local`. For local Worker
+runs put the key and local auth settings in a private `.dev.vars`. Use a separate configuration directory and state for live-provider qualification.
 Production uses a Cloudflare Worker secret. Never use a `VITE_` variable for keys.
 
 Built-in chat requires a current paid entitlement or an exact operator email
@@ -46,14 +47,15 @@ in the `AGENT_ALLOWED_EMAILS` Worker secret, plus the provider key and Workflow.
 Operator access stays separate from paid access. Free accounts retain their
 connected-agent workflow; there is no public free AI tier.
 
-Each upcoming main call reserves US$0.12; each consistency check reserves US$0.04.
+Each upcoming main call reserves US$0.05; each consistency check reserves US$0.02.
 Turns permit at most sixteen main calls (240 KB of instructions, conversation and
 tool schemas; 32,000 output tokens per call) and six checks (60 KB; 16,000 output
-tokens). Each call must fit within the remaining US$1 turn ceiling and the daily
+tokens). A model middleware boundary awaits the atomic reservation before HTTP dispatch and settles usage before tool execution or another provider call. SDK notification hooks are not used to enforce spending because they swallow callback errors.
+Each call must fit within the remaining US$1 turn ceiling and the daily
 account limit (US$3 paid, US$2 operator; UTC) before it starts. Measured calls release unused reservations,
 so repair calls can use that room without raising either ceiling. The rate card is
-`deepseek-flash-2026-10-28-peak`: US$0.30/million input tokens and US$1.20/million
-output tokens, including reasoning, without relying on cache or off-peak discounts.
+`gpt-6-luna-2026-10-29-30m-ceiling`: US$0.125/million input tokens and US$0.50/million
+output tokens, including reasoning. Input is conservatively metered as a new 30-minute cache write; cache reads cost less at the provider. Every request explicitly uses Standard service, medium reasoning, `store: false` and a 30-minute implicit cache TTL. New runs record this rate card; historical DeepSeek rows keep their original accounting.
 Each call settles to conservative measured usage. An uncertain call retains only
 its own reservation. Concurrent conversations share atomic limits, checked before
 every provider call. Operational spend stays recorded separately from the paid
@@ -69,7 +71,7 @@ stays separate from paid entitlement. Shared service admission budgets are
 US$10/UTC day and US$100/calendar month, including operators and unknown outcomes.
 The absorbed-cost limit is US$3 per paid period. No automatic overage, funding
 or limit increase occurs. See [billing](billing.md) and the public usage policy.
-Billing flags remain off until sandbox payment and entitlement checks pass.
+Sandbox payment and entitlement checks passed before live purchasing was enabled. Production payment checks do not make real test charges.
 
 ## Verification
 
