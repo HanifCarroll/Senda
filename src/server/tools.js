@@ -7,6 +7,8 @@ import { ModelKind } from "./contracts.js";
 import { savedModelPath } from '../shared/model-links.js';
 import { methodInput, methodOutput, remoteMethod, modelSchemaInput, modelSchemaOutput, remoteModelSchema } from './remote-contracts.js';
 import { randomUUID } from 'node:crypto';
+import {AsyncLocalStorage} from 'node:async_hooks';
+import {mcpDiagnostic,mcpTransportError,observeMcpResponse} from './mcp-delivery.js';
 
 const project = z
   .uuid()
@@ -187,8 +189,10 @@ export const toolDefinitions = [
 ];
 
 export function createAgentHandler(projects, actor, origin) {
-  return createMcpHandler(
+  const exchanges=new AsyncLocalStorage();
+  const handler=createMcpHandler(
     () => {
+      const exchange=exchanges.getStore();
       const server = new McpServer(
         { name: "senda", title: "Senda", version: "0.3.0" },
         {
@@ -212,13 +216,14 @@ export function createAgentHandler(projects, actor, origin) {
           },
           async (input) => {
             const callId = randomUUID(), started = performance.now();
+            exchange?.callIds.push(callId);
             const finish = result => {
               const response = { ...result, _meta: { 'senda/callId': callId } };
               // Diagnose delivery without recording arguments, evidence, identities or credentials.
-              console.info('Senda MCP result', JSON.stringify({ callId, tool: tool.name,
+              mcpDiagnostic('Senda MCP result', { callId, tool: tool.name,
                 elapsedMs: Math.round(performance.now() - started),
                 bytes: new TextEncoder().encode(JSON.stringify(response)).byteLength,
-                isError: !!result.isError }));
+                isError: !!result.isError });
               return response;
             };
             if (!tool.read && !actor.scopes?.includes("projects:write"))
@@ -291,6 +296,13 @@ export function createAgentHandler(projects, actor, origin) {
       );
       return server;
     },
-    { legacy: "stateless" },
+    { legacy: "stateless",onerror:error=>mcpTransportError(error,exchanges.getStore()?.callIds) },
   );
+  return{...handler,fetch:(request,options)=>{
+    const exchange={callIds:[],started:performance.now()};
+    return exchanges.run(exchange,async()=>{
+      try{return observeMcpResponse(await handler.fetch(request,options),exchange)}
+      catch(error){mcpTransportError(error,exchange.callIds);throw error}
+    });
+  }};
 }

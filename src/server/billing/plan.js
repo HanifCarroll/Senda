@@ -3,6 +3,7 @@ export const SENDA_PLAN = Object.freeze({
   priceUsd: 29,
   includedUsd: 6,
   freeProjects: 3,
+  trialUsd: .5,
   proProjects: 100,
   paidDailyUsd: 3,
   serviceDailyUsd: 10,

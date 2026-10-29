@@ -349,7 +349,7 @@ export function Marketing() {
               },
               {
                 title: "Start free, keep your work",
-                text: "Create up to three hosted projects for free with your own agent, or choose Pro for built-in chat and more projects. The app, command-line tool and agent skill are MIT-licensed.",
+                text: "Try Luna free on one project, with its evidence and revisions. Keep up to three hosted projects with your own agent, or choose Pro for more built-in chat and projects. The app, command-line tool and agent skill are MIT-licensed.",
                 link: { href: repository, label: "View the source" },
               },
             ].map(({ title, text, link }) => (
@@ -425,8 +425,8 @@ export function Marketing() {
         <Section id="pricing">
           <div className="flex flex-col gap-10 sm:gap-12">
             <div className="flex max-w-2xl flex-col gap-5">
-              <h2 className={h2}>Start free. Add built-in AI with Pro.</h2>
-              <p className={lead}>Use your own connected agent on Free, or work directly with the Senda agent in Pro.</p>
+              <h2 className={h2}>Try Luna free. Continue with Pro.</h2>
+              <p className={lead}>Map one project with Luna before deciding whether to pay. No payment card needed.</p>
             </div>
             <PricingPlans />
           </div>
@@ -451,7 +451,7 @@ export function Marketing() {
                 ],
                 [
                   "Does Senda run AI on my transcripts?",
-                  "When you choose the built-in agent in Pro, Senda sends relevant messages, sources and models to GPT-6 Luna. If you connect your own agent, that agent and its provider do the drafting. Senda keeps the evidence and revision history in either workflow.",
+                  "When you use the free trial or the built-in agent in Pro, Senda sends relevant messages, sources and models to GPT-6 Luna. If you connect your own agent, that agent and its provider do the drafting. Senda keeps the evidence and revision history in either workflow.",
                 ],
                 [
                   "Who can read my transcripts?",
@@ -459,7 +459,7 @@ export function Marketing() {
                 ],
                 [
                   "Is it free?",
-                  "Free lets you create up to three saved cloud projects with your own agent. Pro is $29 USD per month for up to 100 projects and built-in chat with a monthly AI allowance. Daily and shared service limits apply, with no automatic overage charges. Read Pricing for details. The source is MIT-licensed.",
+                  "Free includes a one-project Luna trial with a $0.50 lifetime allowance, plus up to three saved cloud projects with your own agent. Pro is $29 USD per month for up to 100 projects and a $6 monthly built-in AI allowance. Daily and shared service limits apply, with no automatic overage charges. Read Pricing for details. The source is MIT-licensed.",
                 ],
                 [
                   "How do I plan a future process?",

@@ -1,9 +1,8 @@
 import { generateText, tool, stepCountIs, jsonSchema } from "ai";
 import { createAgentModel, agentProviderOptions } from './provider.js';
 import { mainInstructions, firstOverviewInstructions, stageOutcomeInstructions } from './instructions.js';
-import { budgetedModel } from './budgeted-model.js';
+import { budgetedModel, measureAgentPhase } from './budgeted-model.js';
 import { toolDefinitions } from "../tools.js";
-import { skillBundle } from "#senda/skill";
 import { reviewCandidate, semanticGraph, assertLiteralTimers } from "./semantic-review.js";
 import { hash } from "../../core/hash.js";
 import { publicError, requireThat } from "../../core/errors.js";
@@ -41,16 +40,17 @@ export async function runAgent({
   settleCall = async () => {},
   failCall = async () => {},
   onProgress = () => {},
+  onTiming = () => {},
   generate = generateText,
   review = reviewCandidate,
 }) {
+  const checkpoint = (step, kind) => measureAgentPhase({ phase: 'checkpoint', kind }, onTiming, () => saveStep(step));
   let selected = projectId,
     selectedModel = initialModel;
   let createdNow = false, savedDiagram = false, mutationPending = false;
   const conversation = structuredClone(messages), baseCount = conversation.length;
   const currentUserText = messages.findLast(message => message.role === "user")?.content;
   requireThat(typeof currentUserText === "string", "INVALID_REQUEST", "Send a message to continue.");
-  const bundle = await skillBundle();
   const instructions = [
     "You are Senda, a business-process analyst. Speak plainly to a nontechnical business analyst. Carry out requested modeling work with your tools; never ask the user for IDs, JSON, tool names or copy/paste handoffs. Retain all earlier confirmed rules unless the user changes or contradicts them. Ask only new business questions needed for the requested model; do not reopen answered questions or widen the stated scope. Ask a few focused business questions when facts are missing. Save an initial diagram when enough is known, keeping unresolved questions visible. Never claim a diagram was saved unless the tool succeeded. Give two to four short sentences about the result and at most three focused questions at a time. Link to the diagram. Do not recite IDs, revision numbers, technical check statistics or boilerplate about human review unless asked. The UI shows draft status. Do not expose internal reasoning or tool arguments. When ordering is unclear, model only the supported portion and ask before connecting the uncertain work. Never choose parallel, sequential or cancellation behavior merely to complete the diagram, even if labeled as an assumption.",
     "When a transcript describes activities, save a visible initial BPMN diagram in this first turn. Creating a project or saving sources, claims and questions alone is preparation, not a diagram. Draw the confirmed activities and relationships even when another portion is uncertain. A supported subprocess can summarize a stage whose internal ordering still needs clarification; leave unsupported connections out and attach a focused question. Do not withhold all known work until every question is answered. Batch related changes in one proposal and compatible reads in one provider step. Aim to finish the saved draft, checks and review within the tool budget, then give a concise response under 120 words plus at most three questions.",
@@ -62,12 +62,7 @@ export async function runAgent({
     selected
       ? `This conversation is restricted to project ${selected}.`
       : "No project exists for this conversation. Create it from the user transcript and inferred process name/purpose/perspective. Do not ask for administrative fields when they can be inferred.",
-    bundle["SKILL.md"],
-    bundle["references/remote.md"],
-    bundle["references/methodology.md"],
-    bundle["references/modeling-patterns.md"],
-    bundle["references/readability.md"],
-    bundle["references/planning.md"],
+    "Discover the process in five stages: (1) establish its trigger, end outcomes, scope and perspective; (2) identify source-supported activities and events; (3) identify roles, handoffs and external parties; (4) establish supported order, choices, concurrency and joins; (5) add confirmed variants, rework and exceptions. Revisit these stages when new evidence arrives. Use verb–object activity names and business outcome labels. Keep the confirmed normal path visible and unresolved facts as questions. Prefer focused subprocesses for meaningful stages; give every opaque stage an evidence-backed contract with its inputs and possible outcomes. Do not expand an uncertain stage or invent its order. The installed tools already handle project access, persistence, checks, readable layout and BPMN export; CLI installation, OAuth setup and drawing coordinates are not tasks for this conversation.",
     !selected ? "FIRST DRAFT FOR THIS TURN: Save a small overview of 3–8 meaningful stages, with a start and end. Use tasks or opaque subprocesses, with abstraction contracts describing summarized behavior. Do not add lanes, pools, gateways, boundary events, or detailed finance/exception branches in this initial overview. Confirmed internal branching can remain summarized in a stage; retain its facts in evidence. An uncertain multi-team stage must stay opaque until its ordering is answered. Ask the key business questions after saving that visible overview. Later turns will expand the confirmed details. This scope rule takes precedence over examples in the reference material." : "CLARIFICATION TURN: Expand the relevant summarized stage using the user's new answer; saving an answer alone does not update the diagram. Preserve unchanged evidence and correct all references when replacing a stage. Keep confirmed rules from earlier sources.",
     "Create referenced nodes and containers before connecting them in an operation batch; do not refer forward to an element that will only be created later. In the final reply use ordinary business language, under 120 words plus at most three questions. Ask about unresolved business behavior only. Never ask the user to choose diagram labels, gateway types or other drawing decisions; derive those from the confirmed business facts.",
     mainInstructions,
@@ -114,7 +109,7 @@ export async function runAgent({
           ? " Use exact operation keys from the installed schema. Retype changes kind while preserving the node ID, name, flows and extensions. Renaming is a separate set operation; retype does not accept name. On retype, refAs aliases the referenced message/error/signal definition, not the node; omit refAs for ordinary task/gateway retyping. New add operations may use node aliases. Preserve existing IDs when revising a stage."
           : ""),
         inputSchema: jsonSchema(inputSchemas[def.name]),
-        execute: async (input) => {
+        execute: async (input) => measureAgentPhase({ phase: 'tool', kind: 'main', toolName: def.name }, onTiming, async () => {
           emit({ type: "status", text: statusLabel(def.name) });
           if (def.name === 'create_to_be_model' || (def.name === 'apply_revision' && describesBehavior(input.proposal))) mutationPending = true;
           try {
@@ -169,20 +164,21 @@ export async function runAgent({
                 emit({ type: "status", text: "Checking the draft against your interview…" });
                 let accounted = false;
                 try {
-                  verdict = await review({ model: provider, candidate, overviewTurn: createdNow, userMessage: currentUserText, signal,
+                  verdict = await measureAgentPhase({ phase: 'review', kind: 'review', toolName: def.name }, onTiming, () => review({ model: provider, candidate, overviewTurn: createdNow, userMessage: currentUserText, signal,
                     maxBytes: AGENT_LIMITS.reviewBytes, maxOutputTokens: AGENT_LIMITS.reviewOutputTokens,
                     reserveCall: () => reserveCall('review'), settleCall, failCall,
+                    onTiming,
                     onUsage: async usage => {
                       accounted = true;
                       reviewKnown = reviewKnown && Number.isSafeInteger(usage?.inputTokens) && Number.isSafeInteger(usage?.outputTokens);
                       reviewUsage.inputTokens += usage?.inputTokens || 0;
                       reviewUsage.outputTokens += usage?.outputTokens || 0;
-                      await saveStep({ usage: usage || {}, response: { messages: [] } });
+                      await checkpoint({ usage: usage || {}, response: { messages: [] } }, 'review');
                     },
-                  });
+                  }));
                 } catch (error) {
                   console.warn('Senda draft review stopped', { name: error.name, code: error.code, status: error.statusCode, finishReason: error.finishReason });
-                  if (!accounted && error.code !== "LIMIT") { reviewKnown = false; await saveStep({ usage: {}, response: { messages: [] } }); }
+                  if (!accounted && error.code !== "LIMIT") { reviewKnown = false; await checkpoint({ usage: {}, response: { messages: [] } }, 'review'); }
                   throw error;
                 }
                 reviewed.set(key, verdict);
@@ -229,6 +225,11 @@ export async function runAgent({
             return result;
           } catch (error) {
             const info = publicError(error);
+            const operationAdvice = info.code === 'E_INVALID_RETYPE'
+              ? 'Retype stays within activity kinds, within gateways, or within same-position events. For a different family, use remove and add; plan incident flows explicitly.'
+              : info.code === 'E_NOT_FOUND' && Number.isSafeInteger(info.details?.op)
+                ? 'Removing a node may already remove its incident flows. Do not refer to a cascaded removal later in the same proposal.'
+                : null;
             return {
               error: info.code,
               message:
@@ -236,11 +237,11 @@ export async function runAgent({
                   ? "The operation could not be completed. Read the project and try a smaller change."
                   : info.code === 'E_DUPLICATE_ID'
                     ? 'That element already exists. Re-read the saved model and modify the existing element. Do not create a duplicate under a new ID unless the business change actually adds another step or connection.'
-                    : info.message,
-              details: info.details,
+                    : info.message + (operationAdvice ? ` ${operationAdvice}` : ''),
+              details: operationAdvice ? { ...info.details, hint: `The rejected proposal was not saved. Use read_project to inspect the actual saved IDs. ${operationAdvice}` } : info.details,
             };
           }
-        },
+        }),
       }),
     ]),
   );
@@ -255,7 +256,7 @@ export async function runAgent({
   ).length;
   let result;
   try { result = await generate({
-    model: budgetedModel(provider, { reserveCall: () => reserveCall('main'), settleCall, failCall }),
+    model: budgetedModel(provider, { reserveCall: () => reserveCall('main'), settleCall, failCall, kind: 'main', onTiming }),
     instructions,
     messages: structuredClone(conversation),
     tools,
@@ -317,7 +318,7 @@ export async function runAgent({
       };
     },
     onStepEnd: async (step) => {
-      await saveStep(step);
+      await checkpoint(step, 'main');
     },
   }); } catch (error) { await failCall(error); throw error; }
   const reply = agentReply(result.text, selected, selectedModel, origin);

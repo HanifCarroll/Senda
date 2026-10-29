@@ -278,7 +278,7 @@ try {
   const chatId = "5a1ce263-893b-41d9-9d42-9c8171471085";
   const nextChatId = "d47e95db-b4d5-4c01-936f-5d9759a334e0";
   let replyReady = false, chatPolls = 0;
-  await p.route("**/api/agent/config", route => route.fulfill({ json: { available: true } }));
+  await p.route("**/api/agent/config*", route => route.fulfill({ json: { available: true } }));
   const savedMessages = [{ role: "user", text: "Please improve our invoice process.\n\n" + "Finance checks the billing details, asks for anything missing and checks the reply again before sending the invoice. ".repeat(18) }];
   await p.route("**/api/agent/chats**", async route => {
     const req = route.request(), url = new URL(req.url());
@@ -339,7 +339,7 @@ try {
   await p.getByLabel("Your transcript or process notes", { exact: true }).waitFor();
   assert.equal(await p.getByRole("link", { name: "Open diagram", exact: false }).count(), 0);
   await p.unroute("**/api/agent/chats**");
-  await p.unroute("**/api/agent/config");
+  await p.unroute("**/api/agent/config*");
   console.log("Agent UI transport checks: reader scroll preserved during polling, composer clearance, reload, model link, fresh conversation and desktop/mobile passed");
   await p.getByRole("button", { name: "Sign out", exact: true }).click();
   await p.waitForURL(base + "/");

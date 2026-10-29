@@ -9,7 +9,7 @@ export const CALL_RESERVES = Object.freeze({ main: .05, review: .02 });
 export const RATE_CARD = 'gpt-6-luna-2026-10-29-30m-ceiling';
 export const measuredUsage = usage => usage &&
   [usage.inputTokens, usage.outputTokens].every(n => Number.isSafeInteger(n) && n >= 0);
-export const MIN_PAID_TURN_USD = .10;
+export const MIN_TURN_USD = .10;
 export const absorbedLimit = allowance => Math.min(allowance, Math.max(3, allowance * .5));
 const operational = 'COALESCE(cost_usd,reserved_usd)';
 const customer = "COALESCE(meter_usd,CASE WHEN status='running' THEN reserved_usd ELSE 0 END)";
@@ -39,7 +39,7 @@ export async function serviceUsage(db, day = new Date().toISOString().slice(0, 1
 }
 
 // These predicates are part of the mutation, not an earlier advisory read.
-function constraints({ owner, day, entitlement: e, delta, admission = false,
+function constraints({ owner, day, entitlement: e, delta, admission = false, chatId,
   nowMs = Date.now(), serviceDay = new Date().toISOString().slice(0, 10), runId = '', existing = false, limits = serviceLimits() }) {
   const sql = [`COALESCE((SELECT SUM(${operational}) FROM senda_agent_runs WHERE owner=? AND day=?),0)+?<=?`];
   const args = [owner, day, delta, e?.dailyUsd || AGENT_LIMITS.dailyUsd];
@@ -48,9 +48,17 @@ function constraints({ owner, day, entitlement: e, delta, admission = false,
   args.push(runId, serviceDay, delta, limits.dailyUsd);
   sql.push(`COALESCE((SELECT SUM(${operational}) FROM senda_agent_runs WHERE id<>? AND ${serviceDayOf}>=? AND ${serviceDayOf}<?),0)+${exposure}<=?`);
   args.push(runId, start, end, delta, limits.monthlyUsd);
-  if (e) {
+  if (e?.kind === 'trial') {
+    sql.push(`COALESCE((SELECT SUM(${operational}) FROM senda_agent_runs WHERE trial_owner=?),0)+?<=?`);
+    args.push(owner, admission ? Math.max(delta, MIN_TURN_USD) : delta, e.limitUsd);
+    sql.push(`EXISTS(SELECT 1 FROM senda_agent_trials t JOIN senda_agent_chats c
+      ON c.id=${admission ? '?' : '(SELECT chat FROM senda_agent_runs WHERE id=?)'} AND c.owner=t.owner
+      WHERE t.owner=? AND t.limit_usd>=? AND ((t.project IS NULL AND t.chat=c.id AND c.project IS NULL) OR t.project=c.project)
+      AND NOT EXISTS(SELECT 1 FROM senda_billing_risks r JOIN senda_billing_subscriptions s ON s.context=r.context AND s.id=r.subscription WHERE s.owner=t.owner AND r.active=1))`);
+    args.push(admission ? chatId : runId, owner, e.limitUsd);
+  } else if (e) {
     sql.push(`COALESCE((SELECT SUM(${customer}) FROM senda_agent_runs WHERE ${period}),0)+?<=?`);
-    args.push(...periodArgs(owner, e), admission ? Math.max(delta, MIN_PAID_TURN_USD) : delta, e.limitUsd);
+    args.push(...periodArgs(owner, e), admission ? Math.max(delta, MIN_TURN_USD) : delta, e.limitUsd);
     sql.push(`COALESCE((SELECT SUM(MAX(0,${operational}-COALESCE(meter_usd,0))) FROM senda_agent_runs WHERE ${period}),0)+?<=?`);
     args.push(...periodArgs(owner, e), delta, absorbedLimit(e.limitUsd));
     const now = nowMs / 1000, end = Date.parse(e.periodEnd) / 1000;
@@ -73,7 +81,7 @@ export async function paidUsage(db, owner, e) {
 
 export async function budgetPause(db, owner, day, e, { nowMs = Date.now(), limits = serviceLimits() } = {}) {
   const pending = { reason: 'pending', message: 'Some allowance is temporarily reserved for replies being prepared. Please wait for them to finish, then try again. It has not been shown as used.' };
-  if (e) {
+  if (e && e.kind !== 'trial') {
     const hold = await db.prepare('SELECT 1 FROM senda_billing_risks r JOIN senda_billing_subscriptions s ON s.context=r.context AND s.id=r.subscription WHERE r.context=? AND s.owner=? AND r.active=1')
       .bind(e.context, owner).first();
     if (hold) return { reason: 'review', message: 'The built-in agent is paused while your payment is reviewed. Your saved work and connected agent remain available.' };
@@ -85,11 +93,15 @@ export async function budgetPause(db, owner, day, e, { nowMs = Date.now(), limit
       return { reason: 'capacity', message: 'The built-in agent is temporarily paused across the service. Your unspent allowance and saved work are safe, and your connected agent remains available. Contact support for a prorated refund if this interrupts your paid service.' };
     }
   }
-  if (e) {
+  if (e?.kind === 'trial') {
+    const usage = await db.prepare(`SELECT COALESCE(SUM(${operational}),0) AS usd FROM senda_agent_runs WHERE trial_owner=?`).bind(owner).first();
+    if (e.limitUsd - usage.usd < MIN_TURN_USD)
+      return { reason: 'trial', message: 'Your free Luna trial allowance is finished or reserved for a reply. Your project, evidence and downloads stay available. Choose Pro to continue with Luna, or use your connected agent.' };
+  } else if (e) {
     const usage = await paidUsage(db, owner, e);
     if (usage.absorbedUsd + CALL_RESERVES.main > absorbedLimit(e.limitUsd)) return usage.pendingUsd && usage.absorbedUsd - usage.pendingUsd + CALL_RESERVES.main <= absorbedLimit(e.limitUsd) ? pending : { reason: 'service', resetAt: e.periodEnd,
       message: `Several replies could not be completed this billing period, so the built-in agent is paused until ${e.periodEnd}. Those attempts did not use your allowance. Nothing extra will be charged; your saved work and connected agent remain available.` };
-    if (e.limitUsd - usage.usedUsd - usage.pendingUsd < MIN_PAID_TURN_USD) return usage.pendingUsd && e.limitUsd - usage.usedUsd >= MIN_PAID_TURN_USD ? pending : { reason: 'allowance', resetAt: e.periodEnd,
+    if (e.limitUsd - usage.usedUsd - usage.pendingUsd < MIN_TURN_USD) return usage.pendingUsd && e.limitUsd - usage.usedUsd >= MIN_TURN_USD ? pending : { reason: 'allowance', resetAt: e.periodEnd,
       message: `There is not enough allowance to begin another reply. The remaining allowance is unavailable until ${e.periodEnd}; it has not been spent. Your saved work and connected agent remain available.` };
   }
   const daily = await db.prepare(`SELECT COALESCE(SUM(${operational}),0) AS usd,
@@ -104,11 +116,12 @@ export async function budgetPause(db, owner, day, e, { nowMs = Date.now(), limit
 }
 
 export async function reserveTurn(db, { runId, chatId, owner, day, entitlement: e, nowMs = Date.now(), limits = serviceLimits() }) {
-  const check = constraints({ owner, day, entitlement: e, delta: CALL_RESERVES.main, admission: true, nowMs, limits });
-  const row = await db.prepare(`INSERT INTO senda_agent_runs(id,chat,owner,day,status,reserved_usd,created,billing_context,billing_subscription,billing_period_start,billing_period_end,service_day,rate_card)
-    SELECT ?,?,?,?,'running',?,?,?,?,?,?,?,? WHERE ${check.sql} RETURNING id`)
+  const check = constraints({ owner, day, entitlement: e, runId, chatId, delta: CALL_RESERVES.main, admission: true, nowMs, limits });
+  const trial = e?.kind === 'trial';
+  const row = await db.prepare(`INSERT INTO senda_agent_runs(id,chat,owner,day,status,reserved_usd,created,billing_context,billing_subscription,billing_period_start,billing_period_end,service_day,rate_card${trial ? ',trial_owner' : ''})
+    SELECT ?,?,?,?,'running',?,?,?,?,?,?,?,?${trial ? ',?' : ''} WHERE ${check.sql} RETURNING id`)
     .bind(runId, chatId, owner, day, CALL_RESERVES.main, new Date().toISOString(), e?.context || null,
-      e?.subscriptionId || null, e?.periodStart || null, e?.periodEnd || null, day, RATE_CARD, ...check.args).first();
+      e?.subscriptionId || null, e?.periodStart || null, e?.periodEnd || null, day, RATE_CARD, ...(trial ? [owner] : []), ...check.args).first();
   const pause = !row && await budgetPause(db, owner, day, e, { nowMs, limits });
   requireThat(row, 'LIMIT', pause?.message || 'Your account access changed. Check Billing before starting another reply.');
 }
