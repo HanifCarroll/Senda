@@ -86,6 +86,7 @@ function Workspace() {
     [busy, setBusy] = useState(false),
     [text, setText] = useState(""),
     [question, setQuestion] = useState("");
+  const hasModels = models !== null;
   const latest = useRef(0),
     requestId = useRef(0),
     refreshing = useRef(0);
@@ -130,7 +131,7 @@ function Workspace() {
     };
   }, [refresh]);
   useEffect(() => {
-    if (location.revision) return;
+    if (location.revision || !hasModels) return;
     const controller = new AbortController();
     let polling = false;
     const timer = setInterval(async () => {
@@ -162,7 +163,7 @@ function Workspace() {
       clearInterval(timer);
       controller.abort();
     };
-  }, [projectId, location.revision, location.model, refresh]);
+  }, [projectId, location.revision, location.model, refresh, hasModels]);
   async function save(
     event: React.FormEvent<HTMLFormElement>,
     kind: "transcript" | "answer",
