@@ -177,7 +177,7 @@ function Diagram({ layout, active }: { layout: Layout; active: Step | null }) {
                 <path d="M0 0L7 5.5L14 0" fill="none" stroke={node.icon === "send" ? "white" : "var(--brand-text)"} />
               </g>
             )}
-            <g transform={`translate(${width - 9} 9)`}>
+            <g transform={`translate(${width - 15} 15)`}>
               <circle r="8" fill={lit ? "var(--brand-ink)" : "var(--brand-tint)"} className="transition-[fill]" />
               <text y="3.5" textAnchor="middle" fontSize="10" fontWeight="600" fill={lit ? "white" : "var(--brand-ink)"}>
                 {node.step}

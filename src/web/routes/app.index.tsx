@@ -163,7 +163,7 @@ function Projects() {
             </DialogContent>
           </Dialog></div>
         </div>
-        {quota?.available && projects !== null && <p className="text-sm leading-6 text-muted-foreground">{projects.length} of {quota.projectLimit} saved projects. {projects.length >= quota.projectLimit ? <>You’ve reached your creation limit. Your existing work stays available. {quota.projectLimit === 3 && <a className="underline underline-offset-4" href="/app/billing">Upgrade to Pro for up to 100 projects.</a>}</> : <>Projects cannot currently be deleted in the app. <a className="underline underline-offset-4" href="/pricing">Compare plans</a></>}</p>}
+        {quota?.available && projects !== null && <p className="text-sm leading-6 text-muted-foreground">{projects.length} of {quota.projectLimit} saved projects. {projects.length >= quota.projectLimit ? <>You’ve reached your creation limit. Your existing work stays available. {quota.projectLimit === 3 && <a className="underline underline-offset-4" href="/app/billing">Upgrade to Pro for up to 100 projects.</a>}</> : <>Projects cannot currently be deleted in the app. <a className="underline underline-offset-4" href="/#pricing">Compare plans</a></>}</p>}
         {error && !open && (
           <Alert variant="destructive">
             <AlertTitle>Projects could not be loaded</AlertTitle>
