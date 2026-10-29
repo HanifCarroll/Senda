@@ -2,6 +2,7 @@ import { BpmnModdle } from 'bpmn-moddle';
 import { layoutXml, metricsXml, renderSvg } from '@miragon/bpmn-cli';
 import { collect } from './model.js';
 import { activityProblems, isActivity, sizeReviewActivities } from './activity-presentation.js';
+import {wrapLines,LINE_HEIGHT,escapeSvg} from './diagram-text.js';
 
 const soft = new Set(['crossings', 'segmentOverlap', 'parallelRun', 'branchLabelFar', 'longDetour']);
 const score = counts => Object.entries(counts).reduce((sum, [key, value]) => sum + value * (key === 'crossings' ? 100 : soft.has(key) ? 10 : 10000), 0);
@@ -57,13 +58,15 @@ const searchBudget = elements => ({ remaining: elements.filter(e=>['bpmn:Sequenc
 async function measure(xml, definitions, { native = false } = {}) {
   const result = await metricsXml(xml);
   const nativeSvg = native ? (await renderSvg(xml)).svg : undefined;
-  result.counts = { ...result.counts, titleIntrusion: 0, branchLabelFar: 0, longDetour: 0, tangentEntry: 0, labelOnControl: 0, activityLabelBorder: 0, activityLabelIcon: 0, activityLabelMarker: 0, activityLabelBoundary: 0 };
+  result.counts = { ...result.counts, titleIntrusion: 0, branchLabelFar: 0, longDetour: 0, tangentEntry: 0, labelOnControl: 0, externalLabelBorder: 0, activityLabelBorder: 0, activityLabelIcon: 0, activityLabelMarker: 0, activityLabelBoundary: 0 };
   result.problems = [...result.problems];
   result.effort = 0;
   const add = (kind, ids) => { result.counts[kind]++; result.problems.push({ kind, ids }); };
   for (const diagram of definitions.diagrams || []) {
     const all = diagram.plane.planeElement || [], shapes = all.filter(e=>e.bounds), edges = all.filter(e=>e.waypoint?.length>=2);
     const headers = headerBands(shapes);
+    for(const shape of shapes.filter(s=>!isActivity(s)&&!isFrame(s)&&s.bpmnElement?.$type!=='bpmn:Group'&&s.bpmnElement?.name&&s.label?.bounds))
+      if(overlaps(shape.label.bounds,shape.bounds,8))add('externalLabelBorder',[shape.bpmnElement.id]);
     for (const shape of shapes.filter(isActivity)) for (const problem of activityProblems(shape,shapes.filter(s=>s.bpmnElement?.attachedToRef===shape.bpmnElement),{native,nativeSvg})) add(problem.kind,problem.ids);
     for (const edge of edges) {
       const length = lengthOf(edge), turns = edge.waypoint.length - 2;
@@ -217,6 +220,23 @@ function moveLabel(item, shapes, edges) {
 
 export async function optimizeReviewLayout(xml, { routingBudget } = {}) {
   const moddle=new BpmnModdle(), {rootElement:definitions}=await moddle.fromXML(xml);
+  // Miragon wraps external text at max(90, DI width), even for narrower DI.
+  // Give placement and routing the full conservative text envelope first.
+  for(const diagram of definitions.diagrams || []) for(const item of diagram.plane.planeElement || []) {
+    const box=item.label?.bounds,name=item.bpmnElement?.name||item.bpmnElement?.categoryValueRef?.value;
+    if(!box || !name || isActivity(item) || isFrame(item))continue;
+    const width=Math.max(90,box.width);
+    box.x-=(width-box.width)/2;box.width=width;
+    box.height=Math.max(box.height,wrapLines(name,width).length*LINE_HEIGHT);
+  }
+  xml=(await moddle.toXML(definitions,{format:true})).xml;
+  const nativeSvg=(await renderSvg(xml)).svg;
+  const nativeLines=new Map([...nativeSvg.matchAll(/<text data-label="([^"]+)"[^>]*>([\s\S]*?)<\/text>/g)]
+    .map(([,id,text])=>[id,(text.match(/<tspan\b/g)||[]).length]));
+  // Native external labels wrap twice; the second pass can add another line.
+  for(const diagram of definitions.diagrams || []) for(const item of diagram.plane.planeElement || [])
+    if(item.label?.bounds) item.label.bounds.height=Math.max(item.label.bounds.height,(nativeLines.get(escapeSvg(item.bpmnElement.id))||0)*LINE_HEIGHT);
+  xml=(await moddle.toXML(definitions,{format:true})).xml;
   routingBudget ||= searchBudget(collect(definitions));
   const baseline=await measure(xml,definitions);
   let current=baseline, currentXml=xml;
@@ -236,7 +256,7 @@ export async function optimizeReviewLayout(xml, { routingBudget } = {}) {
       }
       for (const item of [...shapes,...edges].filter(e=>e.label?.bounds)) {
         const label=item.label.bounds, saved={x:label.x,y:label.y};
-        const defective=current.problems.some(p=>p.ids.includes(item.bpmnElement.id)&&['labelClash','labelOnLine','labelOutsideFrame','titleIntrusion','labelOnControl','branchLabelFar'].includes(p.kind));
+        const defective=current.problems.some(p=>p.ids.includes(item.bpmnElement.id)&&['labelClash','labelOnLine','labelOutsideFrame','titleIntrusion','labelOnControl','branchLabelFar','externalLabelBorder'].includes(p.kind));
         const placements=moveLabel(item,shapes,edges);
         let accepted=false;
         for(const placement of defective?placements:placements.slice(0,1)) {

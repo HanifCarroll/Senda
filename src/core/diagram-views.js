@@ -31,6 +31,7 @@ const within = (element, scope) => {
 };
 
 const layoutAdvice = {
+  externalLabelBorder: 'Event, gateway or data text crowds its symbol border.',
   activityLabelBorder: 'Activity text crowds a border or the reserved badge band.',
   activityLabelIcon: 'Activity text crowds its task icon.',
   activityLabelMarker: 'Activity text crowds a bottom activity marker.',

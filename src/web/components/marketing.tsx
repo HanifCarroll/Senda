@@ -9,7 +9,7 @@ import { InterviewToModel } from "./interview-to-model";
 import { PathArt } from "./path-art";
 import { PricingPlans } from "./pricing-plans";
 
-const preview = (name: string) => `/marketing/${name}.svg?v=vector-5`;
+const preview = (name: string) => `/marketing/${name}.svg?v=vector-6`;
 const repository = "https://github.com/HanifCarroll/Senda";
 
 const container = "mx-auto w-full max-w-6xl px-5 sm:px-8";
@@ -120,7 +120,7 @@ const stories = [
           className={cn(windowFrame, "mx-auto block max-w-sm rounded-b-none sm:max-w-none")}
         >
           <picture>
-            <source media="(max-width: 640px)" srcSet="/marketing/evidence-mobile.png?v=mobile-2" width="390" height="718" />
+            <source media="(max-width: 640px)" srcSet="/marketing/evidence-mobile.png?v=mobile-3" width="390" height="718" />
             <img
               src={preview("evidence")}
               width="1200"

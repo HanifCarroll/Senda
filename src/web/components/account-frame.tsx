@@ -23,7 +23,7 @@ export function AccountFrame({ children, wide = false }: { children: ReactNode; 
             <Brand className="hidden sm:block" />
             <BrandMark className="sm:hidden" />
           </a>
-          {billing && <Button variant="ghost" size="icon" className="sm:w-auto sm:px-3" asChild><a href="/app/billing" aria-label="Billing"><CreditCard /><span className="hidden sm:inline">Billing</span></a></Button>}
+          {billing && <Button variant="ghost" size="icon" className="sm:w-auto sm:gap-2 sm:px-3" asChild><a href="/app/billing" aria-label="Billing"><CreditCard /><span className="hidden sm:inline">Billing</span></a></Button>}
           <ConnectAgent />
           <Button
             variant="ghost"
