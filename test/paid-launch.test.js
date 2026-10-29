@@ -17,6 +17,27 @@ function database() {
 }
 const day = new Date().toISOString().slice(0, 10);
 const monthStart = day.slice(0, 7) + '-01';
+
+test('focused payment updates use only the authenticated billing customer and never change entitlement', async () => {
+  const db = database(), requests = [], context = 'acct_1TX0nqK7alsSe3q5:sandbox';
+  const env = { DB: db, BILLING_ENABLED:'1', PAID_AGENT_ENABLED:'1', STRIPE_LIVEMODE:'false', STRIPE_ACCOUNT_ID:'acct_1TX0nqK7alsSe3q5', STRIPE_SECRET_KEY:'fixture', STRIPE_WEBHOOK_SECRET:'fixture', STRIPE_PRICE_ID:'price_fixture', BILLING_INCLUDED_USD:'6', STRIPE_PORTAL_CONFIGURATION:'bpc_owned' };
+  const client = { accounts:{retrieve:async()=>({id:env.STRIPE_ACCOUNT_ID})}, customers:{retrieve:async id=>({id,livemode:false})}, billingPortal:{sessions:{create:async input=>{requests.push(input);return{url:'https://billing.stripe.com/fixture'};}}} };
+  try {
+    db.prepare('INSERT INTO senda_billing_customers(context,owner,customer,checkout_attempt) VALUES(?,?,?,?)').bind(context,'owner','cus_owned','one').run();
+    db.prepare('INSERT INTO senda_billing_customers(context,owner,customer,checkout_attempt) VALUES(?,?,?,?)').bind(context,'other','cus_other','two').run();
+    const billing = new CloudBilling(env,'https://senda.example',{client});
+    const response = await billing.handle(new Request('https://senda.example/api/billing/payment-method',{method:'POST',body:JSON.stringify({customer:'cus_other',return_url:'https://evil.example'})}),{userId:'owner'},'owner@example.test');
+    assert.equal(response.status,200);assert.equal(requests.length,1);
+    assert.equal(requests[0].customer,'cus_owned');assert.equal(requests[0].configuration,'bpc_owned');
+    assert.equal(requests[0].flow_data.type,'payment_method_update');
+    assert.equal(requests[0].flow_data.after_completion.redirect.return_url,'https://senda.example/app/billing');
+    assert.equal(await billing.entitlement({userId:'owner'}),null);
+    await assert.rejects(billing.portal({userId:'unknown'},{paymentMethod:true}),{code:'NOT_FOUND'});
+    client.accounts.retrieve=async()=>({id:'acct_wrong'});
+    await assert.rejects(billing.portal({userId:'owner'},{paymentMethod:true}),{code:'BILLING_CONTEXT_MISMATCH'});
+    assert.equal(requests.length,1);
+  } finally { db.close(); }
+});
 function spend(db, id, amount, { owner = id, date = day, status = 'complete', known = true } = {}) {
   db.prepare('INSERT INTO senda_agent_runs(id,chat,owner,day,service_day,status,reserved_usd,cost_usd,created) VALUES(?,?,?,?,?,?,?,?,?)')
     .bind(id, 'chat', owner, date, date, status, amount, known ? amount : null, new Date().toISOString()).run();

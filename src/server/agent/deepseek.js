@@ -5,6 +5,7 @@ import { skillBundle } from "#senda/skill";
 import { reviewCandidate, semanticGraph, assertLiteralTimers } from "./semantic-review.js";
 import { hash } from "../../core/hash.js";
 import { publicError, requireThat } from "../../core/errors.js";
+import { schema } from '../../core/project-core.js';
 
 import { AGENT_LIMITS, usageCost } from './limits.js';
 export { AGENT_LIMITS, usageCost } from './limits.js';
@@ -73,7 +74,7 @@ export async function runDeepSeek({
   const definitions = toolDefinitions.filter(
     (t) => !["list_projects", "get_discovery_method", "get_model_schema", "read_sources", "read_questions", "add_source"].includes(t.name),
   );
-  const installed = await toolDefinitions.find(t => t.name === "get_model_schema").run();
+  const installed = schema();
   const inputSchemas = Object.fromEntries(definitions.map(def => {
     const value = def.input.toJSONSchema({ io: "input" });
     if (def.name === "apply_revision") {

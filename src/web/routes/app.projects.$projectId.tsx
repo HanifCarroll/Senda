@@ -1,5 +1,6 @@
 import { SendaAgentLink } from "@/components/senda-agent-link";
 import { createFileRoute } from "@tanstack/react-router";
+import { savedModelSignIn } from '../../shared/model-links.js';
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, MessageSquare, ArrowLeft, MoreHorizontal, Download, RefreshCw } from "lucide-react";
 import { projectTitle } from "@/lib/review-navigation";
@@ -118,7 +119,7 @@ function Workspace() {
       if (id !== requestId.current || activeProject.current !== projectId)
         return;
       if (e instanceof ApiError && e.status === 401)
-        window.location.assign("/sign-in");
+        window.location.assign(savedModelSignIn(projectId, location.model, location.revision));
       else setError(e.message);
     } finally {
       refreshing.current--;

@@ -17,6 +17,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { signInDestination, signInRetry } from '../../shared/model-links.js';
 
 export const Route = createFileRoute("/sign-in")({ component: SignIn });
 type Capabilities = { loginMethods?: { magicLink: boolean; google: boolean; password: boolean } };
@@ -49,12 +50,7 @@ function SignIn() {
   }, []);
   if (config?.loginMethods?.password && !config.loginMethods.magicLink) return <PasswordSignIn />;
   function returnTo() {
-    const query = new URLSearchParams(window.location.search);
-    // Consent verifies the signed query. Never accept an arbitrary return URL.
-    return (
-      window.location.origin +
-      (query.has("sig") && query.has("client_id") ? `/consent${window.location.search}` : query.get("plan") === "pro" ? "/app/billing" : "/app")
-    );
+    return window.location.origin + signInDestination(window.location.search);
   }
   async function send(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,7 +60,7 @@ function SignIn() {
       const r = await authClient.signIn.magicLink({
         email: email.trim(),
         callbackURL: returnTo(),
-        errorCallbackURL: window.location.origin + "/sign-in",
+        errorCallbackURL: window.location.origin + signInRetry(window.location.search),
       });
       if (r.error) setError(r.error.message || "The sign-in link could not be sent. Try again.");
       else setSent(true);
@@ -81,7 +77,7 @@ function SignIn() {
       const r = await authClient.signIn.social({
         provider: "google",
         callbackURL: returnTo(),
-        errorCallbackURL: window.location.origin + "/sign-in",
+        errorCallbackURL: window.location.origin + signInRetry(window.location.search),
       });
       if (r.error) setError(r.error.message || "Google sign-in could not be started. Try again.");
       else if (r.data?.url) window.location.assign(r.data.url);

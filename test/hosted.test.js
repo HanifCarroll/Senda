@@ -369,7 +369,7 @@ test(
             ),
           );
           assert.ok(
-            (await call("get_discovery_method")).value["references/remote.md"],
+            (await call("get_discovery_method", { reference: 'references/remote.md' })).value.documents["references/remote.md"],
           );
         },
       );
@@ -683,8 +683,11 @@ test(
           const historicalUrl = new URL(historical.browserDownload);
           assert.equal(historicalUrl.searchParams.get("model"), "to-be");
           assert.equal(historicalUrl.searchParams.get("revision"), "1");
+          assert.equal(historicalUrl.pathname, `/app/download/${project.id}`);
+          const info = await content(await request(`/api/projects/${project.id}/export-info${historicalUrl.search}`, alice));
+          assert.equal(info.revision, 1);assert.equal(info.model, 'to-be');
           assert.equal(
-            await (await request(historicalUrl.pathname + historicalUrl.search, alice)).text(),
+            await (await request(`/api/projects/${project.id}/bpmn${historicalUrl.search}`, alice)).text(),
             historical.xml,
           );
           const historicalReview = (
@@ -694,8 +697,9 @@ test(
           assert.equal(new URL(historicalReview.url).searchParams.get("revision"), "1");
           // The latest model is now revision 4; the link issued at revision 1 stays fixed.
           const baselineUrl = new URL(baselineExport.browserDownload);
+          assert.equal(baselineUrl.pathname, `/app/download/${project.id}`);
           assert.equal(
-            await (await request(baselineUrl.pathname + baselineUrl.search, alice)).text(),
+            await (await request(`/api/projects/${project.id}/bpmn${baselineUrl.search}`, alice)).text(),
             baselineExport.xml,
           );
           assert.equal((await call("read_project", args)).value.revision, 4);
