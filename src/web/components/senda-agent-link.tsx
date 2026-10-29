@@ -10,10 +10,10 @@ export function SendaAgentLink({ projectId }: { projectId?: string }) {
       .catch(() => {});
   }, []);
   return available ? (
-    <Button variant="outline" asChild>
-      <a href={`/app/agent${projectId ? `?project=${projectId}` : ""}`}>
+    <Button variant="outline" className={projectId ? "size-9 p-0 sm:w-auto sm:px-3" : undefined} asChild>
+      <a aria-label="Talk to Senda" href={`/app/agent${projectId ? `?project=${projectId}` : ""}`}>
         <MessageSquare />
-        Talk to Senda
+        <span className={projectId ? "hidden sm:inline" : undefined}>Talk to Senda</span>
       </a>
     </Button>
   ) : null;
