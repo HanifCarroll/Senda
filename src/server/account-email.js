@@ -1,5 +1,4 @@
 import { brandColors as c } from "../core/brand.js";
-import { emailLogoBase64, emailLogoDarkBase64, emailLogoWidth, emailLogoHeight } from "../core/brand-assets.js";
 
 const escape = (value) =>
   String(value).replace(
@@ -16,7 +15,7 @@ const copy = {
   reassurance: "If you didn’t ask to sign in, you can ignore this email.",
 };
 
-/** A self-contained email; its logo is an inline MIME image, with no remote fetch. */
+/** Image-free email branding keeps sign-in messages free of MIME attachments. */
 export function accountEmail({ url, origin }) {
   const base = new URL(origin),
     destination = new URL(url);
@@ -66,9 +65,8 @@ export function accountEmail({ url, origin }) {
       .heading { color: #f5f5f5 !important; }
       .muted { color: #b5b5b5 !important; }
       .secondary { color: ${c.lightInk} !important; }
+      .wordmark { color: ${c.lightInk} !important; }
       .action { background-color: ${c.lightInk} !important; border-color: ${c.lightInk} !important; color: ${c.ink} !important; }
-      .logo-light { display: none !important; }
-      .logo-dark { display: block !important; height: ${emailLogoHeight}px !important; max-height: ${emailLogoHeight}px !important; overflow: visible !important; }
     }
   </style>
 </head>
@@ -79,12 +77,7 @@ export function accountEmail({ url, origin }) {
       <!--[if mso]><table role="presentation" width="528" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:528px;border-collapse:separate;">
         <tr><td class="email-card content" bgcolor="#fdfdfd" style="padding:40px;background-color:#fdfdfd;border:1px solid #e3e3e3;border-radius:16px;">
-          <table role="presentation" width="${emailLogoWidth}" cellpadding="0" cellspacing="0" border="0" style="width:${emailLogoWidth}px;max-width:${emailLogoWidth}px;table-layout:fixed;border-collapse:collapse;">
-            <tr><td width="${emailLogoWidth}" style="width:${emailLogoWidth}px;padding:0 0 24px;font-size:0;line-height:0;">
-              <img src="cid:senda-logo" class="logo-light" alt="Senda" width="${emailLogoWidth}" height="${emailLogoHeight}" style="display:block;width:${emailLogoWidth}px;height:${emailLogoHeight}px;max-width:${emailLogoWidth}px;max-height:${emailLogoHeight}px;margin:0;border:0;background:transparent;color:${c.ink};font-family:Georgia,serif;font-size:20px;">
-              <!--[if !mso]><!--><img src="cid:senda-logo-dark" class="logo-dark" alt="Senda" width="${emailLogoWidth}" height="${emailLogoHeight}" style="display:none;width:${emailLogoWidth}px;height:0;max-width:${emailLogoWidth}px;max-height:0;overflow:hidden;margin:0;border:0;background:transparent;mso-hide:all;"><!--<![endif]-->
-            </td></tr>
-          </table>
+          <p class="wordmark" style="margin:0 0 24px;color:${c.ink};font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:36px;">Senda</p>
           <h1 class="heading" style="margin:0;color:${c.text};font-size:28px;line-height:36px;font-weight:650;letter-spacing:-0.6px;">${escape(copy.heading)}</h1>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
             <tr><td style="padding:28px 0 20px;">
@@ -105,11 +98,5 @@ export function accountEmail({ url, origin }) {
   </table>
 </body>
 </html>`;
-  return { subject: copy.subject, text, html, attachments: [{
-    filename: "senda-logo.png", content: emailLogoBase64, type: "image/png",
-    disposition: "inline", contentId: "senda-logo",
-  }, {
-    filename: "senda-logo-dark.png", content: emailLogoDarkBase64, type: "image/png",
-    disposition: "inline", contentId: "senda-logo-dark",
-  }] };
+  return { subject: copy.subject, text, html, attachments: [] };
 }

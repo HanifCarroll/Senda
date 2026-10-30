@@ -24,8 +24,8 @@ the expiry near the button, and the unsolicited-message note in the footer.
 Sign-in messages also offer a link to request a replacement. The confirmation
 page explains its own action; email copy does not narrate the clicks ahead.
 
-The template uses the app's Ink + Teal colors, an outlined logo embedded as an
-inline PNG attachment, system fonts and a single-column layout. Essential styles are inline, with responsive spacing and
+The template uses the app's Ink + Teal colors, a text-only Senda wordmark,
+system fonts and a single-column layout. Account emails have no image attachments. Operator alerts are already plain text without attachments. Essential styles are inline, with responsive spacing and
 explicit dark colors for supporting clients. It includes a plain-text version
 and an Outlook button fallback. No remote images, fonts or tracking resources
 are loaded. Email clients can still override colors; browser previews are not

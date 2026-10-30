@@ -34,16 +34,12 @@ outlines when regenerating assets. Never trace lettering from the small raster
 reference: it produces uneven stems, distorted counters and lumpy curves.
 
 The same source generates the web logo, touch/home-screen icons, SVG/ICO/PNG
-favicons, email logo, social preview, and data-URI assets for offline bundles.
-Offline review files load no external brand resource. Email logos use an inline
-MIME attachments, with alt text, rather than remote image requests. The logo and
-its winding negative space are transparent. Light and dark email appearances use
-separate transparent images, with no background plate or image background style.
-
-The email logo displays at 122 × 36 px, with a 2× PNG. Declare its dimensions
-in HTML attributes and inline CSS inside a fixed-width presentation table;
-attributes alone allowed Apple Mail to enlarge it. Verify email changes in
-Apple Mail as well as browser previews.
+favicons, social preview, and data-URI assets for offline bundles.
+Offline review files load no external brand resource. Generated email PNG artwork
+remains in the asset set, but account emails use a text-only Senda wordmark and
+include no images or attachments. The wordmark has explicit light and dark
+colors and uses a system serif font. Verify email changes in actual mail clients
+as well as browser previews.
 
 Run `npm run build:brand` after changing the mark, lettering or canonical colors.
 This uses the existing Playwright browser; set `SENDA_TEST_BROWSER` when using an
