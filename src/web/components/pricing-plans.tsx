@@ -5,14 +5,14 @@ import { cn } from "@/lib/utils";
 const plans = [
   {
     name: "Free", price: "$0", detail: "No payment card needed",
-    intro: "Try Luna before deciding whether to pay.",
-    features: ["Try Luna on one project with a $0.50 lifetime allowance", "Create up to 3 saved cloud projects", "Keep using your own Claude or ChatGPT (beta)", "Separate As-is and To-be models", "Source evidence and revision history", "Download standard BPMN diagrams"],
+    intro: "Try the built-in agent before deciding whether to pay.",
+    features: ["Try the built-in agent on one project with a $0.50 lifetime allowance", "Create up to 3 saved cloud projects", "Keep using your own Claude or ChatGPT (beta)", "Separate As-is and To-be models", "Source evidence and revision history", "Download standard BPMN diagrams"],
     href: "/app", action: "Start free",
   },
   {
     name: "Pro", price: "$29", detail: "USD per month · cancel any time",
     intro: "Work directly with the Senda agent.",
-    features: ["Create up to 100 saved cloud projects", "Everything in Free", "Built-in chat powered by GPT-6 Luna", "$6 monthly AI allowance, with usage shown", "No automatic overage charges"],
+    features: ["Create up to 100 saved cloud projects", "Everything in Free", "Built-in chat with the Senda agent", "$6 monthly AI allowance, with usage shown", "No automatic overage charges"],
     href: "/app/billing", action: "Choose Pro",
   },
 ];
@@ -32,10 +32,10 @@ export function PricingPlans() {
       </section>)}
     </div>
     <div className="grid gap-8 border-t pt-8 sm:grid-cols-2">
-      <div className="space-y-3"><h3 className="text-lg font-semibold">How much built-in AI is included?</h3><p className="leading-7 text-muted-foreground">Free includes a $0.50 lifetime Luna allowance on one project, including clarification and To-be revisions. Pro includes $6 per month across your projects. Both use Senda’s fixed rate card. Longer transcripts, larger diagrams and revisions use different amounts. There is no promised number of replies or completed processes.</p><a className="underline underline-offset-4" href="/usage">Read the usage policy</a></div>
+      <div className="space-y-3"><h3 className="text-lg font-semibold">How much built-in AI is included?</h3><p className="leading-7 text-muted-foreground">Free includes a $0.50 lifetime allowance for the built-in agent on one project, including clarification and To-be revisions. Pro includes $6 per month across your projects. Both use Senda’s fixed rate card. Longer transcripts, larger diagrams and revisions use different amounts. There is no promised number of replies or completed processes.</p><a className="underline underline-offset-4" href="/usage">Read the usage policy</a></div>
       <div className="space-y-3"><h3 className="text-lg font-semibold">What happens when I reach a limit?</h3><p className="leading-7 text-muted-foreground">The built-in agent pauses. Your saved work stays readable, editable with your connected agent, and exportable. Daily and shared service limits also apply. Nothing extra is bought or charged automatically.</p></div>
       <div className="space-y-3"><h3 className="text-lg font-semibold">What counts as a project?</h3><p className="leading-7 text-muted-foreground">A project holds its sources, As-is model and separate To-be model. Projects cannot currently be deleted or archived in the app; contact support for deletion. Existing projects stay available if you later move to Free.</p></div>
-      <div className="space-y-3"><h3 className="text-lg font-semibold">Which agent should I use?</h3><p className="leading-7 text-muted-foreground">Try Luna free on one project, continue with Pro, or connect your own Claude account on either plan. ChatGPT is in beta: it can save changes but sometimes fails to display its reply. Check the saved diagram before repeating a request. Your connected agent’s subscription is separate.</p></div>
+      <div className="space-y-3"><h3 className="text-lg font-semibold">Which agent should I use?</h3><p className="leading-7 text-muted-foreground">Try the built-in agent free on one project, continue with Pro, or connect your own Claude account on either plan. ChatGPT is in beta: it can save changes but sometimes fails to display its reply. Check the saved diagram before repeating a request. Your connected agent’s subscription is separate.</p></div>
     </div>
     <p className="text-sm text-muted-foreground">Sold by HC Studio LLC. <a href="/usage" className="underline underline-offset-4">Usage and subscription terms</a></p>
   </>;

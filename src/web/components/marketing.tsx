@@ -11,6 +11,7 @@ import { PricingPlans } from "./pricing-plans";
 
 const preview = (name: string) => `/marketing/${name}.svg?v=vector-6`;
 const repository = "https://github.com/HanifCarroll/Senda";
+const methodology = `${repository}/blob/main/skills/process-scribe/references/methodology.md`;
 
 const container = "mx-auto w-full max-w-6xl px-5 sm:px-8";
 const display = "font-display tracking-[-0.02em] text-balance";
@@ -272,6 +273,14 @@ export function Marketing() {
 
         <Section id="how-it-works">
           <h2 className={cn(h2, "max-w-3xl")}>Draft today’s process, fill the gaps, then plan the next one.</h2>
+          <p className={cn(lead, "mt-6 max-w-2xl")}>
+            The method comes from chapter 5 of <cite>Fundamentals of Business Process Management</cite>: start with
+            the process boundaries, then map the activities, handoffs and decisions. Unanswered questions stay
+            visible, and you check each change against the interview.{" "}
+            <a href={methodology} className={textLink}>
+              Read the method summary
+            </a>
+          </p>
           <div className="mt-16 grid gap-16 lg:mt-20 lg:grid-cols-[200px_1fr] lg:gap-20">
             <nav aria-label="How it works" className="hidden lg:block">
               <ol className="sticky top-32 flex flex-col">
@@ -328,41 +337,6 @@ export function Marketing() {
             </div>
           </div>
         </section>
-
-        <Section>
-          <ul className="grid gap-12 md:grid-cols-3 md:gap-12">
-            {[
-              {
-                title: "A clear method for process discovery",
-                text: (
-                  <>
-                    Start with the process boundaries, then map the activities, handoffs and decisions.
-                    Keep unanswered questions visible and check each change against the interview.
-                  </>
-                ),
-                link: { href: "#how-it-works", label: "See how it works" },
-              },
-              {
-                title: "Know where your transcript goes",
-                text: "Built-in chat sends relevant sources and models to OpenAI. Your connected agent reads only the projects you approve, under its provider’s privacy practices.",
-                link: { href: "/privacy", label: "Read the privacy notice" },
-              },
-              {
-                title: "Start free, keep your work",
-                text: "Try Luna free on one project, with its evidence and revisions. Keep up to three hosted projects with your own agent, or choose Pro for more built-in chat and projects. The app, command-line tool and agent skill are MIT-licensed.",
-                link: { href: repository, label: "View the source" },
-              },
-            ].map(({ title, text, link }) => (
-              <li key={title} className="flex flex-col gap-3">
-                <h3 className={cn(display, "text-[1.45rem]")}>{title}</h3>
-                <p className="flex-1 leading-relaxed text-muted-foreground">{text}</p>
-                <a href={link.href} className={cn(textLink, "text-sm")}>
-                  {link.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </Section>
 
         <Section id="your-agent">
           <div className="grid gap-14 lg:grid-cols-[1fr_1.05fr] lg:gap-20">
@@ -425,8 +399,8 @@ export function Marketing() {
         <Section id="pricing">
           <div className="flex flex-col gap-10 sm:gap-12">
             <div className="flex max-w-2xl flex-col gap-5">
-              <h2 className={h2}>Try Luna free. Continue with Pro.</h2>
-              <p className={lead}>Map one project with Luna before deciding whether to pay. No payment card needed.</p>
+              <h2 className={h2}>Start free. Continue with Pro.</h2>
+              <p className={lead}>Map one project with the built-in agent before deciding whether to pay. No payment card needed.</p>
             </div>
             <PricingPlans />
           </div>
@@ -451,7 +425,7 @@ export function Marketing() {
                 ],
                 [
                   "Does Senda run AI on my transcripts?",
-                  "When you use the free trial or the built-in agent in Pro, Senda sends relevant messages, sources and models to GPT-6 Luna. If you connect your own agent, that agent and its provider do the drafting. Senda keeps the evidence and revision history in either workflow.",
+                  "When you use the built-in agent, on the free trial or in Pro, Senda sends the relevant messages, sources and models to its AI provider. If you connect your own agent, that agent and its provider do the drafting. Senda keeps the evidence and revision history either way. The privacy notice names the provider.",
                 ],
                 [
                   "Who can read my transcripts?",
@@ -459,7 +433,7 @@ export function Marketing() {
                 ],
                 [
                   "Is it free?",
-                  "Free includes a one-project Luna trial with a $0.50 lifetime allowance, plus up to three saved cloud projects with your own agent. Pro is $29 USD per month for up to 100 projects and a $6 monthly built-in AI allowance. Daily and shared service limits apply, with no automatic overage charges. Read Pricing for details. The source is MIT-licensed.",
+                  "Free includes a one-project trial of the built-in agent with a $0.50 lifetime allowance, plus up to three saved cloud projects with your own agent. Pro is $29 USD per month for up to 100 projects and a $6 monthly built-in AI allowance. Daily and shared service limits apply, with no automatic overage charges. Read Pricing for details. The source is MIT-licensed.",
                 ],
                 [
                   "How do I plan a future process?",
