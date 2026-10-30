@@ -210,7 +210,7 @@ export function Marketing() {
   const activeStory = useActiveStory();
   return (
     <div className="marketing min-h-dvh">
-      <header className="sticky top-0 z-40 px-3 pt-3">
+      <header className="sticky top-0 z-40 px-3 pt-5">
         <nav
           aria-label="Main navigation"
           className="mx-auto flex max-w-6xl items-center gap-2 rounded-full border bg-card/85 py-2 pr-2 pl-5 shadow-[0_1px_2px_rgb(9_30_38/6%),0_8px_24px_-12px_rgb(9_30_38/18%)] backdrop-blur-md sm:gap-6"
