@@ -20,9 +20,11 @@ const Turn = z.strictObject({
   requestId: z.uuid(),
   text: z.string().trim().min(1).max(60000),
 });
+const TURN_LEASE_MS = 600000;
+const ADMISSION_GRACE_MS = 30000;
 export class HostedAgent {
-  constructor(env, projects, origin, { run = runAgent, billing, dispatch, pollMs = 1000 } = {}) {
-    Object.assign(this, { env, projects, origin, run, billing, dispatch, pollMs });
+  constructor(env, projects, origin, { run = runAgent, billing, dispatch, waitUntil, pollMs = 1000 } = {}) {
+    Object.assign(this, { env, projects, origin, run, billing, dispatch, waitUntil, pollMs });
     this.db = env.DB;
     this.operations = new OperationalAlerts(env);
   }
@@ -38,7 +40,13 @@ export class HostedAgent {
   async trialProjectRoom(actor) {
     return (await this.projects.list(actor)).length < await this.projects.projectLimit(actor);
   }
-  async handle(request, actor, email) {
+  handle(request, actor, email) {
+    const response = this.handleRequest(request, actor, email);
+    if (request.method === 'POST' && /^\/api\/agent\/chats\/[^/]+\/turn$/.test(new URL(request.url).pathname))
+      this.waitUntil?.(response.then(() => {}, () => {}));
+    return response;
+  }
+  async handleRequest(request, actor, email) {
     const url = new URL(request.url), path = url.pathname;
     const operator = agentAllowed(this.env, email);
     const paidEmailAllowed = this.env.PAID_AGENT_ALLOWED_EMAILS === undefined || emailListed(this.env.PAID_AGENT_ALLOWED_EMAILS, email);
@@ -138,7 +146,7 @@ export class HostedAgent {
       .prepare(
         "UPDATE senda_agent_chats SET lock_id=?,lock_until=? WHERE id=? AND owner=? AND lock_until<? RETURNING *",
       )
-      .bind(runId, now + 600000, row.id, actor.userId, now)
+      .bind(runId, now + TURN_LEASE_MS, row.id, actor.userId, now)
       .first();
     requireThat(
       locked,
@@ -146,10 +154,11 @@ export class HostedAgent {
       "A reply is already being prepared. Wait for it to finish.",
     );
     row = locked;
-    let admission = startProtocol(hostedRunMachine);
+    let admission;
     const advanceAdmission = event => { admission = advanceProtocol(hostedRunMachine, admission, event); };
-    advanceAdmission({ type: 'LOCKED' });
     try {
+      admission = startProtocol(hostedRunMachine);
+      advanceAdmission({ type: 'LOCKED' });
       if (row.project) await this.projects.authorize(actor,row.project,projectGeneration);
       if (trial) {
         if (!trial.chatId && !row.project)
@@ -158,12 +167,12 @@ export class HostedAgent {
         entitlement = await claimTrial(this.db, actor.userId, row);
       }
       await reserveTurn(this.db, { runId, chatId: row.id, owner: actor.userId, day, entitlement,
-        nowMs: billingNow(this.env), limits: serviceLimits(this.env) });
+        nowMs: billingNow(this.env), limits: serviceLimits(this.env), lockId: runId });
       advanceAdmission({ type: 'ADMITTED' });
     } catch (error) {
-      advanceAdmission({ type: 'DENIED' });
-      await this.operations.observe();
+      if (admission?.can({ type: 'DENIED' })) advanceAdmission({ type: 'DENIED' });
       await this.unlock(row.id, runId);
+      await this.operations.observe();
       throw error;
     }
     const display = [...JSON.parse(row.display), { role: "user", text: input.text }];
@@ -358,6 +367,20 @@ export class HostedAgent {
     ]);
   }
   async recover(row) {
+    if (row.lock_id && row.lock_until <= Date.now() + TURN_LEASE_MS - ADMISSION_GRACE_MS) {
+      const display = [...JSON.parse(row.display), { role: 'assistant',
+        text: 'The previous reply did not start. Send your message again.', incomplete: true,
+        model: displayModel(JSON.parse(row.display)) || lastModel(JSON.parse(row.messages)) }];
+      // A reservation appearing concurrently prevents recovery. Once recovered,
+      // reserveTurn's lock check prevents the old admission from resuming later.
+      const recovered = await this.db.prepare(`UPDATE senda_agent_chats SET display=?,lock_id=NULL,lock_until=0,updated=?
+        WHERE id=? AND lock_id=? AND lock_until<=?
+        AND NOT EXISTS(SELECT 1 FROM senda_agent_runs WHERE id=? AND chat=?) RETURNING *`)
+        .bind(JSON.stringify(display), new Date().toISOString(), row.id, row.lock_id,
+          Date.now() + TURN_LEASE_MS - ADMISSION_GRACE_MS, row.lock_id, row.id).first();
+      if (recovered) return this.chat({ userId: row.owner }, row.id);
+      row = await this.chat({ userId: row.owner }, row.id);
+    }
     if (row.lock_id && row.lock_until <= Date.now()) {
       await this.interrupt(row.id, row.lock_id, 'The previous reply was interrupted. Your saved revisions are safe. Send a message to continue.');
       return this.chat({ userId: row.owner }, row.id);

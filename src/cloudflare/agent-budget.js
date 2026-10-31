@@ -41,9 +41,13 @@ export async function serviceUsage(db, day = new Date().toISOString().slice(0, 1
 
 // These predicates are part of the mutation, not an earlier advisory read.
 function constraints({ owner, day, entitlement: e, delta, admission = false, chatId,
-  nowMs = Date.now(), serviceDay = new Date().toISOString().slice(0, 10), runId = '', existing = false, limits = serviceLimits() }) {
+  nowMs = Date.now(), serviceDay = new Date().toISOString().slice(0, 10), runId = '', lockId, existing = false, limits = serviceLimits() }) {
   const sql = [`COALESCE((SELECT SUM(${operational}) FROM senda_agent_runs WHERE owner=? AND day=?),0)+?<=?`];
   const args = [owner, day, delta, e?.dailyUsd || AGENT_LIMITS.dailyUsd];
+  if (admission && lockId) {
+    sql.push('EXISTS(SELECT 1 FROM senda_agent_chats WHERE id=? AND owner=? AND lock_id=? AND lock_until>?)');
+    args.push(chatId, owner, lockId, Date.now());
+  }
   const [start, end] = monthWindow(serviceDay), exposure = existing ? 'reserved_usd+?' : '?';
   sql.push(`COALESCE((SELECT SUM(${operational}) FROM senda_agent_runs WHERE id<>? AND ${serviceDayOf}=?),0)+${exposure}<=?`);
   args.push(runId, serviceDay, delta, limits.dailyUsd);
@@ -116,8 +120,8 @@ export async function budgetPause(db, owner, day, e, { nowMs = Date.now(), limit
   return null;
 }
 
-export async function reserveTurn(db, { runId, chatId, owner, day, entitlement: e, nowMs = Date.now(), limits = serviceLimits() }) {
-  const check = constraints({ owner, day, entitlement: e, runId, chatId, delta: CALL_RESERVES.main, admission: true, nowMs, limits });
+export async function reserveTurn(db, { runId, chatId, owner, day, entitlement: e, lockId, nowMs = Date.now(), limits = serviceLimits() }) {
+  const check = constraints({ owner, day, entitlement: e, runId, chatId, lockId, delta: CALL_RESERVES.main, admission: true, nowMs, limits });
   const trial = e?.kind === 'trial';
   const row = await db.prepare(`INSERT INTO senda_agent_runs(id,chat,owner,day,status,reserved_usd,created,billing_context,billing_subscription,billing_period_start,billing_period_end,service_day,rate_card${trial ? ',trial_owner' : ''})
     SELECT ?,?,?,?,'running',?,?,?,?,?,?,?,?${trial ? ',?' : ''} WHERE ${check.sql} RETURNING id`)

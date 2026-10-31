@@ -35,6 +35,14 @@ claim and no automatic provider retry; duplicate job delivery cannot start the
 same provider turn again. Interrupted jobs show an incomplete reply when their
 lease expires, with saved revisions retained.
 
+The Worker retains turn admission with `ctx.waitUntil` across browser
+disconnection during Cloudflare's 30-second background window. A lock with no run record
+can be recovered after 30 seconds. Recovery checks for a concurrent reservation
+in the same SQL update, preserves saved messages and usage, and asks the person
+to send their message again. A recovered admission cannot reserve allowance
+later because the reservation also checks its live conversation lock. A run
+that already exists keeps its reservation and normal recovery rules.
+
 ## Configuration
 
 Keep `OPENAI_API_KEY` in an ignored, owner-readable `.env.local`. For local Worker

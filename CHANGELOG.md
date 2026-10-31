@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Keep reply setup running across browser disconnection, recover abandoned setup without spending allowance, and prevent recovered setup from starting later.
 - Make chat, account, project, billing and hosted diagram workflows explicit with native XState 6 machines while keeping stored records and provider state authoritative.
 - Fence late agent completion and failure against concurrent recovery so a recovered reply cannot be overwritten or charged again.
 - Delete projects from the app or a connected agent, with explicit confirmation and a seven-day restore window.

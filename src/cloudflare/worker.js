@@ -1,6 +1,6 @@
 import start from "@tanstack/react-start/server-entry";
 
-async function application(env, origin) {
+async function application(env, origin, ctx) {
   const [{ createRequestHandler }, { CloudProjects }, { cloudAuth }] = await Promise.all([
     import("../server/handler.js"), import("./projects.js"), import("./auth.js"),
   ]);
@@ -18,7 +18,9 @@ async function application(env, origin) {
     projects,
     auth,
     billing,
-    hostedAgent: new (await import("./agent.js")).HostedAgent(env, projects, origin, { billing }),
+    hostedAgent: new (await import("./agent.js")).HostedAgent(env, projects, origin, {
+      billing, waitUntil: promise => ctx.waitUntil(promise),
+    }),
     localJwks: true,
     features: {
       accountEmail: true,
@@ -99,7 +101,7 @@ export default {
     request = new Request(request, { headers });
     const apiRequest = url.pathname.startsWith("/api/") || url.pathname === "/mcp" || url.pathname.startsWith("/.well-known/");
     const response = apiRequest
-      ? (await (await application(env, origin)).handle(request)) || (await start.fetch(request))
+      ? (await (await application(env, origin, ctx)).handle(request)) || (await start.fetch(request))
       : await start.fetch(request);
     const result = new Response(response.body, response);
     result.headers.set("x-content-type-options", "nosniff");
