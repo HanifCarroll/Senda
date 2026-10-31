@@ -19,3 +19,7 @@ dist-cloudflare/
 .dev.vars*
 .tanstack/
 src/web/routeTree.gen.ts
+
+# Generated fuzz corpora, failure inputs, and API test reports
+/tmp/fuzz/
+.hypothesis/

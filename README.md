@@ -132,3 +132,7 @@ The textbook PDF, extracts, figures and private experiment notes are not in this
 [Architecture and backend decision](docs/architecture.md) · [Application state machines](docs/state-machines.md) · [Development instructions](CONTRIBUTING.md) · [MIT license](LICENSE)
 
 The implementation pins `@miragon/bpmn-cli` 0.8.0. Third-party dependencies retain their respective licenses. Methodology reference: Marlon Dumas, Marcello La Rosa, Jan Mendling and Hajo A. Reijers (2018), *Fundamentals of Business Process Management*, 2nd ed., Springer, Chapter 5, §§5.3–5.4, pp. 177–193. [DOI](https://doi.org/10.1007/978-3-662-56509-4). This project is independent of the authors and Miragon.
+
+## Generative tests
+
+See [generative testing](docs/generative-testing.md) for fast-check, Jazzer.js, and local Schemathesis commands and coverage.
