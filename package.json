@@ -54,7 +54,7 @@
     "@modelcontextprotocol/server": "2.4.0",
     "@tanstack/react-router": "1.170.46",
     "@tanstack/react-start": "1.169.4",
-    "@xstate/react": "6.1.0",
+    "@xstate/react": "7.0.0-alpha.6",
     "ai": "7.0.156",
     "better-auth": "1.7.14",
     "bpmn-moddle": "10.3.1",
@@ -71,7 +71,7 @@
     "sonner": "^2.0.8",
     "stripe": "23.0.1",
     "tailwind-merge": "3.7.0",
-    "xstate": "5.33.3",
+    "xstate": "6.0.0-alpha.71",
     "zod": "4.6.7"
   },
   "devDependencies": {

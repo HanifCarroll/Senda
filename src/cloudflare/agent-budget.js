@@ -1,6 +1,7 @@
 import { AGENT_LIMITS, usageCost } from '../server/agent/limits.js';
 import { requireThat } from '../core/errors.js';
 import { SENDA_PLAN } from '../server/billing/plan.js';
+import { callAccountingMachine, startProtocol, advanceProtocol } from '../server/agent/protocol-machines.js';
 
 // Include prompt/protocol overhead beyond the bounded application payload.
 // Reserve each call's maximum before dispatch, then settle measured usage.
@@ -129,47 +130,65 @@ export async function reserveTurn(db, { runId, chatId, owner, day, entitlement: 
 export class CallBudget {
   constructor(db, { runId, owner, day, entitlement, now = Date.now, limits = serviceLimits(), onExceeded = async () => {} }) {
     Object.assign(this, { db, runId, owner, day, entitlement, now, limits, onExceeded });
-    this.first = true;
-    this.active = 0;
+    this.phase = startProtocol(callAccountingMachine);
     this.customerUsd = 0;
   }
+  get first() { return this.phase.context.calls === 0; }
+  get active() { return this.phase.matches('active') || this.phase.matches('settling') ? this.phase.context.amount : 0; }
+  advance(event) { this.phase = advanceProtocol(callAccountingMachine, this.phase, event); }
   async reserve(kind) {
-    requireThat(!this.active, 'CONFLICT', 'A model call is already running.');
     const amount = CALL_RESERVES[kind];
     requireThat(amount, 'INVALID_REQUEST', 'Unknown model call.');
+    requireThat(this.phase.can({ type: 'RESERVE', amount }), 'CONFLICT', 'A model call is already running.');
     const delta = this.first ? amount - CALL_RESERVES.main : amount;
-    const serviceDay = new Date().toISOString().slice(0, 10), nowMs = this.now();
-    const check = constraints({ owner: this.owner, day: this.day, entitlement: this.entitlement, delta,
-      runId: this.runId, existing: true, serviceDay, nowMs, limits: this.limits });
-    const result = await this.db.prepare(`UPDATE senda_agent_runs SET reserved_usd=reserved_usd+?,service_day=? WHERE id=? AND owner=? AND status='running' AND reserved_usd+?<=? AND ${check.sql} RETURNING id`)
-      .bind(delta, serviceDay, this.runId, this.owner, delta, AGENT_LIMITS.reservationUsd, ...check.args).first();
-    const pause = !result && await budgetPause(this.db, this.owner, this.day, this.entitlement, { nowMs, limits: this.limits });
-    requireThat(result, 'LIMIT', pause?.message || 'This reply reached its spending limit or your account access changed. Your saved progress is safe; continue with a smaller change.');
-    this.first = false;
-    this.active = amount;
+    this.advance({ type: 'RESERVE', amount });
+    try {
+      const serviceDay = new Date().toISOString().slice(0, 10), nowMs = this.now();
+      const check = constraints({ owner: this.owner, day: this.day, entitlement: this.entitlement, delta,
+        runId: this.runId, existing: true, serviceDay, nowMs, limits: this.limits });
+      const result = await this.db.prepare(`UPDATE senda_agent_runs SET reserved_usd=reserved_usd+?,service_day=? WHERE id=? AND owner=? AND status='running' AND reserved_usd+?<=? AND ${check.sql} RETURNING id`)
+        .bind(delta, serviceDay, this.runId, this.owner, delta, AGENT_LIMITS.reservationUsd, ...check.args).first();
+      const pause = !result && await budgetPause(this.db, this.owner, this.day, this.entitlement, { nowMs, limits: this.limits });
+      requireThat(result, 'LIMIT', pause?.message || 'This reply reached its spending limit or your account access changed. Your saved progress is safe; continue with a smaller change.');
+      this.advance({ type: 'RESERVED' });
+    } catch (error) {
+      this.advance({ type: 'DENIED' });
+      throw error;
+    }
   }
   async settle(usage) {
-    requireThat(this.active, 'CONFLICT', 'There is no model call to settle.');
+    requireThat(this.phase.can({ type: 'SETTLE' }), 'CONFLICT', 'There is no model call to settle.');
     const amount = this.active;
+    this.advance({ type: 'SETTLE' });
+    return this.recordSettlement(usage, amount);
+  }
+  async recordSettlement(usage, amount) {
     let exceeded = false;
-    if (measuredUsage(usage)) {
-      const cost = usageCost(usage);
-      this.customerUsd += Math.min(cost, amount);
-      if (cost > amount) {
-        console.error('Senda call exceeded reservation', { runId: this.runId, reservedUsd: amount, measuredUsd: cost });
-        exceeded = true;
+    try {
+      if (measuredUsage(usage)) {
+        const cost = usageCost(usage);
+        if (cost > amount) {
+          console.error('Senda call exceeded reservation', { runId: this.runId, reservedUsd: amount, measuredUsd: cost });
+          exceeded = true;
+        }
+        await this.db.prepare("UPDATE senda_agent_runs SET reserved_usd=MAX(0,reserved_usd+?) WHERE id=? AND status='running'")
+          .bind(cost - amount, this.runId).run();
+        this.customerUsd += Math.min(cost, amount);
       }
-      await this.db.prepare("UPDATE senda_agent_runs SET reserved_usd=MAX(0,reserved_usd+?) WHERE id=? AND status='running'")
-        .bind(cost - amount, this.runId).run();
+      // Missing usage retains just this call's reservation, not the whole turn.
+      this.advance({ type: measuredUsage(usage) ? 'SETTLED' : 'UNMEASURED' });
+    } catch (error) {
+      this.advance({ type: 'WRITE_FAILED' });
+      throw error;
     }
-    // Missing usage retains just this call's reservation, not the whole turn.
-    this.active = 0;
     if (exceeded) try { await this.onExceeded({ runId: this.runId }); }
     catch (error) { console.error('Senda reservation alert stopped', { name: error.name }); }
   }
-  async failure(error) {
-    if (!this.active) return;
-    if ([401, 402, 403].includes(error.statusCode)) await this.settle({ inputTokens: 0, outputTokens: 0 });
-    else this.active = 0; // Unknown outcome: retain this call's reservation.
+  async failure(error, { outcome } = {}) {
+    if (!this.phase.matches('active')) return;
+    const amount = this.active;
+    this.advance({ type: 'FAILURE', error, outcome });
+    if (this.phase.matches('settling')) await this.recordSettlement({ inputTokens: 0, outputTokens: 0 }, amount);
+    // Unknown outcomes have already retained this call's reservation.
   }
 }

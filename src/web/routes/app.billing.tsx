@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useMachine } from "@xstate/react";
+import { createBillingMachine } from "@/lib/account-machines.js";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { AccountFrame } from "@/components/account-frame";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { api, post, ApiError } from "@/lib/api";
+import { api, post } from "@/lib/api";
 
 export const Route = createFileRoute("/app/billing")({
   validateSearch: (s: Record<string, unknown>) => ({ checkout: s.checkout === "complete" ? "complete" : undefined }),
@@ -19,32 +21,19 @@ type Plan = {
 };
 function Billing() {
   const search = Route.useSearch();
-  const [plan, setPlan] = useState<Plan | null>(null), [error, setError] = useState(""),
-    [opening, setOpening] = useState<'checkout' | 'portal' | 'payment-method' | null>(null);
-  const busy = opening !== null;
+  const [machine] = useState(() => createBillingMachine({
+    load: (signal: AbortSignal) => api<Plan>("/api/billing", { signal }),
+    open: (action: "checkout" | "portal" | "payment-method") => post(`/api/billing/${action}`, {}),
+    navigate: (url: string) => window.location.assign(url),
+  }));
+  const [state, send] = useMachine(machine);
+  const plan = state.context.plan as Plan | null;
+  const error = state.context.error as string;
+  const opening = state.hasTag("opening") ? state.context.action : null;
+  const busy = state.hasTag("opening");
   useEffect(() => {
-    let active = true, timer: ReturnType<typeof setTimeout>, attempts = 0;
-    async function load() {
-      try {
-        const next = await api<Plan>("/api/billing");
-        if (!active) return;
-        setPlan(next);
-        if (search.checkout && next.available && !next.subscription?.active && attempts++ < 12)
-          timer = setTimeout(load, 5000);
-      } catch (e: any) {
-        if (!active) return;
-        if (e instanceof ApiError && e.status === 401) window.location.assign("/sign-in?plan=pro");
-        else setError(e.message);
-      }
-    }
-    void load();
-    return () => { active = false; clearTimeout(timer); };
-  }, [search.checkout]);
-  async function open(action: "checkout" | "portal" | "payment-method") {
-    setOpening(action); setError("");
-    try { const result = await post(`/api/billing/${action}`, {}); window.location.assign(result.url); }
-    catch (e: any) { setError(e.message); setOpening(null); }
-  }
+    send({ type: "START", checkout: !!search.checkout });
+  }, [search.checkout, send]);
   const usage = plan ? Math.min(100, Math.max(0, Math.round(plan.usedUsd / plan.includedUsd * 100))) : 0;
   return <AccountFrame>
     <main className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-8 sm:px-6">
@@ -69,10 +58,10 @@ function Billing() {
           {search.checkout && !plan.subscription?.active && <p role="status" className="text-sm">Your plan appears here after Stripe confirms payment. You can return to your processes while it updates.</p>}
           <div className="flex flex-wrap gap-3">
             {plan.managed && <>
-              <Button variant="outline" disabled={busy} onClick={() => void open("payment-method")}>{opening === 'payment-method' ? 'Opening Stripe…' : 'Update payment method'}<ExternalLink /></Button>
-              <Button variant="outline" disabled={busy} onClick={() => void open("portal")}>{opening === 'portal' ? 'Opening Stripe…' : 'Manage subscription'}<ExternalLink /></Button>
+              <Button variant="outline" disabled={busy} onClick={() => send({ type: "OPEN", action: "payment-method" })}>{opening === 'payment-method' ? 'Opening Stripe…' : 'Update payment method'}<ExternalLink /></Button>
+              <Button variant="outline" disabled={busy} onClick={() => send({ type: "OPEN", action: "portal" })}>{opening === 'portal' ? 'Opening Stripe…' : 'Manage subscription'}<ExternalLink /></Button>
             </>}
-            {!plan.subscription?.active && plan.checkoutAvailable && <Button disabled={busy} onClick={() => void open("checkout")}>{opening === 'checkout' ? "Opening Stripe…" : "Choose Pro"}</Button>}
+            {!plan.subscription?.active && plan.checkoutAvailable && <Button disabled={busy} onClick={() => send({ type: "OPEN", action: "checkout" })}>{opening === 'checkout' ? "Opening Stripe…" : "Choose Pro"}</Button>}
           </div>
         </section>
         <p className="text-sm leading-6 text-muted-foreground">Your saved diagrams stay readable, editable with your connected agent, and exportable when a paid plan ends. You can keep up to {plan.projectLimit} projects at a time. Deleting a project frees a slot; you have seven days to restore it if there is room. Deletion does not reset your trial or monthly AI usage.</p>

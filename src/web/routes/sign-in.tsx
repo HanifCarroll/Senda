@@ -1,6 +1,8 @@
 import { Brand } from "@/components/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useMachine } from "@xstate/react";
+import { createSignInMachine } from "@/lib/account-machines.js";
 import { Mail } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api";
@@ -17,75 +19,30 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { signInDestination, signInRetry } from '../../shared/model-links.js';
 
 export const Route = createFileRoute("/sign-in")({ component: SignIn });
 type Capabilities = { loginMethods?: { magicLink: boolean; google: boolean; password: boolean } };
 
 function SignIn() {
-  const [config, setConfig] = useState<Capabilities | null>(null),
-    [error, setError] = useState(""),
-    [email, setEmail] = useState(""),
-    [sent, setSent] = useState(false),
-    [busy, setBusy] = useState(false);
+  const [email, setEmail] = useState("");
+  const [machine] = useState(() => createSignInMachine({
+    load: (signal: AbortSignal) => api<Capabilities>("/api/config", { signal }),
+    location: () => window.location,
+    navigate: (url: string) => window.location.assign(url),
+    magicLink: (input: any) => authClient.signIn.magicLink(input),
+    social: (input: any) => authClient.signIn.social(input),
+  }));
+  const [state, send] = useMachine(machine);
+  const config = state.context.config as Capabilities | null;
+  const error = state.context.error as string;
+  const sent = state.hasTag("sent"), busy = state.hasTag("busy");
   useEffect(() => {
-    const abort = new AbortController();
-    void api<Capabilities>("/api/config", { signal: abort.signal })
-      .then(setConfig)
-      .catch((e) => {
-        if (!abort.signal.aborted) setError(e.message);
-      });
-    const issue = new URLSearchParams(window.location.search).get("error");
-    if (issue)
-      setError(
-        issue === "access_denied"
-          ? "Sign-in was cancelled. You can try again."
-          : issue === "account_not_linked" || issue === "email_not_verified"
-            ? "Use an email sign-in link to access this account."
-            : ["INVALID_TOKEN", "TOKEN_EXPIRED", "EXPIRED_TOKEN"].includes(issue)
-              ? "This sign-in link is unavailable or has expired. Request a new link below."
-              : "Sign-in could not be completed. Please try again.",
-      );
-    return () => abort.abort();
-  }, []);
+    send({ type: "START", issue: new URLSearchParams(window.location.search).get("error") });
+  }, [send]);
   if (config?.loginMethods?.password && !config.loginMethods.magicLink) return <PasswordSignIn />;
-  function returnTo() {
-    return window.location.origin + signInDestination(window.location.search);
-  }
-  async function send(event: React.FormEvent<HTMLFormElement>) {
+  function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      const r = await authClient.signIn.magicLink({
-        email: email.trim(),
-        callbackURL: returnTo(),
-        errorCallbackURL: window.location.origin + signInRetry(window.location.search),
-      });
-      if (r.error) setError(r.error.message || "The sign-in link could not be sent. Try again.");
-      else setSent(true);
-    } catch {
-      setError("The sign-in service could not be reached. Try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function google() {
-    setBusy(true);
-    setError("");
-    try {
-      const r = await authClient.signIn.social({
-        provider: "google",
-        callbackURL: returnTo(),
-        errorCallbackURL: window.location.origin + signInRetry(window.location.search),
-      });
-      if (r.error) setError(r.error.message || "Google sign-in could not be started. Try again.");
-      else if (r.data?.url) window.location.assign(r.data.url);
-    } catch {
-      setError("Google sign-in could not be reached. Try again.");
-    } finally {
-      setBusy(false);
-    }
+    send({ type: "SEND", email });
   }
   return (
     <main className="auth-page flex min-h-svh items-center justify-center px-4 py-12">
@@ -122,7 +79,7 @@ function SignIn() {
                   variant="outline"
                   className="relative h-11 w-full"
                   disabled={busy}
-                  onClick={google}
+                  onClick={() => send({ type: "GOOGLE" })}
                 >
                   <img src="/brand/google-g.png" alt="" aria-hidden="true" width="20" height="20" className="absolute left-4 size-5 object-contain" />
                   Sign in with Google
@@ -134,7 +91,7 @@ function SignIn() {
                 </div>
               </>
             )}
-            <form method="post" onSubmit={send} className="flex flex-col gap-5">
+            <form method="post" onSubmit={submit} className="flex flex-col gap-5">
               <FieldGroup>
                 <Field data-disabled={!config || busy}>
                   <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -150,7 +107,7 @@ function SignIn() {
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
-                      setSent(false);
+                      send({ type: "EDIT" });
                     }}
                     disabled={!config || busy}
                   />

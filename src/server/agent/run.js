@@ -7,6 +7,7 @@ import { reviewCandidate, semanticGraph, assertLiteralTimers } from "./semantic-
 import { hash } from "../../core/hash.js";
 import { publicError, requireThat } from "../../core/errors.js";
 import { schema } from '../../core/project-core.js';
+import { mutationMachine, startProtocol, advanceProtocol } from './protocol-machines.js';
 
 import { AGENT_LIMITS } from './limits.js';
 export { AGENT_LIMITS, usageCost } from './limits.js';
@@ -47,7 +48,8 @@ export async function runAgent({
   const checkpoint = (step, kind) => measureAgentPhase({ phase: 'checkpoint', kind }, onTiming, () => saveStep(step));
   let selected = projectId,
     selectedModel = initialModel;
-  let createdNow = false, savedDiagram = false, mutationPending = false;
+  let mutation = startProtocol(mutationMachine);
+  const advanceMutation = event => { mutation = advanceProtocol(mutationMachine, mutation, event); };
   const conversation = structuredClone(messages), baseCount = conversation.length;
   const currentUserText = messages.findLast(message => message.role === "user")?.content;
   requireThat(typeof currentUserText === "string", "INVALID_REQUEST", "Send a message to continue.");
@@ -111,7 +113,9 @@ export async function runAgent({
         inputSchema: jsonSchema(inputSchemas[def.name]),
         execute: async (input) => measureAgentPhase({ phase: 'tool', kind: 'main', toolName: def.name }, onTiming, async () => {
           emit({ type: "status", text: statusLabel(def.name) });
-          if (def.name === 'create_to_be_model' || (def.name === 'apply_revision' && describesBehavior(input.proposal))) mutationPending = true;
+          const changesBehavior = def.name === 'apply_revision' && describesBehavior(input.proposal);
+          const changesModel = changesBehavior || def.name === 'create_to_be_model';
+          if (changesModel) advanceMutation({ type: 'PROPOSE' });
           try {
             let prepared;
             requireThat(
@@ -145,12 +149,13 @@ export async function runAgent({
               );
             }
             if (def.name === 'apply_revision') prepared = await projects.preview(actor, selected, def.input.parse(input).proposal, input.model);
-            if (prepared && describesBehavior(input.proposal)) {
+            if (prepared && changesBehavior) {
+              advanceMutation({ type: 'REVIEW' });
               const candidate = { ...prepared.candidate, previousXml: prepared.previous.xml,
                 ...(input.model === 'to-be' ? { planningBaseline: await readPlanningBaseline() } : {}) };
               const graph = await semanticGraph(candidate.xml);
               assertLiteralTimers(graph);
-              if (createdNow && !savedDiagram) {
+              if (mutation.context.createdProject && !mutation.context.diagramSaved) {
                 const nodes = graph.filter(e => /(?:Task|SubProcess|Event|Gateway)$/.test(e.type));
                 const process = graph.find(e => e.type === 'bpmn:Process');
                 requireThat(nodes.length <= 12 && nodes.every(n => n.parent === process?.id) && !graph.some(e => /(?:Lane|Participant|Gateway|BoundaryEvent)$/.test(e.type)),
@@ -164,7 +169,7 @@ export async function runAgent({
                 emit({ type: "status", text: "Checking the draft against your interview…" });
                 let accounted = false;
                 try {
-                  verdict = await measureAgentPhase({ phase: 'review', kind: 'review', toolName: def.name }, onTiming, () => review({ model: provider, candidate, overviewTurn: createdNow, userMessage: currentUserText, signal,
+                  verdict = await measureAgentPhase({ phase: 'review', kind: 'review', toolName: def.name }, onTiming, () => review({ model: provider, candidate, overviewTurn: mutation.context.createdProject, userMessage: currentUserText, signal,
                     maxBytes: AGENT_LIMITS.reviewBytes, maxOutputTokens: AGENT_LIMITS.reviewOutputTokens,
                     reserveCall: () => reserveCall('review'), settleCall, failCall,
                     onTiming,
@@ -184,21 +189,30 @@ export async function runAgent({
                 reviewed.set(key, verdict);
               }
               requireThat(verdict.verdict === "supported", "SEMANTIC_REVIEW", "The proposed diagram or explanation contradicts the evidence. Correct these issues before saving.", { issues: verdict.issues });
+              advanceMutation({ type: 'SUPPORTED' });
             }
+            if (changesBehavior) advanceMutation({ type: 'COMMIT' });
+            // Creating the future model copies its fixed, already saved baseline.
+            if (def.name === 'create_to_be_model') advanceMutation({ type: 'COPY_BASELINE' });
             const result = prepared ? await projects.applyPreview(actor, selected, prepared, input.model) : await def.run(
               projects,
               actor,
               def.input.parse(input),
               origin,
             );
-            if ((def.name === 'apply_revision' && !result.unchanged && input.proposal.operations?.length) || def.name === 'create_to_be_model') { savedDiagram = true; onProgress(); }
+            if ((def.name === 'apply_revision' && !result.unchanged && input.proposal.operations?.length) || def.name === 'create_to_be_model') {
+              advanceMutation({ type: 'DIAGRAM_SAVED' }); onProgress();
+            }
             if (def.name === 'apply_revision') {
               selectedModel = input.model;
-              if (describesBehavior(input.proposal)) mutationPending = false;
+              if (changesBehavior) advanceMutation({ type: 'COMMITTED' });
             }
-            if (def.name === "create_to_be_model") selectedModel = "to-be";
+            if (def.name === "create_to_be_model") {
+              selectedModel = "to-be";
+              advanceMutation({ type: 'COMMITTED' });
+            }
             if (def.name === "create_project") {
-              createdNow = true;
+              advanceMutation({ type: 'PROJECT_CREATED' });
               selected = result.id;
               await onProject(selected);
               emit({ type: "project", projectId: selected });
@@ -224,6 +238,7 @@ export async function runAgent({
             }
             return result;
           } catch (error) {
+            if (changesModel && mutation.can({ type: 'REJECTED' })) advanceMutation({ type: 'REJECTED' });
             const info = publicError(error);
             const operationAdvice = info.code === 'E_INVALID_RETYPE'
               ? 'Retype stays within activity kinds, within gateways, or within same-position events. For a different family, use remove and add; plan incident flows explicitly.'
@@ -322,9 +337,10 @@ export async function runAgent({
     },
   }); } catch (error) { await failCall(error); throw error; }
   const reply = agentReply(result.text, selected, selectedModel, origin);
+  advanceMutation({ type: 'FINISH', sanitized: reply !== result.text });
   return {
     text: reply,
-    incomplete: mutationPending || (createdNow && !savedDiagram) || reply !== result.text,
+    incomplete: mutation.matches('incomplete'),
     messages: result.responseMessages,
     usage: reviewKnown ? {
       inputTokens: result.totalUsage.inputTokens === undefined ? undefined : result.totalUsage.inputTokens + reviewUsage.inputTokens,

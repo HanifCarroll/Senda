@@ -1,4 +1,5 @@
 import { wrapLanguageModel } from 'ai';
+import { providerCallMachine, startProtocol, advanceProtocol } from './protocol-machines.js';
 
 export async function measureAgentPhase({ phase, kind, toolName }, onTiming, action) {
   const started = performance.now();
@@ -28,13 +29,23 @@ export function budgetedModel(model, { reserveCall, settleCall, failCall, kind =
     specificationVersion: 'v4',
     // SDK notification hooks swallow errors; this boundary must stop dispatch.
     wrapGenerate: async ({ doGenerate }) => {
-      await measure('reserve', reserveCall);
+      let phase = startProtocol(providerCallMachine);
+      const advance = event => { phase = advanceProtocol(providerCallMachine, phase, event); };
+      advance({ type: 'RESERVE' });
+      try { await measure('reserve', reserveCall); }
+      catch (error) { advance({ type: 'DENIED' }); throw error; }
+      advance({ type: 'RESERVED' });
       try {
+        advance({ type: 'DISPATCH' });
         const result = await measure('provider', doGenerate);
+        advance({ type: 'RETURNED' });
         await measure('settle', () => settleCall({ inputTokens: result.usage.inputTokens.total, outputTokens: result.usage.outputTokens.total }));
+        advance({ type: 'SETTLED' });
         return result;
       } catch (error) {
-        await measure('failure', () => failCall(error));
+        advance({ type: 'REJECTED', error });
+        await measure('failure', () => failCall(error, { outcome: phase.value }));
+        advance({ type: 'RECORDED' });
         throw error;
       }
     },

@@ -1,12 +1,14 @@
 import Markdown from "react-markdown";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useMachine } from "@xstate/react";
 import { ArrowLeft, ArrowUpRight, Send, Paperclip, Plus } from "lucide-react";
 import { AccountFrame } from "@/components/account-frame";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { api, post, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { createAgentChatMachine, type AgentMessage } from "@/lib/agent-chat-machine";
 
 export const Route = createFileRoute("/app/agent")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -15,209 +17,65 @@ export const Route = createFileRoute("/app/agent")({
   }),
   component: AgentChat,
 });
-type Message = { role: "user" | "assistant"; text: string; incomplete?: boolean };
-type Trial={projectId:string|null;chatId:string|null;limitUsd:number;usedUsd:number;pendingUsd:number;remainingUsd:number};
 function AgentChat() {
-  const search = Route.useSearch(),
-    navigate = Route.useNavigate();
-  const [chat, setChat] = useState(search.chat),
-    [project, setProject] = useState(search.project),
-    [model, setModel] = useState("as-is"),
-    [messages, setMessages] = useState<Message[]>([]),
-    [text, setText] = useState(""),
-    [busy, setBusy] = useState(false),
-    [loading, setLoading] = useState(!!(search.chat || search.project)),
-    [working, setWorking] = useState(false),
-    [available, setAvailable] = useState<boolean | null>(null),
-    [accessMessage, setAccessMessage] = useState(""),
-    [trial,setTrial]=useState<Trial|null>(null),
-    [status, setStatus] = useState(""),
-    [error, setError] = useState("");
-  const end = useRef<HTMLDivElement>(null),
-    abort = useRef<AbortController | null>(null);
-  useEffect(() => {
-    if(busy)return;
-    let active=true;
-    const query=new URLSearchParams();
-    if(search.chat)query.set('chat',search.chat);else if(search.project)query.set('project',search.project);
-    void api<{ available: boolean; message?: string;trial?:Trial }>(`/api/agent/config?${query}`).then(c => {
-      if(!active)return;
-      setAvailable(c.available); setAccessMessage(c.message || "");setTrial(c.trial||null);
-      if(!search.chat&&!search.project&&c.trial?.chatId)void navigate({search:{chat:c.trial.chatId,project:undefined},replace:true,resetScroll:false});
-    })
-      .catch(e => {
-        if(!active)return;
-        if (e instanceof ApiError && e.status === 401) window.location.assign("/sign-in");
-        else { setError(e.message); setAvailable(false); }
+  const search = Route.useSearch(), navigate = Route.useNavigate();
+  const [model, setModel] = useState("as-is"),
+    [messages, setMessages] = useState<AgentMessage[]>([]),
+    [text, setText] = useState("");
+  const end = useRef<HTMLDivElement>(null);
+  const [machine] = useState(() => createAgentChatMachine({
+    config: (route, signal) => {
+      const query = new URLSearchParams();
+      if (route.chat) query.set("chat", route.chat);
+      else if (route.project) query.set("project", route.project);
+      return api(`/api/agent/config?${query}`, { signal });
+    },
+    load: (chat, signal) => api(`/api/agent/chats/${chat}`, { signal }),
+    create: (project, fresh, signal) => api("/api/agent/chats", {
+      method: "POST", signal,
+      body: JSON.stringify(fresh ? { projectId: project, newConversation: true } : project ? { projectId: project } : {}),
+    }),
+    turn: (turn, signal) => fetch(`/api/agent/chats/${turn.chat}/turn`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ requestId: crypto.randomUUID(), text: turn.text }),
+      signal,
+    }),
+    navigate: (route, replace) => { void navigate({ search: { chat: route.chat, project: route.project }, replace, resetScroll: false }); },
+    reset: () => { setMessages([]); setModel("as-is"); },
+    saved: saved => {
+      setModel(saved.model || "as-is");
+      setMessages(previous => {
+        const next = saved.messages;
+        return previous.length === next.length && previous.every((message, index) =>
+          message.role === next[index].role && message.text === next[index].text && !!message.incomplete === !!next[index].incomplete)
+          ? previous : next;
       });
-    return()=>{active=false};
-  }, [busy,working,search.chat,search.project]);
+    },
+    user: request => setMessages(previous => [...previous, { role: "user", text: request }]),
+    stream: event => {
+      if (event.model) setModel(event.model);
+      if (event.type === "done") setMessages(previous => [...previous, { role: "assistant", text: event.text, incomplete: event.incomplete }]);
+    },
+    draft: setText,
+    unauthorized: error => error instanceof ApiError && error.status === 401,
+    signIn: () => window.location.assign("/sign-in"),
+  }));
+  const [snapshot, dispatch] = useMachine(machine, { input: { chat: search.chat, project: search.project } });
+  const { chat, project, available, accessMessage, trial, status, error } = snapshot.context;
+  const pending = snapshot.hasTag("pending") || available === null;
   useEffect(() => {
-    if (!search.project || search.chat) return;
-    let active = true;
-    void post("/api/agent/chats", { projectId: search.project })
-      .then((c) => {
-        if (active)
-          void navigate({
-            search: { chat: c.id, project: undefined },
-            replace: true,
-            resetScroll: false,
-          });
-      })
-      .catch((e) => {
-        if (active) { setError(e.message); setLoading(false); }
-      });
-    return () => {
-      active = false;
-    };
-  }, [search.project, search.chat]);
-  useEffect(() => {
-    if (busy) return;
-    let active = true;
-    let timer: ReturnType<typeof setTimeout>;
-    setChat(search.chat);
-    setProject(search.project);
-    setError("");
-    setWorking(false);
-    if (!search.chat) {
-      setMessages([]);
-      setModel("as-is");
-      setStatus("");
-      setLoading(!!search.project);
-      return;
-    }
-    setLoading(true);
-    setStatus("Opening your conversation…");
-    async function refresh() {
-      try {
-        const c = await api<any>(`/api/agent/chats/${search.chat}`);
-        if (!active) return;
-        setChat(c.id);
-        setProject(c.projectId);
-        setModel(c.model || "as-is");
-        setMessages(previous => {
-          const next = c.messages as Message[];
-          return previous.length === next.length && previous.every((m, i) =>
-            m.role === next[i].role && m.text === next[i].text && !!m.incomplete === !!next[i].incomplete)
-            ? previous : next;
-        });
-        setWorking(c.working);
-        setLoading(false);
-        setStatus(c.working ? "A reply is being prepared. Your saved progress will appear here." : "");
-        if (c.working) timer = setTimeout(refresh, 2000);
-      } catch (e: any) {
-        if (!active) return;
-        setLoading(false);
-        setWorking(false);
-        if (e instanceof ApiError && e.status === 401)
-          window.location.assign("/sign-in");
-        else setError(e.message);
-      }
-    }
-    void refresh();
-    return () => { active = false; clearTimeout(timer); };
-  }, [search.chat, search.project, busy]);
-  const pending = busy || loading || working || available === null;
+    dispatch({ type: "ROUTE_CHANGED", route: { chat: search.chat, project: search.project } });
+  }, [dispatch, search.chat, search.project]);
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
-  useEffect(() => () => abort.current?.abort(), []);
-  async function newConversation() {
-    if (pending || !project) return;
-    setBusy(true);
-    try {
-      const created = await post("/api/agent/chats", {
-        projectId: project,
-        newConversation: true,
-      });
-      setMessages([]);
-      setText("");
-      setError("");
-      setStatus("");
-      setChat(created.id);
-      void navigate({
-        search: { chat: created.id, project: undefined },
-        resetScroll: false,
-      });
-    } catch (e: any) {
-      setError(e.message);
-    } finally { setBusy(false); }
-  }
-  async function send(event: React.FormEvent) {
+  function newConversation() { dispatch({ type: "NEW_CONVERSATION" }); }
+  function send(event: React.FormEvent) {
     event.preventDefault();
-    if (pending || !text.trim()) return;
-    const request = text.trim();
-    setBusy(true);
-    setText("");
-    setError("");
-    setStatus("Reading your message…");
-    try {
-      let id = chat;
-      if (!id) {
-        const c = await post(
-          "/api/agent/chats",
-          project ? { projectId: project } : {},
-        );
-        id = c.id;
-        setChat(id);
-        void navigate({
-          search: { chat: id, project: undefined },
-          replace: true,
-          resetScroll: false,
-        });
-      }
-      setMessages((p) => [...p, { role: "user", text: request }]);
-      const controller = new AbortController();
-      abort.current = controller;
-      const response = await fetch(`/api/agent/chats/${id}/turn`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ requestId: crypto.randomUUID(), text: request }),
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        const e = await response.json();
-        throw new Error(e.message || "Your message could not be sent.");
-      }
-      const reader = response.body!.getReader(),
-        decoder = new TextDecoder();
-      let buffer = "";
-      let completed = false;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let newline;
-        while ((newline = buffer.indexOf("\n")) >= 0) {
-          const event = JSON.parse(buffer.slice(0, newline));
-          buffer = buffer.slice(newline + 1);
-          if (event.type === "status") setStatus(event.text);
-          if (event.projectId) setProject(event.projectId);
-          if (event.model) setModel(event.model);
-          if (event.type === "done") {
-            completed = true;
-            setMessages((p) => [...p, { role: "assistant", text: event.text, incomplete: event.incomplete }]);
-          }
-          if (event.type === "error") {
-            completed = true;
-            setError(event.text);
-          }
-        }
-      }
-      if (!completed) throw new Error("The connection closed before the reply finished. Check the saved conversation before sending again.");
-    } catch (e: any) {
-      setText(request);
-      setError(
-        e.name === "AbortError"
-          ? "The connection closed. Refresh to check saved progress."
-          : e.message,
-      );
-    } finally {
-      setBusy(false);
-      setStatus("");
-      abort.current = null;
-    }
+    dispatch({ type: "SEND", text });
   }
+  function setError(error: string) { dispatch({ type: "SET_ERROR", error }); }
   return (
     <AccountFrame>
       <main className="mx-auto flex min-h-[calc(100dvh-90px)] max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6">
