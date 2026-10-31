@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
-  return (await Promise.all(entries.filter(e => !e.name.startsWith('.dev.vars') && !['node_modules','.git','output','workspaces','.process-scribe','exports','coverage','tmp','dist','dist-cloudflare','.wrangler','.tanstack','routeTree.gen.ts'].includes(e.name)).map(e => e.isDirectory() ? walk(path.join(directory, e.name)) : path.join(directory, e.name)))).flat();
+  return (await Promise.all(entries.filter(e => !e.name.startsWith('.dev.vars') && !['node_modules','.git','output','workspaces','.senda','.process-scribe','exports','coverage','tmp','dist','dist-cloudflare','.wrangler','.tanstack','routeTree.gen.ts'].includes(e.name)).map(e => e.isDirectory() ? walk(path.join(directory, e.name)) : path.join(directory, e.name)))).flat();
 }
 const files = await walk(root);
 for (const file of files) {
@@ -31,8 +31,8 @@ for (const file of files) {
     }
   }
 }
-const skill = await readFile(path.join(root, 'skills/process-scribe/SKILL.md'), 'utf8');
-assert.match(skill, /^---\nname: process-scribe\ndescription: .+\n---/);
+const skill = await readFile(path.join(root, 'skills/senda/SKILL.md'), 'utf8');
+assert.match(skill, /^---\nname: senda\ndescription: .+\n---/);
 assert.ok(skill.split('\n').length < 500, 'Keep the skill focused.');
 const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
 assert.equal(pkg.dependencies['@miragon/bpmn-cli'], '0.8.0');

@@ -10,7 +10,7 @@ Use this checklist after exporting or changing layout. Inspect the rendered resu
 4. Look for ambiguous intersections, shared segments, unnecessarily long routes, excessive bends, unexplained backward edges, crowded joins and wasted space. A real rework loop can go backward. Prefer a simple, visible return path; do not add gateways, link events, or alter conditions solely to improve a metric.
 5. Read a normal case and relevant alternatives aloud using only the diagram. Check recognizable split/join blocks, who acts next, whether parallel branches synchronize, how rework exits, and distinct successful/exceptional outcomes. Ask the intended reader for feedback; record only feedback actually given.
 
-After fixing a drawing, repeat the sweep and compare the saved BPMN, stable IDs, flow endpoints, lane memberships and evidence. Report the views actually inspected and remaining concerns. A clean geometric report is not a claim of semantic correctness, behavioral soundness or human approval.
+After fixing a drawing, repeat the sweep and compare the saved BPMN, stable IDs, flow endpoints, lane memberships and evidence. Report the views actually inspected and remaining concerns.
 
 ## Modeling choices that help readers
 

@@ -6,9 +6,9 @@ Keep committed fixtures synthetic. Do not add source interviews, database files,
 
 Use stable BPMN IDs and preserve the atomic relationship between XML and evidence. Add regression tests for behavior changes that can lose information, misstate validation, or accept an invalid edit. Readability advice must remain distinguishable from structural errors, behavioral findings, human assertions and product conventions.
 
-The skill lives at `skills/process-scribe/SKILL.md`. Its methodology reference is the canonical original summary of the textbook approach. If application behavior and the skill diverge, update both and demonstrate the affected user workflow.
+The skill lives at `skills/senda/SKILL.md`. Its methodology reference is the canonical original summary of the textbook approach. If application behavior and the skill diverge, update both and demonstrate the affected user workflow.
 
-No generated reports, dependencies or benchmark environments belong in the repository. GitHub Actions runs the same checks and the synthetic demo on Linux. A remote passing run does not replace human review of a real process model.
+No generated reports, dependencies or benchmark environments belong in the repository. GitHub Actions runs the same checks and the synthetic demo on Linux.
 
 Production runs on Cloudflare Workers, D1 and private R2. See [deployment and runtime checks](docs/cloudflare.md). The Node server is for local development and review exports. Shared HTTP/account operations live in `src/server/`; model-level reads and writes belong in `src/server/project-models.js`, with authorization and persistence in the Node and Cloudflare adapters. Keep the CLI and offline bundle functional when changing the hosted app.
 
@@ -26,4 +26,4 @@ Production runs on Cloudflare Workers, D1 and private R2. See [deployment and ru
 
 Generated files stay separate from source. `node_modules/` contains installed dependencies; `dist/` and `dist-cloudflare/` contain builds. Recreate them with `npm ci` and the corresponding build command. Keep `dist/` while using the local preview server.
 
-`npm run test:workflow` cleans up its temporary output, including on failure. Add `-- --keep-output` when you want a report and review bundles under `output/`. Manual demos and email previews also save there for inspection; remove them when finished. Keep one useful demo instead of accumulating repeated runs. Local account/project data and credentials live in `.process-scribe/`; that directory is persistent data, not a build cache.
+`npm run test:workflow` cleans up its temporary output, including on failure. Add `-- --keep-output` when you want a report and review bundles under `output/`. Manual demos and email previews also save there for inspection; remove them when finished. Keep one useful demo instead of accumulating repeated runs. Local account/project data and credentials live in `.senda/`; that directory is persistent data, not a build cache.

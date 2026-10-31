@@ -11,7 +11,7 @@ import { PricingPlans } from "./pricing-plans";
 
 const preview = (name: string) => `/marketing/${name}.svg?v=vector-6`;
 const repository = "https://github.com/HanifCarroll/Senda";
-const methodology = `${repository}/blob/main/skills/process-scribe/references/methodology.md`;
+const methodology = `${repository}/blob/main/skills/senda/references/methodology.md`;
 
 const container = "mx-auto w-full max-w-6xl px-5 sm:px-8";
 const display = "font-display tracking-[-0.02em] text-balance";
@@ -363,14 +363,12 @@ export function Marketing() {
                 ))}
               </ol>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Claude is supported. ChatGPT is in beta: it can save a change but sometimes cannot display its reply. Check the saved diagram before repeating a request.{" "}
-                Works with any AI agent that can connect to a remote MCP server with OAuth sign-in (many assistants
-                call this a custom connector). If you prefer
-                a terminal, the{" "}
-                <a href={`${repository}#cli-quickstart`} className={textLink}>
-                  command-line tool and skill
+                Works with Claude, ChatGPT (beta) and other assistants that support custom connectors. Prefer a
+                terminal? Use the{" "}
+                <a href={`${repository}#from-the-command-line`} className={textLink}>
+                  command-line tool
                 </a>{" "}
-                work with local projects.
+                with local projects.
               </p>
             </div>
             <div className={cn(panel, "flex items-center px-4 py-10 sm:px-10 sm:py-14")}>
@@ -410,18 +408,38 @@ export function Marketing() {
           <div className="grid gap-10 md:grid-cols-[0.75fr_1.25fr] md:gap-16">
             <h2 className={h2}>Questions</h2>
             <Accordion type="single" collapsible className="border-t">
-              {[
+              {([
                 [
                   "What kind of diagram do I get?",
                   "A BPMN 2.0 process model, the standard notation for activities, decisions, responsibilities and handoffs. You can explore it in Senda or download a .bpmn file with its layout. Exports are tested with bpmn-js, the open-source modeler behind bpmn.io.",
                 ],
                 [
-                  "Can I start in ChatGPT or Claude?",
-                  "Yes. Claude is supported and ChatGPT is in beta. Connect Senda, sign in and choose New projects. Give your agent the transcript and ask it to map the process. Continue answering questions in the same chat and review the saved diagram in Senda. ChatGPT can save changes but fail to display its reply, so check the saved model before repeating a request.",
+                  "Which agent should I use?",
+                  "Start with Senda’s built-in agent, which you can try free on one project and use on every project with Pro. You can also connect your own Claude, ChatGPT (beta) or another assistant that supports custom connectors, on either plan: add Senda in its connection settings, sign in, and ask it to map the interview. Your assistant’s subscription is separate. Coding agents can use the command-line tool with the downloadable skill.",
                 ],
                 [
-                  "Which AI agents can connect?",
-                  "Any agent that can add a remote MCP server and sign in with OAuth. Some assistants call this a custom connector. Add Senda’s server URL, sign in, and allow new projects or select an existing one. Coding agents can also use the command-line tool with the downloadable skill.",
+                  "Is it free?",
+                  "Yes. Free includes a one-project trial of the built-in agent and up to three saved projects with your own agent, with no payment card. The source code is MIT-licensed.",
+                ],
+                [
+                  "How much built-in AI is included?",
+                  <>
+                    Free includes $0.50 of built-in agent use on one project, which covers clarifications and To-be
+                    revisions. Pro includes $6 a month across your projects. How far that goes depends on the length of
+                    the transcript, the size of the diagram and how many revisions you ask for. See the{" "}
+                    <a href="/usage" className={textLink}>
+                      usage policy
+                    </a>{" "}
+                    for details.
+                  </>,
+                ],
+                [
+                  "What happens when I reach a limit?",
+                  "The built-in agent pauses. Your saved work stays readable and exportable, and you can keep editing it with a connected agent. Daily and shared service limits also apply, and nothing is charged automatically.",
+                ],
+                [
+                  "What counts as a project?",
+                  "A project holds its transcripts and other sources, its As-is model and its To-be model. You can’t delete projects in the app yet; contact support if you need one removed. If you move from Pro back to Free, your existing projects stay available.",
                 ],
                 [
                   "Does Senda run AI on my transcripts?",
@@ -430,10 +448,6 @@ export function Marketing() {
                 [
                   "Who can read my transcripts?",
                   "Projects are private to your account. A connected agent can read the sources only in the projects you share with it, and you can disconnect it at any time.",
-                ],
-                [
-                  "Is it free?",
-                  "Free includes a one-project trial of the built-in agent with a $0.50 lifetime allowance, plus up to three saved cloud projects with your own agent. Pro is $29 USD per month for up to 100 projects and a $6 monthly built-in AI allowance. Daily and shared service limits apply, with no automatic overage charges. Read Pricing for details. The source is MIT-licensed.",
                 ],
                 [
                   "How do I plan a future process?",
@@ -447,7 +461,7 @@ export function Marketing() {
                   "Can I work locally?",
                   "Yes. The command-line tool creates and revises local projects, and exports diagrams and offline review bundles.",
                 ],
-              ].map(([question, answer], i) => (
+              ] as [string, ReactNode][]).map(([question, answer], i) => (
                 <AccordionItem key={question} value={String(i)}>
                   <AccordionTrigger className="py-5 text-base font-normal sm:text-[1.05rem]">{question}</AccordionTrigger>
                   <AccordionContent className="pb-5 text-base leading-relaxed text-muted-foreground">{answer}</AccordionContent>

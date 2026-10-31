@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Definitions_Compensation" targetNamespace="urn:process-scribe:test">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Definitions_Compensation" targetNamespace="urn:senda:test">
   <bpmn:process id="Reservation" name="Reservation cancellation" isExecutable="false">
     <bpmn:startEvent id="Start" name="Reservation requested"><bpmn:outgoing>F_1</bpmn:outgoing></bpmn:startEvent>
     <bpmn:task id="Reserve" name="Reserve capacity"><bpmn:incoming>F_1</bpmn:incoming><bpmn:outgoing>F_2</bpmn:outgoing></bpmn:task>

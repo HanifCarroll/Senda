@@ -13,8 +13,7 @@ The first draft is a small overview. Its trusted review phase also applies to me
 until the user clarifies it. Later turns expand the supported details. Before
 diagram changes are saved, a separate bounded provider call compares the
 candidate's actual graph with the sources. Structural and evidence validation
-run first; a rejected candidate never appends a revision. This consistency
-check does not replace process-owner review.
+run first; a rejected candidate never appends a revision.
 Claims, abstraction contracts and written walkthrough changes pass the same
 consistency check, including revisions that change only those explanations.
 The checker must return a factual finding for every claim, walkthrough step and

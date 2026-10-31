@@ -23,8 +23,8 @@ export default defineConfig({
     },
   },
   define: {
-    "process.env.PROCESS_SCRIBE_HOSTED": '"1"',
-    "process.env.PROCESS_SCRIBE_LOCAL_REVIEW": '"0"',
+    "process.env.SENDA_HOSTED": '"1"',
+    "process.env.SENDA_LOCAL_REVIEW": '"0"',
     "process.env.SENDA_REVIEW_VERSION": JSON.stringify(reviewVersion),
   },
   build: { outDir: "dist-cloudflare" },

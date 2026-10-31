@@ -225,14 +225,14 @@ try {
   assert.ok(Buffer.byteLength(JSON.stringify(methodResult)) < 24000);
   const method = (await tool("get_discovery_method", { reference: 'all' })).documents;
   for (const name of ["SKILL.md", "references/methodology.md", "references/remote.md", "references/planning.md"])
-    assert.equal(method[name], await readFile(new URL(`../skills/process-scribe/${name}`, import.meta.url), "utf8"));
+    assert.equal(method[name], await readFile(new URL(`../skills/senda/${name}`, import.meta.url), "utf8"));
   assert.deepEqual((await value(request("/api/skill"))).references, method);
   const download = await request("/api/skill.zip");
   assert.equal(download.status, 200);
   const files = unzipSync(new Uint8Array(await download.arrayBuffer()));
-  assert.deepEqual(Object.keys(files).sort(), Object.keys(method).map(name => `process-scribe/${name}`).sort());
+  assert.deepEqual(Object.keys(files).sort(), Object.keys(method).map(name => `senda/${name}`).sort());
   for (const [name, text] of Object.entries(method))
-    assert.equal(strFromU8(files[`process-scribe/${name}`]), text);
+    assert.equal(strFromU8(files[`senda/${name}`]), text);
   checks.push("the packaged discovery skill matches source through MCP, HTTP and ZIP download");
 
   for (const [index, proposal] of proposals.entries()) {

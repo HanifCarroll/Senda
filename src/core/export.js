@@ -13,7 +13,7 @@ export async function exportBundle(project, output) {
   await mkdir(path.dirname(destination), { recursive: true });
   try { await mkdir(destination, { mode: 0o700 }); }
   catch (e) { if (e.code === 'EEXIST') throw new ScribeError('EXPORT_EXISTS', 'The export directory already exists. Choose a new output directory.'); throw e; }
-  const staging = path.join(path.dirname(destination), `.process-scribe-export-${randomUUID()}`);
+  const staging = path.join(path.dirname(destination), `.senda-export-${randomUUID()}`);
   try {
     await mkdir(staging, { mode: 0o700 });
     const quality = await assess(snapshot), { diagrams, rendering, bpmnXml } = await diagramViews(snapshot.xml);

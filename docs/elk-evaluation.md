@@ -43,7 +43,7 @@ The accepted hybrids use ELK placement followed by explicit horizontal BPMN resp
 
 The hybrid router was allowed a 120,000-point grid during the experiment; production retains its 30,000-point bound. Separate high-cap and lane-correction controls identify which change helped. Increasing the cap alone did not remove either original crossing.
 
-Verification compares non-DI XML with the source view, retains IDs and role memberships, checks event attachment, applies the same native geometry metrics, and inspects actual browser text rectangles, path/text intersections and clipping. Current and candidate diagrams were visually inspected. The saved project and evidence are unchanged. These checks do not establish formal soundness, process-owner approval, general LLM accuracy or a globally optimal drawing.
+Verification compares non-DI XML with the source view, retains IDs and role memberships, checks event attachment, applies the same native geometry metrics, and inspects actual browser text rectangles, path/text intersections and clipping. Current and candidate diagrams were visually inspected. The saved project and evidence are unchanged.
 
 Local generated comparison bundles include source views, ELK input/output graphs, candidate BPMN/SVG/PNG files, measurements, experiment scripts and their report. The repository deliberately does not bundle the temporary ELK installation or those generated artifacts. To repeat the case, use the committed synthetic fixture and a separate elkjs 0.12.0 installation; do not treat a rejected direct-layout artifact as a production model.
 

@@ -13,14 +13,14 @@ The rounds are:
 
 The script calls the actual CLI in separate processes for initialization, edits, inspection, validation, export and differences. It checks stable element IDs, immutable sources, selected answer passages, fresh walkthroughs, persisted revisions and atomic rejection of stale/invalid edits. It inspects the resulting BPMN graph and event properties against the intended scenarios. Twelve saved scenarios are available for later human walkthrough.
 
-`proposals.js` contains agent-authored modeling decisions and exact source quotations. It is a deterministic replay of this discovery exercise, not a transcript parser, autonomous clarification agent, independent LLM benchmark or BPMN execution engine. The checks do not prove general soundness or model real-world timer races.
+`proposals.js` contains agent-authored modeling decisions and exact source quotations. It is a deterministic replay of this discovery exercise.
 
 Known drawing limitations found by this fixture:
 
 - Native drawings omit message flows whose task endpoint is inside a collapsed subprocess. The review now creates a small view for each scope, with the outside participant shown beside the actual local task. The replay verifies that all eight messages are drawn across six views. Parent diagrams offer links to nested messages instead of pretending those messages connect to the collapsed subprocess itself.
 - Miragon does not create lanes inside subprocesses. The overview uses internal-role lanes; named Finance and Delivery subprocesses and evidence make their detailed responsibilities explicit.
-- Layout metrics and a generated SVG are not proof of legibility. Inspect the exported diagrams and review page in a browser before sharing or approving them.
+- Inspect the exported diagrams and review page in a browser before sharing or approving them.
 
-The review viewer supports subprocess navigation, breadcrumbs, zoom/pan, search, direct message jumps, evidence inspection, and links back to events on enclosing work. Static downloads remain available. These interactions inspect a saved revision; they do not edit or execute it.
+The review viewer supports subprocess navigation, breadcrumbs, zoom/pan, search, direct message jumps, evidence inspection, and links back to events on enclosing work. Static downloads remain available. These interactions inspect a saved revision.
 
 The test deliberately leaves all human review and scenario confirmation records empty. Synthetic answers resolve test discovery questions; they do not establish that a real process owner approved the model.

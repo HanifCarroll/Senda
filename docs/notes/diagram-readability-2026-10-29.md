@@ -1,6 +1,6 @@
 # Diagram readability audit — 29 October 2026
 
-Activities now reserve separate space for task icons, complete labels, step badges and bottom markers. Labels retain a 12-pixel font, explicit line breaks, Unicode and unbroken identifiers; the activity grows instead of dropping wording. The adapter preserves task types, loop and multi-instance markers, collapsed/call activities, transactions, event subprocesses, compensation, ad-hoc work and DI colors. Its adapted glyphs and font metrics retain [MIT attribution](../THIRD_PARTY_NOTICES.md).
+Activities now reserve separate space for task icons, complete labels, step badges and bottom markers. Labels retain a 12-pixel font, explicit line breaks, Unicode and unbroken identifiers; the activity grows instead of dropping wording. The adapter preserves task types, loop and multi-instance markers, collapsed/call activities, transactions, event subprocesses, compensation, ad-hoc work and DI colors. Its adapted glyphs and font metrics retain [MIT attribution](../../THIRD_PARTY_NOTICES.md).
 
 Sizing changes disposable DI. Edges are redocked, supported layout operations repack the view, boundary events and labels are positioned relative to their owners, and a bounded routing pass checks the final geometry. The drawing and portable BPMN export use the same final positions. Original model semantics, sources, evidence and independent histories remain unchanged.
 

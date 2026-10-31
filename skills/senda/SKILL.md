@@ -1,5 +1,5 @@
 ---
-name: process-scribe
+name: senda
 description: Create and iteratively update separate As-is and To-be BPMN diagrams from transcripts, clarification answers and design briefs using connected Senda tools or the local CLI. Use for process discovery, future-process planning and diagram review. Workflow execution and quantitative improvement analysis are outside this skill's focus.
 ---
 
@@ -43,7 +43,7 @@ Inspect sources and the current revision before composing an `apply` proposal. U
 
 ## Verify, validate and improve readability
 
-Run `validate` after a modeling change. Read the four separate areas: structural, behavioral, semantic/evidence, and readability. Follow the [quality guidance](references/methodology.md#quality-review) and distinguish implemented checks from human judgment. Library success is not a proof of correctness or soundness.
+Run `validate` after a modeling change. Read the four separate areas: structural, behavioral, semantic/evidence, and readability. Follow the [quality guidance](references/methodology.md#quality-review) and tell the user which points still need their review.
 
 Resolve structural errors and examine incomplete paths. Conceptual branches can use meaningful business-language conditions; executable expressions are not required. Never infer mutual exclusion or completeness just because conditions exist. Consult the pattern reference for exception-specific checks and unsupported constructs.
 

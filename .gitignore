@@ -6,6 +6,8 @@ node_modules/
 *.sqlite-shm
 *.sqlite-wal
 *.pdf
+.senda/
+# Data folder name used before the rename to Senda
 .process-scribe/
 workspaces/
 exports/

@@ -28,6 +28,6 @@ The verified bridge version is 1.12.0. Codex can register a stdio server using `
 - Readable context reports the visible project, revision, selected scope and step. Remote MCP ownership, consent, stale-write and revocation checks are verified independently by the integration suite.
 - This Codex chat invoked the native tools to create a separate To-be plan from As-is revision 6, read its design brief and save To-be revision 2 with a proposed claim and an open design question. The complete As-is read remained identical. A browser call that attempted to target As-is while To-be was open was rejected. Opening a historical To-be view removed the registered tools; returning to a current model registered them again.
 
-These are synthetic workflow and browser-integration checks, not a measurement of autonomous extraction quality or process-owner approval. A successful native browser tool call does not establish support in every agent client or in the desktop app's built-in browser.
+These are synthetic workflow and browser-integration checks.
 
 Primary sources: [Chrome WebMCP setup](https://developer.chrome.com/docs/ai/webmcp), [native tool API](https://developer.chrome.com/docs/ai/webmcp/imperative), [DevTools WebMCP tools](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/docs/tool-reference.md), [DevTools MCP configuration](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/docs/configuration.md), and [Codex MCP configuration](https://developers.openai.com/codex/mcp).

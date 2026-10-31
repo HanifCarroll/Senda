@@ -141,7 +141,7 @@ export async function createRequestHandler({
           zipSync(
             Object.fromEntries(
               Object.entries(references).map(([name, text]) => [
-                `process-scribe/${name}`,
+                `senda/${name}`,
                 strToU8(text),
               ]),
             ),
@@ -149,12 +149,12 @@ export async function createRequestHandler({
           {
             headers: {
               "content-type": "application/zip",
-              "content-disposition": 'attachment; filename="process-scribe-skill.zip"',
+              "content-disposition": 'attachment; filename="senda-skill.zip"',
             },
           },
         );
       return json({
-        name: "process-scribe",
+        name: "senda",
         references,
         remoteTools: [
           "list_projects",

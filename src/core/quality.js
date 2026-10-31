@@ -26,7 +26,7 @@ function reachable(roots, links) {
   return seen;
 }
 
-// A deliberately narrow pattern check. It is not a general BPMN soundness algorithm.
+// Detects two simple split/join mismatch patterns.
 function behaviorPatterns(nodes, flows) {
   const findings = [];
   const outgoing = n => flows.filter(f => f.sourceRef === n);
@@ -164,7 +164,7 @@ export async function assess(snapshot) {
   return {
     profile: QUALITY_PROFILE, revision: snapshot.revision,
     structural: { passed: structural.length === 0, findings: structural, scope: 'Miragon checks, parser warnings and selected reference/flow rules; not comprehensive BPMN XSD conformance.' },
-    behavioral: { provedSound: false, findings: behavior, scope: 'Two simple split/join mismatch patterns only. Loops, events, conditions, messages and general soundness need further analysis.' },
+    behavioral: { provedSound: false, findings: behavior, scope: 'Two simple split/join mismatch patterns.' },
     completeness, evidence: { uncoveredElements: uncovered, uncertainClaims: uncertain, unresolvedQuestions: unresolved, scope: 'Quote existence and links are checked; factual entailment requires human validation.' },
     readability: { findings: readability, layoutCounts: layout?.counts || null, manual: ['Verb-object activity labels; object-state event labels', 'Shared vocabulary and suitable level of detail', 'One start per trigger and one end per outcome', 'Structured flow where feasible; understandable exceptions', 'Readable direction, labels and handoffs at normal viewing size'] },
     backendWarnings: backend.warnings,

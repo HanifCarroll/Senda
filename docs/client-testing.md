@@ -89,7 +89,7 @@ As-is revision 5, To-be revision 3 and fixed As-is baseline revision 5 were
 independently checked, together with evidence, separate histories and actual
 Chrome-downloaded BPMN files. No extra usage was purchased.
 
-See the [29 October limitation research](limitations-research-2026-10-29.md) for
+See the [29 October limitation research](notes/limitations-research-2026-10-29.md) for
 the remaining ChatGPT display investigation, a verified signed-out download
 edge case and proposed browser-file regression coverage.
 That follow-up also verified actual Senda browser downloads of the production
@@ -97,3 +97,18 @@ Willow project's As-is revision 7 and To-be revisions 4 and 7 in a fresh in-app
 browser. All three files parsed without warnings and matched the saved process
 semantics. This qualifies Senda's signed-in download path separately from the
 ChatGPT consumer UI's earlier download observation.
+
+## ChatGPT retest, 30 October 2026
+
+A fresh ChatGPT conversation with the Senda BPMN plugin (Medium thinking) completed
+the full write journey on production with a synthetic print-shop interview: a first
+draft (As-is revision 2), four clarification answers (As-is revision 4), a deadline
+clarification and a separate future model (As-is revision 5, To-be revision 2).
+ChatGPT asked for permission before each save; each was allowed once. All three
+replies displayed in full, took 1–2 minutes each, and still displayed after a
+reload. The saved models in Senda matched the replies. The "This response couldn't
+load" failure from 28 October did not occur.
+
+Connector results now end with a one-line readable summary after the JSON, such as
+"Saved As-is revision 4. Review it at …", for saves, project lists, reviews and
+exports. The JSON block stays first for clients that parse it.

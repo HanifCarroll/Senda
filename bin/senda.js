@@ -3,6 +3,7 @@ import { Command, InvalidArgumentError } from 'commander';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Project, schema, exportBundle, publicError } from '../src/core/index.js';
+import { moveLegacyDataFolder } from '../src/core/store.js';
 
 const integer = value => {
   if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value))) throw new InvalidArgumentError('Use a positive integer revision.');
@@ -10,12 +11,16 @@ const integer = value => {
 };
 const print = result => process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 const { version } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-const program = new Command().name('process-scribe').description('Create and revise BPMN diagrams with your agent').version(version)
-  .option('-p, --project <directory>', 'Directory containing the process project', '.process-scribe');
+const program = new Command().name('senda').description('Create and revise BPMN diagrams with your agent').version(version)
+  .option('-p, --project <directory>', 'Directory containing the process project', '.senda');
 program.exitOverride();
 program.configureOutput({ writeErr: () => {} });
+const projectDirectory = () => {
+  if (program.getOptionValueSource('project') === 'default') moveLegacyDataFolder();
+  return program.opts().project;
+};
 const run = operation => async (...args) => {
-  const project = new Project(program.opts().project);
+  const project = new Project(projectDirectory());
   try { print(await operation(project, ...args)); } finally { project.close(); }
 };
 
@@ -24,7 +29,7 @@ program.command('init').description('Create a private local discovery project')
   .option('--mode <state>', 'current or proposed', 'current').option('--transcript <file>')
   .action(async opts => {
     const sources = opts.transcript ? [{ id: 'Source_Transcript', title: path.basename(opts.transcript), kind: 'transcript', text: await readFile(opts.transcript, 'utf8') }] : [];
-    const p = await Project.create(program.opts().project, { name: opts.name, purpose: opts.purpose, perspective: opts.perspective, mode: opts.mode, sources });
+    const p = await Project.create(projectDirectory(), { name: opts.name, purpose: opts.purpose, perspective: opts.perspective, mode: opts.mode, sources });
     try { print(await p.inspect()); } finally { p.close(); }
   });
 program.command('schema').description('Print proposal and Miragon operation schemas').action(() => print(schema()));
@@ -51,7 +56,7 @@ program.command('review-scenario').description('Record a human walkthrough of on
   .requiredOption('--expected-revision <n>', 'Current revision', integer).requiredOption('--scenario <id>', 'Scenario to review')
   .requiredOption('--outcome <outcome>', 'confirmed or needs_changes').requiredOption('--reviewer <name>').requiredOption('--notes <text>')
   .action(run((p, { scenario, ...o }) => p.reviewScenario({ ...o, scenarioId: scenario })));
-program.command('finalize').description('Mark a fully reviewed snapshot as reviewed; does not prove soundness')
+program.command('finalize').description('Mark a fully reviewed snapshot as reviewed')
   .requiredOption('--expected-revision <n>', 'Current revision', integer).action(run((p, o) => p.finalize(o.expectedRevision)));
 program.command('export').description('Write a new self-contained review bundle containing source evidence').option('--out <directory>')
   .action(run((p, o) => exportBundle(p, o.out)));

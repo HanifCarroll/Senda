@@ -1,132 +1,124 @@
 <h1><img src="public/brand/logo.svg" alt="Senda" width="210"></h1>
 
-Turn process interviews into clear BPMN diagrams. Clarify decisions, trace each step to its source, and keep revising the process with your agent.
+Senda turns interview transcripts into BPMN process diagrams people can agree on. An AI agent drafts the diagram, every step links back to the passage it came from, and anything the interview left unclear becomes a question you can take back to the people who do the work.
 
-Explore the current process, plan a separate future version, and compare saved revisions. Senda keeps the diagram, source material and clarification answers together in a private project.
+**[Try Senda](https://senda.hanifcarroll.com)** · **[See the example](https://senda.hanifcarroll.com/example)** · **[Documentation](#documentation)**
 
-The project includes a TanStack Start app, an agent skill, a local CLI and a JavaScript library. A connected agent or the built-in Senda agent interprets the conversation; Senda stores the evidence and revisions, applies BPMN edits through [Miragon bpmn-cli](https://github.com/Miragon/bpmn-cli), and exports portable diagrams. The CLI and skill use the `process-scribe` command.
+<img src="public/marketing/evidence.svg" alt="A deposit invoice step selected in a client onboarding diagram, with the transcript passage that supports it." width="100%">
 
-The discovery method follows Chapter 5 of *Fundamentals of Business Process Management*, second edition: boundaries → activities and events → resources and handoffs → control flow → relevant additional detail, with iteration and review throughout. Chapters 1–4 inform interview preparation, abstraction and modeling patterns. [Read the methodology summary](skills/process-scribe/references/methodology.md).
+## What it does
 
-The application is live at **[senda.hanifcarroll.com](https://senda.hanifcarroll.com)** on Cloudflare Workers, with D1 accounts/revision records, private R2 snapshots and passwordless sign-in emails through Cloudflare Email Service. [Cloudflare deployment and compatibility](docs/cloudflare.md).
+- Drafts a BPMN 2.0 model of the current process from an interview transcript.
+- Links each step to the transcript passage that supports it.
+- Records gaps and conflicting accounts as open questions, then revises the same model as answers come in.
+- Saves every revision, so you can see what changed and when.
+- Keeps the current process (As-is) and a planned future process (To-be) as separate models, each with its own history.
+- Exports standard `.bpmn` files with diagram layout.
 
-## Try the complete example
+## Ways to use it
 
-Requires **Node.js 24** and npm. Clone this repository, then run:
+### In the hosted app
+
+Create an account at [senda.hanifcarroll.com](https://senda.hanifcarroll.com). You can work with the built-in agent, or connect Claude or ChatGPT: add Senda as a connector in your assistant's settings, sign in, and ask it to map the interview. Plans and limits are on the [pricing page](https://senda.hanifcarroll.com/pricing).
+
+### With an agent on your computer
+
+The `senda` skill teaches an agent the discovery method and how to use the `senda` command. Install it from a checkout of this repository:
 
 ```sh
 npm ci
-npm test
-npm run check
+npm run install:skill
+```
+
+This links the skill into Claude Code (`~/.claude/skills/senda`) and Codex (`~/.codex/skills/senda`). Add `-- --agent claude` or `-- --agent codex` to install it for one of them. Keep the checkout where it is, because the skill runs the command from it. For the Claude desktop or web app, download the [skill as a ZIP file](https://senda.hanifcarroll.com/api/skill.zip) and upload it under Skills in Claude's settings.
+
+Then start a new session and ask something like:
+
+> Use the Senda skill to model this interview as the current process. Ask me about missing decisions and keep the evidence attached.
+
+### From the command line
+
+The `senda` command keeps each project in a folder with its own database. Run it from the checkout with `node bin/senda.js`, or run `npm link` once to put `senda` on your path.
+
+```sh
+senda --project workspaces/booking init \
+  --name "Project booking" \
+  --purpose "Explain how accepted proposals become bookings" \
+  --perspective "Freelancer" \
+  --transcript examples/transcript.txt
+
+senda --project workspaces/booking apply --file examples/01-discover.json
+senda --project workspaces/booking apply --file examples/02-answer-and-model.json
+senda --project workspaces/booking validate
+senda --project workspaces/booking export
+```
+
+Every change names the revision it was based on, so a stale or invalid edit leaves the saved project unchanged. `senda --help` lists every command, and the [command reference](skills/senda/references/commands.md) describes the change format.
+
+### As a JavaScript library
+
+The package exports `Project`, `exportBundle` and `assess` from [`src/core/index.js`](src/core/index.js). The command line and the web app both use them.
+
+## Try it locally
+
+You need Node.js 24 and npm.
+
+```sh
+npm ci
 npm run demo
 ```
 
-The demo creates a private workspace under the ignored `output/` directory and prints links to two local review pages. The first keeps ambiguous sequencing unresolved. The second uses a synthetic clarification to build the model, adds a written walkthrough and a case for review, then reopens the saved database before exporting. Human approvals and scenario confirmation remain pending.
+The demo builds a synthetic project under `output/` and prints the path to a review page. Open it in a browser to explore the diagram, follow a step to its source passage, and read the clarification that shaped the model. The page works offline.
 
-Open the printed `after` path in a browser to explore the diagram, process explanation, actual clarification answer and cases to review. Click a subprocess to open its detail; use breadcrumbs or Parent to return. Zoom, pan, search for a step, or select a task/connection to see supporting quotations and questions. The message list jumps directly to the view containing an exchange. The bundle works offline and includes static SVG views and a BPMN download. Committed examples and tests are synthetic.
+For a longer interview with three rounds of clarification, run `npm run test:workflow -- --keep-output`. The [example notes](examples/complex-onboarding/README.md) describe what it covers.
 
-For a larger interview with three clarification rounds, run `npm run test:workflow`. It replays a 1,365-word synthetic consultancy-onboarding interview, checking four draft versions. Test output is temporary; use `npm run test:workflow -- --keep-output` to retain the report and diagrams for inspection. It covers parallel Finance/Delivery work, repeated corrections, credit terms, reminders, cancellation/refunds and acknowledged handover. Each CLI command reopens the saved project; assertions check evidence, model changes, stale-edit rejection and the final BPMN structure. All eight message exchanges are drawn across six small views, including outside participants for context. See the [fixture notes](examples/complex-onboarding/README.md) for coverage and limitations.
-
-## Open the web app
+To run the web app on your machine:
 
 ```sh
 npm run build
 npm run serve
 ```
 
-Open `http://127.0.0.1:3000`. The homepage explains the workflow and links to a public example. Connect Senda in your agent's settings, sign in and choose **New projects**. Share the transcript directly in ChatGPT or Claude and ask it to map the process in Senda. The agent creates the private project; clarification answers, corrections and future-process requests can stay in that same chat. Open Senda to explore the diagram, inspect sources, compare revisions and export BPMN. Accounts with the built-in agent enabled can also choose **Talk to Senda** and work directly in the app. You can create projects and upload transcripts there. See [built-in agent setup and limits](docs/hosted-agent.md). The app uses **TanStack Start + React**, **shadcn/ui (Radix)** and the Ink + Teal palette. [Hosted architecture, compatibility, limits and deployment](docs/hosted.md).
+Then open `http://127.0.0.1:3000`. Use `npm run dev:hosted` while you work on the app.
 
-Hosted launch plans: **Free** includes a one-project Luna trial with a US$0.50 lifetime allowance, plus creation of 3 saved projects with a connected agent. **Pro** is US$29/month for up to 100 saved projects and built-in chat with a US$6 monthly AI allowance. Daily and shared service limits apply, with no automatic overages. Existing work remains readable, editable through a connected agent and exportable after cancellation. Claude is supported; ChatGPT is in beta because replies can fail to display after changes are saved. See [billing and release gates](docs/billing.md).
+## How it works
 
-Each project separates **As-is · Current process** from **To-be · Planned future**. Start a To-be draft from a selected As-is revision and a design brief, then clarify and revise it with your agent. Each model keeps its own sources, questions and revision history; future edits leave the As-is process intact. The plan retains its original baseline when the As-is process changes. [Future-process modeling method](skills/process-scribe/references/planning.md).
+Discovery follows chapter 5 of *Fundamentals of Business Process Management*. The agent starts with the process boundaries, then maps the activities and events, the people and handoffs, and the control flow, and asks about anything the interview didn't settle. The [method summary](skills/senda/references/methodology.md) covers the stages, and the [planning guide](skills/senda/references/planning.md) covers To-be models.
 
-For local exported snapshots, use `npm run preview` and open `/local`; the preview keeps those files on loopback and retains existing `/?review=…` links. `PROCESS_SCRIBE_REVIEWS` selects another local export root. Local snapshots use manual agent/CLI updates and exports; hosted projects use the authorized service and do not expose that filesystem library. Exact duplicate exports share one visible version.
+Senda stores the transcripts, answers and revisions, and checks every revision before saving it. [What Senda checks](docs/quality.md) lists those checks and how a person approves a finished model.
 
-The diagram workspace uses the available screen height and can expand to fill the window. Evidence starts collapsed, including when a saved link selects a step. Open **Evidence** explicitly to inspect it; the desktop panel resizes, and the mobile view uses a bottom sheet. Source passages open in a drawer with a direct return to the diagram. Message links say whether they focus a message in this diagram or open a named subprocess or diagram. The URL retains the selected review, section, view and step; session storage remembers the pan and zoom without saving transcript text.
-
-The walkthrough and source screens use narrower reading columns. Open questions appear before answer history. Continue the conversation with your agent to answer questions, correct the diagram or give review feedback; the app has no prompt-copy dialogs. In a hosted project you can also save an answer directly beside its question for the agent to read. Review checks prioritize the next question or case, with detailed diagram changes collapsed below the business summary.
-
-`npm run dev:hosted` runs the full app in Vite development; `npm run dev` retains local snapshot development. `npm run typecheck` checks the React app after generating the route tree with a build. Portable `review.html` bundles remain available for offline sharing and do not require running the app.
-
-The shared layout pass compares lane/pool display orders, reroutes connections through free space and keeps branch conditions near their decisions. It protects text and pool/lane titles, and never changes responsibility assignments, process behavior or saved project geometry. **Download BPMN** now includes the improved layout in standard BPMN DI. **Download this view** offers an SVG or a standalone BPMN view with the visible outside participants. Fresh bundles retain the exact saved XML as `model-original.bpmn`. Review checks identify views with remaining layout concerns. The complex fixture's crossings and text protection are checked in the regression suite; a cleaner drawing is not a proof of process correctness. See [portable exports and layout research](docs/portable-bpmn.md) and the skill's [all-view readability checklist](skills/process-scribe/references/readability.md).
-
-## Use it with an agent
+## Development
 
 ```sh
-npm run install:skill
+npm test
+npm run check
+npm run build
+npm run typecheck
 ```
 
-This creates a symlink at `$CODEX_HOME/skills/process-scribe` (normally `~/.codex/skills/process-scribe`), pointing to this checkout. It refuses to replace a different existing skill. Keep the checkout in place. Start a new agent session if the skill is not yet listed.
+Run the build before the typecheck on a fresh checkout, because the build generates the route list. [CONTRIBUTING.md](CONTRIBUTING.md) explains where code belongs and what to run for each kind of change. Changes between versions are in the [changelog](CHANGELOG.md).
 
-An example request:
+## Documentation
 
-> Use $process-scribe to model this interview as the current process. Ask me about missing decisions and ordering, keep the evidence attached, and give me a diagram to review.
+- [Architecture](docs/architecture.md): how the core, server, web app and Worker fit together
+- [Hosted app](docs/hosted.md): accounts, the agent connection and limits
+- [Built-in agent](docs/hosted-agent.md): setup and usage limits
+- [Cloudflare](docs/cloudflare.md): deployment and runtime checks
+- [Authentication](docs/authentication.md): sign-in and email
+- [Billing](docs/billing.md): plans and payment setup
+- [Exports and layout](docs/portable-bpmn.md): BPMN files, views and diagram layout
+- [What Senda checks](docs/quality.md): validation and review
+- [Client testing](docs/client-testing.md): tested agent connections
+- [Branding](docs/branding.md) and [marketing page](docs/marketing-design.md)
 
-The skill uses the host agent's existing tools and model. It guides discovery; it is not a trained extraction model or a guarantee of semantic accuracy. The application checks evidence references and requires human review before finalization.
+Working notes from testing and research are in [docs/notes](docs/notes/README.md).
 
-## CLI quickstart
+## Data and privacy
 
-These commands run from the checkout. `--project` selects a directory containing a persistent SQLite database. Use an ignored workspace or a private directory for real material.
+Local projects stay on your computer, in the folder you pass to `--project` (`.senda` by default). Hosted projects are private to your account, and a connected agent can open only the projects you allow. Exported review bundles include the full transcript text, so check what a bundle contains before you share it. Everything committed to this repository, including the public example, is synthetic.
 
-```sh
-node bin/process-scribe.js --project workspaces/booking init \
-  --name "Project booking" \
-  --purpose "Explain how accepted proposals become bookings" \
-  --perspective "Freelancer" \
-  --transcript examples/transcript.txt
+## License and attribution
 
-node bin/process-scribe.js --project workspaces/booking apply --file examples/01-discover.json
-node bin/process-scribe.js --project workspaces/booking inspect
-node bin/process-scribe.js --project workspaces/booking apply --file examples/02-answer-and-model.json
-node bin/process-scribe.js --project workspaces/booking apply --file examples/03-review-context.json
-node bin/process-scribe.js --project workspaces/booking validate
-node bin/process-scribe.js --project workspaces/booking export
-```
+Senda is released under the [MIT license](LICENSE). Third-party dependencies keep their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Diagram editing uses [Miragon bpmn-cli](https://github.com/Miragon/bpmn-cli) 0.8.0.
 
-Every edit names the revision it was based on. A failed operation, invalid quote or stale revision leaves the previous snapshot intact. Sources cannot be overwritten. Changes to the model or discovery records invalidate prior reviews and scenario feedback; a retained written walkthrough becomes visibly stale until refreshed. Use `history` and `diff --from 1` to inspect the evolution, including readable descriptions of diagram changes.
-
-`schema` prints the proposal schema and Miragon's operation schema; `--help` lists commands. [Command and proposal reference](skills/process-scribe/references/commands.md).
-
-## What the quality report means
-
-| Area | Implemented checks | Still requires judgment |
-| --- | --- | --- |
-| Structural verification | Miragon validation, parser diagnostics, scope/reference rules and selected compensation checks | Comprehensive BPMN XSD conformance is not claimed |
-| Behavioral verification | Two narrow split/join mismatch patterns, including the negative deadlock fixture | General soundness, loops, events, message interactions, condition coverage |
-| Semantic validation | Exact quotes and references, open questions/conflicts, source context, abstraction contracts, current/proposed separation | Whether the evidence supports the claims and the model matches the real process completely |
-| Readability | Layout metrics, branch labels, routing degree, decomposition suggestions | Wording, vocabulary, granularity, clear handoffs and comprehension by the intended reader |
-
-**A structurally valid model can still be wrong.** Review records cover semantic, behavioral and pragmatic review separately. A human can record approval or request changes; the agent must not invent approval. Approvals are local records, not authenticated identities. `finalize` marks the exact content as **reviewed**, not proven sound, deployment-ready or executable.
-
-The conceptual profile accepts meaningful business-language branch conditions without requiring executable expressions. Intentionally unspecified subprocesses need an explicit reason and input/outcome contract. Compensation handlers use their own association checks rather than ordinary start/end paths. Genuine missing paths and incomplete decisions still prevent finalization.
-
-Use `review-scenario` to record actual human feedback on a saved case. A recorded case must be confirmed before finalization, but creating cases and finalizing the model are optional during draft iteration. A human walkthrough is not an execution simulation.
-
-Readability suggestions are advisory. They should never change real process behavior merely to improve appearance. The selected convention leaves split gateways unlabeled and labels outgoing conditions explicitly; Miragon's conflicting question-name advisory is retained in the report with an explanation of the override.
-
-## Scope of version 0.3
-
-- Transcript-to-diagram discovery and iterative clarification through a local CLI and JavaScript API, with durable revisions and portable review bundles.
-- Optional audience/owner context, stakeholder coverage, evidence basis and attribution, conflicts, intentional abstractions, written walkthroughs and concrete review cases.
-- Generic descriptive BPMN with the versioned `dumas-conceptual-v2` profile and incomplete drafts. Ordinary paths, accepted abstractions and compensation are assessed separately.
-- Imports with parser warnings are rejected to avoid silent data loss. Engine-specific extensions need explicit compatibility work; no promise of arbitrary vendor round trips.
-- Event and ad hoc subprocesses can remain drafts but need additional validation support before this profile will finalize them.
-- Private account projects, source uploads, agent consent/revocation, authenticated MCP, a shared service API, revision history, automatic refresh and progressive WebMCP browser tools. Separate As-is and To-be models support iterative future-process planning with a pinned baseline. The public deployment uses Cloudflare Workers, D1, private R2 storage and passwordless sign-in emails and optional Google sign-in. Both the Worker and Node adapters support CIMD and dynamic OAuth registration.
-- The offline review includes scoped diagrams with outside message participants, subprocess navigation, zoom/pan, search, message links and evidence inspection. Empty subprocesses remain visible as discovery gaps without blank detail views. Static SVGs remain available when scripting is disabled.
-- Layout checking does not certify the diagram. The review derives fresh layouts without modifying the project or its evidence. Complete BPMN exports preserve process semantics and carry improved DI; standalone view files contain only their selected scope. Fonts and subprocess context support vary between editors. `quality.json` distinguishes saved-model checks from view geometry and message coverage.
-- Version 0.1 project history is preserved without rewriting snapshots. New content revisions use format 2; old profile approvals need fresh feedback under the updated checks.
-- Quantitative business analysis, simulation, process mining and workflow execution are outside this release. To-be support focuses on planning, clarifying and revising the future diagram.
-
-The automated suite exercises persistence, atomic failure, stale writes, evidence integrity, old-project compatibility, walkthrough/scenario invalidation, conceptual conditions, abstraction, compensation, hierarchy exports, selected event/repetition fixtures, the CLI and HTML escaping. It is **not an independent LLM evaluation**. Use a real transcript and a clarification round with a process owner to assess discovery quality.
-
-## Data and publication
-
-Local projects remain local. Shared projects are stored in the configured service data directory and accessible to their owner and selected agent connections. Database files, `.env` files, workspaces, exports, output and PDFs are ignored by Git. Reports intentionally contain source quotations and full source text, so review the bundle before sharing it. An ignore file does not prevent someone from explicitly force-adding private material. The public example and marketing screenshots contain only synthetic data.
-
-The textbook PDF, extracts, figures and private experiment notes are not in this repository. The public skill contains an original methodological summary with attribution.
-
-## Implementation and attribution
-
-[Architecture and backend decision](docs/architecture.md) · [Development instructions](CONTRIBUTING.md) · [MIT license](LICENSE)
-
-The implementation pins `@miragon/bpmn-cli` 0.8.0. Third-party dependencies retain their respective licenses. Methodology reference: Marlon Dumas, Marcello La Rosa, Jan Mendling and Hajo A. Reijers (2018), *Fundamentals of Business Process Management*, 2nd ed., Springer, Chapter 5, §§5.3–5.4, pp. 177–193. [DOI](https://doi.org/10.1007/978-3-662-56509-4). This project is independent of the authors and Miragon.
+The discovery method is an original summary based on Marlon Dumas, Marcello La Rosa, Jan Mendling and Hajo A. Reijers (2018), *Fundamentals of Business Process Management*, 2nd ed., Springer, chapter 5, §§5.3–5.4, pp. 177–193. [DOI](https://doi.org/10.1007/978-3-662-56509-4).

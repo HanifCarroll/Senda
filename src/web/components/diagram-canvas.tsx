@@ -67,7 +67,7 @@ export function DiagramCanvas({
     const abort = new AbortController();
     let observer: ResizeObserver | undefined;
     let saveTimer: ReturnType<typeof setTimeout> | undefined;
-    const key = `process-scribe.camera.v1:${storageKey}:${view.elementId}`;
+    const key = `senda.camera.v1:${storageKey}:${view.elementId}`;
     let flush = () => {};
     try {
       const svg = safeSvg(view.svg);

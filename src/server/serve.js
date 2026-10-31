@@ -4,8 +4,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApplication } from "./application.js";
 import { createNodeHandler } from "./node-adapter.js";
+import { moveLegacyDataFolder } from "../core/store.js";
 
-process.env.PROCESS_SCRIBE_HOSTED = "1";
+process.env.SENDA_HOSTED = "1";
 const port = Number(process.env.PORT || 3000);
 const origin = process.env.APP_URL || `http://127.0.0.1:${port}`;
 const parsed = new URL(origin);
@@ -20,13 +21,14 @@ if (
 )
   throw new Error("Public deployments require HTTPS.");
 if (
-  process.env.PROCESS_SCRIBE_LOCAL_REVIEW === "1" &&
+  process.env.SENDA_LOCAL_REVIEW === "1" &&
   (!["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname) ||
     !["127.0.0.1", "::1"].includes(process.env.HOST || "127.0.0.1"))
 )
   throw new Error("Local export reviews must run on a loopback-only server.");
+if (!process.env.SENDA_DATA) moveLegacyDataFolder();
 const directory = path.resolve(
-  process.env.PROCESS_SCRIBE_DATA || ".process-scribe/hosted",
+  process.env.SENDA_DATA || ".senda/hosted",
 );
 const application = await createApplication({ origin, directory });
 const root = fileURLToPath(new URL("../../dist/client/", import.meta.url));

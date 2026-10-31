@@ -23,7 +23,7 @@ Production opened the actual US$29 monthly Checkout through Senda's UI. The
 session was deliberately expired unpaid. The real signed expiry notification
 was recorded, without a payment intent, subscription or paid entitlement. This
 verifies live wiring and the unpaid gate, rather than a successful live charge.
-See [billing qualification](billing.md).
+See [billing qualification](../billing.md).
 
 ## Stripe payment-method form
 

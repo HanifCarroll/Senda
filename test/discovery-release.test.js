@@ -12,7 +12,7 @@ const fixture = name => readFile(new URL(`fixtures/${name}.bpmn`, import.meta.ur
 const example = async name => JSON.parse(await readFile(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
 const change = (p, extra = {}) => ({ expectedRevision: p.read().revision, summary: 'Synthetic regression change', ...extra });
 async function setup(t, booking = false) {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'process-scribe-release-'));
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'senda-release-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const p = await Project.create(path.join(dir, 'project'), { name: 'Synthetic review', purpose: 'Verify discovery behavior', perspective: 'Test participant', sources: [{ id: 'Source_Transcript', title: 'Synthetic transcript', kind: 'transcript', text: await readFile(new URL('../examples/transcript.txt', import.meta.url), 'utf8') }] });
   t.after(() => p.close());
@@ -197,7 +197,7 @@ test('multi-instance markers and non-interrupting timer semantics survive revisi
 test('scenario CLI records feedback and reports unknown IDs without appending', async t => {
   const { p, dir } = await setup(t, true);
   await p.apply(await example('03-review-context'));
-  const cli = (...args) => spawnSync(process.execPath, ['bin/process-scribe.js', '--project', path.join(dir, 'project'), 'review-scenario', '--expected-revision', String(p.read().revision), '--outcome', 'confirmed', '--reviewer', 'Synthetic test reviewer', '--notes', 'Fixture-only feedback.', ...args], { encoding: 'utf8' });
+  const cli = (...args) => spawnSync(process.execPath, ['bin/senda.js', '--project', path.join(dir, 'project'), 'review-scenario', '--expected-revision', String(p.read().revision), '--outcome', 'confirmed', '--reviewer', 'Synthetic test reviewer', '--notes', 'Fixture-only feedback.', ...args], { encoding: 'utf8' });
   const missing = cli('--scenario', 'Missing');
   assert.equal(missing.status, 1);
   assert.equal(p.read().revision, 4);

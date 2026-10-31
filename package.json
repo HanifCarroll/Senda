@@ -9,7 +9,7 @@
     "node": ">=24.0.0 <25"
   },
   "bin": {
-    "process-scribe": "bin/process-scribe.js"
+    "senda": "bin/senda.js"
   },
   "exports": "./src/core/index.js",
   "files": [
@@ -28,16 +28,16 @@
     "test:cloudflare:browser": "node scripts/test-cloudflare-browser.js",
     "check": "node scripts/check-project.js",
     "demo": "node scripts/demo.js",
-    "start": "node bin/process-scribe.js",
+    "start": "node bin/senda.js",
     "install:skill": "node scripts/install-skill.js",
     "dev": "vite dev",
     "build": "vite build",
-    "preview": "PROCESS_SCRIBE_LOCAL_REVIEW=1 node src/server/serve.js",
+    "preview": "SENDA_LOCAL_REVIEW=1 node src/server/serve.js",
     "preview:emails": "node scripts/preview-account-emails.js",
     "build:brand": "node scripts/build-brand-assets.js",
     "build:marketing": "node scripts/build-marketing-previews.js",
     "serve": "node src/server/serve.js",
-    "dev:hosted": "PROCESS_SCRIBE_HOSTED=1 vite dev",
+    "dev:hosted": "SENDA_HOSTED=1 vite dev",
     "browser:webmcp": "node scripts/open-webmcp-browser.js",
     "typecheck": "tsc --noEmit",
     "build:cloudflare": "vite build --config vite.cloudflare.config.ts",

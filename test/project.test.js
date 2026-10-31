@@ -11,7 +11,7 @@ import { renderReview } from '../src/server/review.js';
 const fixture = name => readFile(new URL(`fixtures/${name}.bpmn`, import.meta.url), 'utf8');
 const example = async name => JSON.parse(await readFile(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
 async function setup(t, modeled = false) {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'process-scribe-test-'));
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'senda-test-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const p = await Project.create(path.join(dir, 'project'), { name: 'Booking', purpose: 'Document booking', perspective: 'Freelancer', sources: [{ id: 'Source_Transcript', title: 'Synthetic interview', kind: 'transcript', text: await readFile(new URL('../examples/transcript.txt', import.meta.url), 'utf8') }] });
   t.after(() => p.close());
@@ -234,7 +234,7 @@ test('export is self-contained, escapes source markup and refuses to overwrite p
 test('CLI works across separate processes and returns structured stale-revision errors', async t => {
   const { dir } = await setup(t);
   const projectDir = path.join(dir, 'cli');
-  const cli = (...args) => spawnSync(process.execPath, ['bin/process-scribe.js', '--project', projectDir, ...args], { encoding: 'utf8' });
+  const cli = (...args) => spawnSync(process.execPath, ['bin/senda.js', '--project', projectDir, ...args], { encoding: 'utf8' });
   const init = cli('init', '--name', 'CLI example', '--purpose', 'Test persistence', '--perspective', 'Freelancer', '--transcript', 'examples/transcript.txt');
   assert.equal(init.status, 0, init.stderr);
   assert.equal(JSON.parse(init.stdout).revision, 1);

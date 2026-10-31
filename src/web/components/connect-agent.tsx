@@ -121,7 +121,7 @@ export function ConnectAgent({ label = "Connect your agent" }: { label?: string 
           </li>
         </ol>
         <Button variant="outline" asChild>
-          <a href="/api/skill.zip" download="process-scribe-skill.zip">
+          <a href="/api/skill.zip" download="senda-skill.zip">
             <Download data-icon="inline-start" />
             Download discovery method
           </a>

@@ -1,12 +1,12 @@
 # Shared projects and agent connections
 
-The product is Senda, live at `https://senda.hanifcarroll.com` on Cloudflare Workers. See [Cloudflare resources, deployment and runtime verification](cloudflare.md). The repository is [HanifCarroll/Senda](https://github.com/HanifCarroll/Senda). The `process-scribe` CLI, skill, data-directory names and existing project databases retain their identifiers for compatibility.
+The product is Senda, live at `https://senda.hanifcarroll.com` on Cloudflare Workers. See [Cloudflare resources, deployment and runtime verification](cloudflare.md). The repository is [HanifCarroll/Senda](https://github.com/HanifCarroll/Senda). The CLI command, agent skill and local data directory are all named `senda`.
 
 ## Local development
 
 Use Node 24. `npm ci`, `npm run build`, then `npm run serve` runs the public homepage, example, account screens, private project app, HTTP API and MCP endpoint. Local development defaults to `http://127.0.0.1:3000`. `APP_URL` must match the loopback origin without a trailing slash. Set `PORT` and `APP_URL` together to use another port. `npm run dev:hosted` enables the same API in Vite development.
 
-`PROCESS_SCRIBE_DATA` defaults to `.process-scribe/hosted`. It contains the account database, project catalog and one ordinary Senda project database per opaque UUID. Do not put it in a publicly served directory. The service reuses `Project` for all source/model mutations and the improved `diagramViews` pipeline for review and export. The local CLI, local review mode and offline bundles retain their existing behavior. Local export-file server functions are disabled in hosted mode: private local files are never made available as a public example.
+`SENDA_DATA` defaults to `.senda/hosted`. It contains the account database, project catalog and one ordinary Senda project database per opaque UUID. Do not put it in a publicly served directory. The service reuses `Project` for all source/model mutations and the improved `diagramViews` pipeline for review and export. The local CLI, local review mode and offline bundles retain their existing behavior. Local export-file server functions are disabled in hosted mode: private local files are never made available as a public example.
 
 The public `/example` is an explicitly generated synthetic fixture, independent of private account data. Rebuild it with `node scripts/build-public-example.js` after relevant modeling/layout changes. Its first draft and final version include scripted clarification rounds and unapproved human-review cases.
 
@@ -16,7 +16,7 @@ Better Auth 1.7.14 handles accounts, HTTP-only sessions, session expiry, Google 
 
 Every source, project, revision, check, review, browser-tool and BPMN operation checks account ownership before opening the project. Agents also need an explicit project grant. UUIDs identify projects; host paths are never public project identifiers. Private API responses use `no-store`. Browser writes require the exact configured Origin and JSON content type. HTTP bodies are limited to 600 KB, proposals to 500 operations, and projects to 40 sources / 1 MB of source text. Cloudflare applies a 240-request-per-minute peer limit alongside Better Auth's database rate limits. The Worker supplies the trusted Cloudflare peer header itself. The local Node adapter uses its own peer limit; do not trust arbitrary forwarded IP headers.
 
-Human browser answers append immutable answer sources. They remain available beside the corresponding open question until the modeling agent revises the model and resolves it with evidence. Merely receiving an answer does not establish the model's interpretation. Existing sources and past revisions remain immutable. A stale or invalid batch changes neither the model nor its evidence.
+Human browser answers append immutable answer sources. They remain available beside the corresponding open question until the modeling agent revises the model and resolves it with evidence. Existing sources and past revisions remain immutable. A stale or invalid batch changes neither the model nor its evidence.
 
 ## As-is and To-be models
 

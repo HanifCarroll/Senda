@@ -26,7 +26,7 @@ Structural rules concern valid combinations and connections of modeling elements
 
 Behavioral rules concern what can happen when tokens move through the model. A diagram can be structurally acceptable while work deadlocks, repeats forever, never executes, or continues with unintended duplicate tokens. Soundness includes the possibility of completion, proper completion, and absence of dead activities. Control-flow analysis normally abstracts other aspects; data and communication need attention too.
 
-Senda implements Miragon validation, parser diagnostics and selected additional checks. It detects two simple mismatched split/join patterns: exclusive alternatives meeting at a parallel join, and parallel branches meeting at an exclusive merge. These checks do **not** constitute a general soundness proof. No exhaustive state-space analysis or comprehensive XSD validation is implemented.
+Senda implements Miragon validation, parser diagnostics and selected additional checks. It detects two simple mismatched split/join patterns: exclusive alternatives meeting at a parallel join, and parallel branches meeting at an exclusive merge.
 
 The exclusive-to-parallel deadlock pattern blocks this profile's finalization. The parallel-to-exclusive pattern is advisory: repeated continuation may be intentional, so the reviewer must establish the intended behavior rather than automatically replacing the merge.
 
@@ -38,7 +38,7 @@ Exact quotations and element links make a claim auditable. They cannot establish
 
 ### Pragmatic quality: certification by use
 
-Judge whether the intended audience can understand and use the model, and whether it can be maintained and learned from. Show the rendered diagram at its normal reading size. Ask the reader to explain a case and identify who acts, what triggers work and why each branch is taken. Merely passing visual metrics does not establish comprehension.
+Judge whether the intended audience can understand and use the model, and whether it can be maintained and learned from. Show the rendered diagram at its normal reading size. Ask the reader to explain a case and identify who acts, what triggers work and why each branch is taken.
 
 Use a consistent direction, normally from upper left toward lower right where appropriate; reduce crossings, crowded labels and unnecessary bends. Keep related work visually organized, make handoffs evident and use a shared business vocabulary. A legitimate loop may need a backward edge: preserving behavior takes priority over a layout score.
 

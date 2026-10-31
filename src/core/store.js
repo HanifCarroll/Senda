@@ -1,15 +1,26 @@
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync, existsSync, closeSync, openSync } from 'node:fs';
+import { mkdirSync, existsSync, closeSync, openSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { hash } from './hash.js';
 export { contentHash } from './hash.js';
 import { requireThat, ScribeError } from './errors.js';
 
 
+// Renames a default data folder created before the rename, unless a .senda folder already exists.
+export function moveLegacyDataFolder(parent = process.cwd()) {
+  const current = path.join(parent, '.senda'), legacy = path.join(parent, '.process-scribe');
+  if (!existsSync(current) && existsSync(legacy)) renameSync(legacy, current);
+}
+
 export class Store {
   constructor(directory, { create = false } = {}) {
     this.directory = path.resolve(directory);
-    this.filename = path.join(this.directory, 'process-scribe.sqlite');
+    this.filename = path.join(this.directory, 'senda.sqlite');
+    // Projects created before the rename use the old database name. Move the WAL files first and the
+    // database last, so an interrupted move is completed on the next open without losing commits.
+    const legacy = path.join(this.directory, 'process-scribe.sqlite');
+    if (!existsSync(this.filename) && existsSync(legacy))
+      for (const suffix of ['-wal', '-shm', '']) if (existsSync(legacy + suffix)) renameSync(legacy + suffix, this.filename + suffix);
     if (create) {
       mkdirSync(this.directory, { recursive: true, mode: 0o700 });
       try { closeSync(openSync(this.filename, 'wx', 0o600)); }

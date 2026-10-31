@@ -33,7 +33,7 @@ If the internal behavior is simply unknown and needed for the purpose, record th
 
 ## Current support and limits
 
-This table describes the companion application's conceptual profile. Generic native editing/import/rendering does not imply specialized validation or formal soundness.
+This table describes the companion application's conceptual profile.
 
 | Construct | What the app checks or supports | What remains for the agent and reviewer |
 | --- | --- | --- |
@@ -45,6 +45,6 @@ This table describes the companion application's conceptual profile. Generic nat
 | Event or ad hoc subprocess | May be retained as a draft; finalization explicitly reports unsupported specialized validation | Do not replace the real behavior with a made-up sequence to make finalization pass |
 | Multiple scopes and message exchanges | Review views show each scope with its local message endpoints and outside participants for context; subprocess navigation and message links connect the views | Inspect child diagrams, sender/recipient evidence and export message coverage. Context participants are view abstractions; the saved BPMN is unchanged. Layout metrics do not certify readability |
 
-Plain-language conditions are enough for conceptual modeling. No executable expression language, service binding, or workflow deployment is implemented. The application does not prove general behavioral soundness.
+Plain-language conditions are enough for conceptual modeling.
 
 Basis: Dumas et al. (2018), Chapters 3–4, especially printed pp. 78–107 and 117–139; conceptual/executable distinction and expressions in Chapter 10, pp. 372–399. Examples and implementation rules here are original adaptations.

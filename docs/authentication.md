@@ -55,7 +55,7 @@ access is requested. Better Auth requires verified email before issuing a Google
 session and uses its normal verified-email account-linking rules.
 
 Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Workers secrets. An ignored,
-owner-only template is prepared at `.process-scribe/google-oauth.json`. Fill it
+owner-only template is prepared at `.senda/google-oauth.json`. Fill it
 privately, then apply it with `npx wrangler secret bulk <private-file.json>`.
 Never commit a downloaded Google credential file or paste its secret into chat.
 The Google button appears only when both values are configured. The production
