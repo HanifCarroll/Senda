@@ -2,7 +2,7 @@ import { SendaAgentLink } from "@/components/senda-agent-link";
 import { createFileRoute } from "@tanstack/react-router";
 import { savedModelSignIn } from '../../shared/model-links.js';
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, MessageSquare, ArrowLeft, MoreHorizontal, Download, RefreshCw } from "lucide-react";
+import { Plus, MessageSquare, ArrowLeft, MoreHorizontal, Download, RefreshCw, Trash2 } from "lucide-react";
 import { projectTitle } from "@/lib/review-navigation";
 import { api, post, ApiError } from "@/lib/api";
 import type { Review, ReviewChoice, Section } from "@/lib/types";
@@ -84,6 +84,9 @@ function Workspace() {
     [sourceOpen, setSourceOpen] = useState(false),
     [answerOpen, setAnswerOpen] = useState(false),
     [detailsOpen, setDetailsOpen] = useState(false),
+    [deleteOpen, setDeleteOpen] = useState(false),
+    [deleting, setDeleting] = useState(false),
+    [deleteError, setDeleteError] = useState(""),
     [busy, setBusy] = useState(false),
     [text, setText] = useState(""),
     [question, setQuestion] = useState("");
@@ -215,6 +218,19 @@ function Workspace() {
       setBusy(false);
     }
   }
+  async function deleteProject() {
+    if (deleting) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await post(`/api/projects/${projectId}/delete`, { confirm: true });
+      requestId.current++;
+      window.location.assign(`/app?deleted=${encodeURIComponent(projectId)}`);
+    } catch (e: any) {
+      setDeleteError(e.message);
+      setDeleting(false);
+    }
+  }
   const openQuestions =
     review?.discovery.questions.filter((q) => q.status !== "answered") || [];
   return (
@@ -246,6 +262,23 @@ function Workspace() {
                 <Button variant="outline" disabled={!review || !!location.revision} onClick={() => { setDetailsOpen(false); setText(""); setSourceOpen(true); }}><Plus data-icon="inline-start" />Add transcript</Button>
                 <Button variant="outline" disabled={!openQuestions.length || !!location.revision} onClick={() => { setDetailsOpen(false); setText(""); setAnswerOpen(true); }}><MessageSquare data-icon="inline-start" />Add an answer</Button>
                 <Button variant="outline" onClick={() => { setDetailsOpen(false); void refresh(); }}><RefreshCw data-icon="inline-start" />Refresh project</Button>
+                <Button variant="destructive" disabled={!models || busy} onClick={() => { setDetailsOpen(false); setDeleteError(""); setDeleteOpen(true); }}><Trash2 data-icon="inline-start" />Delete project</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={deleteOpen} onOpenChange={(value) => { if (!deleting) { setDeleteOpen(value); setDeleteError(""); } }}>
+            <DialogContent className="max-h-[90dvh] overflow-y-auto">
+              <DialogHeader className="pr-8">
+                <DialogTitle>Delete project?</DialogTitle>
+                <DialogDescription className="break-words leading-6">
+                  Delete “{projectTitle(models?.name || "this project") }”? You can restore it from Your processes within seven days if you have room under your plan.
+                </DialogDescription>
+              </DialogHeader>
+              <p className="text-sm leading-6">The project disappears from your workspace and connected agents lose access. After seven days, its diagrams, sources and conversations are permanently erased. Deleting does not reset your AI allowance.</p>
+              {deleteError && <p role="alert" className="text-sm leading-6 text-destructive">{deleteError}</p>}
+              <div className="flex flex-wrap justify-end gap-3">
+                <Button variant="outline" disabled={deleting} onClick={() => setDeleteOpen(false)}>Keep project</Button>
+                <Button variant="destructive" disabled={deleting} onClick={() => void deleteProject()}>{deleting ? "Deleting…" : "Delete project"}</Button>
               </div>
             </DialogContent>
           </Dialog>

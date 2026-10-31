@@ -413,6 +413,30 @@ try {
   assert.ok((await value(newerResponse)).discovery.sources.some(s => s.id === "Cache_Notes"));
   checks.push("cached historical diagrams retain their saved evidence and show fresh revision history");
   checks.push("D1 conditional writes, source atomicity, active-model binding and body limits");
+  const beforeDeletion=await value(request(`/api/projects/${p.id}/read`,alice.cookie));
+  const beforeFuture=await value(request(`/api/projects/${p.id}/read?model=to-be`,alice.cookie));
+  const removed=await tool('delete_project',{projectId:p.id,confirm:true});assert.equal(removed.deleted,true);
+  const stale=await client.callTool({name:'read_project',arguments:{projectId:p.id,model:'as-is'}});assert.equal(stale.isError,true);assert.match(stale.content[0].text,/This project was deleted/);
+  for(const action of ['review','bpmn','export-info?revision=5'])assert.equal((await request(`/api/projects/${p.id}/${action}`,alice.cookie)).status,404,action);
+  assert.equal((await request(`/api/projects/${p.id}/restore`,bob.cookie,{})).status,404);
+  assert.equal((await value(request('/api/projects/deleted',alice.cookie))).find(x=>x.id===p.id).name,p.name||'Synthetic Cloudflare onboarding');
+  const replacements=[];for(let i=0;i<3;i++)replacements.push(await value(request('/api/projects',alice.cookie,{name:'Replacement '+i,purpose:'Check freed slots',perspective:'Operations'})));
+  const quota=(await value(request('/api/billing',alice.cookie))).projectLimit;
+  const capacityActor={userId:(await proxy.env.DB.prepare('SELECT owner FROM senda_projects WHERE id=?').bind(p.id).first()).owner};
+  const capacityProjects=new CloudProjects(proxy.env.DB,proxy.env.SNAPSHOTS,{projectLimit:async()=>quota}),fillers=[];
+  while((await capacityProjects.list(capacityActor)).length<quota)fillers.push(await capacityProjects.create(capacityActor,{name:'Capacity fixture',purpose:'Fill the reported local allowance',perspective:'Test operations'}));
+  const full=await request(`/api/projects/${p.id}/restore`,alice.cookie,{});assert.equal(full.status,400);assert.equal((await full.json()).code,'PROJECT_LIMIT');
+  await value(request(`/api/projects/${replacements[0].id}/delete`,alice.cookie,{confirm:true}));
+  await value(request(`/api/projects/${p.id}/restore`,alice.cookie,{}));
+  assert.deepEqual(await value(request(`/api/projects/${p.id}/read`,alice.cookie)),beforeDeletion);
+  assert.deepEqual(await value(request(`/api/projects/${p.id}/read?model=to-be`,alice.cookie)),beforeFuture);
+  for(const filler of fillers)await capacityProjects.delete(capacityActor,filler.id);
+  assert.equal(JSON.parse((await client.callTool({name:'read_project',arguments:{projectId:p.id,model:'as-is'}})).content[0].text).code,'NOT_FOUND','Restoring must not restore a revoked grant');
+  await proxy.env.DB.prepare("UPDATE senda_projects SET deleted_at=? WHERE id=?").bind('2020-01-01T00:00:00.000Z',replacements[0].id).run();
+  await new CloudProjects(proxy.env.DB,proxy.env.SNAPSHOTS).purgeDeleted();
+  assert.equal((await proxy.env.DB.prepare('SELECT COUNT(*) AS n FROM senda_models WHERE project_id=?').bind(replacements[0].id).first()).n,0);
+  const erased=await proxy.env.SNAPSHOTS.list({prefix:`models/${replacements[0].id}/`});assert.equal(erased.objects.length,0);
+  checks.push('confirmed MCP deletion, revoked grants, Free slots, exact As-is/To-be restore and permanent private-object cleanup');
   const revoke = await fetch(origin + "/api/connections", {
     method: "DELETE",
     headers: {

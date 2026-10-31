@@ -10,6 +10,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { getPlatformProxy } from "wrangler";
 import { hash } from "../src/core/hash.js";
 import { onboardingProposals } from "../examples/complex-onboarding/proposals.js";
+import { CloudProjects } from '../src/cloudflare/projects.js';
 const base = process.env.SENDA_TEST_ORIGIN || "http://127.0.0.1:8788",
   email = `browser-${Date.now()}@example.test`;
 assert.ok(
@@ -442,6 +443,89 @@ try {
   await writeFile(artifacts + '/browser-downloads.json', JSON.stringify({ files: downloadedFiles, signedOutDestinationPreserved: true, reloadDoesNotDownload: true, modelAndRevisionSemanticsVerified: true }, null, 2));
   console.log('Actual BPMN/SVG files, independent saved revisions and signed-out mobile download return passed');
 
+  const beforeDelete=await(await context.request.get(base+`/api/projects/${project.id}/read?model=to-be`)).json();
+  const faq=['What kind of diagram do I get?','Which agent should I use?','Is it free?','How much built-in AI is included?','Who can see my transcripts?','What counts as a project?'];
+  for(const [width,height] of [[1440,1000],[390,844]]){
+    await p.setViewportSize({width,height});await p.goto(base+'/#questions');
+    await p.locator('#questions').getByRole('button',{name:faq[0],exact:true}).waitFor();
+    assert.deepEqual((await p.locator('#questions').getByRole('button').allTextContents()).map(s=>s.trim()),faq);
+    await p.getByRole('button',{name:faq[5],exact:true}).click();
+    await p.getByText('Delete one from its project menu to free a slot.',{exact:false}).waitFor();
+    assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await p.screenshot({path:`${artifacts}/faq-${width}.png`,animations:'disabled'});
+    await p.goto(base+`/app/projects/${project.id}?model=to-be`);
+    await p.getByRole('heading',{name:'Cloudflare browser walkthrough',exact:true}).waitFor();
+    await p.getByRole('button',{name:'Project actions',exact:true}).click();
+    await p.getByRole('button',{name:'Delete project',exact:true}).click();
+    const dialog=p.getByRole('dialog');await dialog.getByRole('heading',{name:'Delete project?',exact:true}).waitFor();
+    assert.match(await dialog.innerText(),/Cloudflare browser walkthrough/);assert.match(await dialog.innerText(),/seven days/);
+    assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await p.screenshot({path:`${artifacts}/delete-confirm-${width}.png`,animations:'disabled'});
+    await dialog.getByRole('button',{name:'Keep project',exact:true}).click();
+    assert.ok((await context.request.get(base+`/api/projects/${project.id}/read`)).ok());
+    await p.getByRole('button',{name:'Project actions',exact:true}).click();
+    await p.getByRole('button',{name:'Delete project',exact:true}).click();
+    await p.getByRole('dialog').getByRole('button',{name:'Delete project',exact:true}).click();
+    await p.waitForURL(base+`/app?deleted=${project.id}`);
+    await p.getByText('Deleted.',{exact:true}).waitFor();await p.reload();await p.getByText('Deleted.',{exact:true}).waitFor();
+    await p.screenshot({path:`${artifacts}/deleted-list-${width}.png`,animations:'disabled'});
+    assert.equal((await context.request.get(base+`/api/projects/${project.id}/bpmn?model=to-be&revision=2`)).status(),404);
+    await p.goto(base+`/app/download/${project.id}?model=to-be&revision=2`);await p.getByText('Download unavailable',{exact:true}).waitFor();
+    assert.equal(await p.getByRole('link',{name:'Download BPMN',exact:true}).count(),0);
+    if(width===390){
+      const fresh=[];for(let i=0;i<3;i++)fresh.push(await post('/api/projects',{name:'Restore capacity '+i,purpose:'Check project slots',perspective:'Operations'}));
+      const quota=(await(await context.request.get(base+'/api/billing')).json()).projectLimit;
+      const capacityActor={userId:(await proxy.env.DB.prepare('SELECT owner FROM senda_projects WHERE id=?').bind(project.id).first()).owner};
+      const capacityProjects=new CloudProjects(proxy.env.DB,proxy.env.SNAPSHOTS,{projectLimit:async()=>quota});
+      while((await capacityProjects.list(capacityActor)).length<quota)await capacityProjects.create(capacityActor,{name:'Capacity fixture',purpose:'Fill the reported local allowance',perspective:'Test operations'});
+      await p.goto(base+`/app?deleted=${project.id}`);await p.getByText('Deleted.',{exact:true}).waitFor();
+      await p.getByRole('button',{name:'Restore',exact:true}).click();await p.getByText('Your workspace is full.',{exact:false}).waitFor();
+      await p.screenshot({path:artifacts+'/restore-full-mobile.png',animations:'disabled'});
+      await post(`/api/projects/${fresh[0].id}/delete`,{confirm:true});
+    }
+    await p.goto(base+`/app?deleted=${project.id}`);await p.getByText('Deleted.',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Restore',exact:true}).click();await p.getByRole('link',{name:'Open project',exact:true}).waitFor();
+    await p.getByRole('link',{name:'Open project',exact:true}).click();await p.getByRole('heading',{name:'Cloudflare browser walkthrough',exact:true}).waitFor();
+    assert.deepEqual(await(await context.request.get(base+`/api/projects/${project.id}/read?model=to-be`)).json(),beforeDelete);
+    assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await p.screenshot({path:`${artifacts}/restored-project-${width}.png`,animations:'disabled'});
+  }
+  console.log('Six-question FAQ, named delete/cancel/confirm, reload, freed slots, full restore, deleted downloads and exact restore passed at desktop and phone widths');
+
+  const activeForOrdering=await(await context.request.get(base+'/api/projects')).json();
+  for(const spare of activeForOrdering.filter(x=>x.id!==project.id).slice(0,2))await post(`/api/projects/${spare.id}/delete`,{confirm:true});
+  const ordering=[];for(const name of ['Restore ordering first','Restore ordering second'])ordering.push(await post('/api/projects',{name,purpose:'Verify delayed project lists',perspective:'Operations'}));
+  for(const item of ordering)await post(`/api/projects/${item.id}/delete`,{confirm:true});
+  async function delayNextProjectList(){
+    let release,ready;
+    const started=new Promise(resolve=>{ready=resolve});
+    const handler=async route=>{
+      if(route.request().method()==='GET'&&!release){
+        const response=await route.fetch();
+        await new Promise(resolve=>{release=async()=>{await route.fulfill({response});resolve()};ready()});
+      }else await route.continue();
+    };
+    await p.route('**/api/projects',handler);
+    return{started,release:()=>release(),close:()=>p.unroute('**/api/projects',handler)};
+  }
+  const delayedInitial=await delayNextProjectList();
+  await p.goto(base+`/app?deleted=${ordering[0].id}`);await delayedInitial.started;
+  await p.getByRole('button',{name:`Restore ${ordering[0].name}`,exact:true}).click();
+  await p.getByRole('link',{name:ordering[0].name,exact:true}).waitFor();
+  await delayedInitial.release();await delayedInitial.close();
+  await p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  assert.ok(await p.getByRole('link',{name:ordering[0].name,exact:true}).isVisible(),'An older initial response must not hide a restored project');
+  await post(`/api/projects/${ordering[0].id}/delete`,{confirm:true});
+  await p.goto(base+'/app');await p.getByRole('button',{name:`Restore ${ordering[0].name}`,exact:true}).waitFor();
+  const delayedRestore=await delayNextProjectList();
+  await p.getByRole('button',{name:`Restore ${ordering[0].name}`,exact:true}).click();await delayedRestore.started;
+  try{assert.ok(await p.getByRole('button',{name:`Restore ${ordering[1].name}`,exact:true}).isDisabled(),'A restore must remain pending until its project-list refresh finishes')}
+  finally{await delayedRestore.release();await delayedRestore.close()}
+  await p.getByRole('button',{name:`Restore ${ordering[1].name}`,exact:true}).click();
+  await p.getByRole('link',{name:ordering[1].name,exact:true}).waitFor();
+  assert.ok(await p.getByRole('link',{name:ordering[0].name,exact:true}).isVisible());
+  console.log('Out-of-order initial lists cannot hide restores; sequential restores wait for their list refresh');
+
   await writeFile(
     artifacts + "/cf-ui.json",
     JSON.stringify(
@@ -453,6 +537,10 @@ try {
         signIn: true,
         projectId: project.id,
         toBe: true,
+        projectDeletion: true,
+        sevenDayRestore: true,
+        faqQuestions: 6,
+        restoreResponseOrdering: true,
         googleOAuthStart: !!config.loginMethods.google,
         viewports: [1440, 390],
         preHydrationBlocked: true,

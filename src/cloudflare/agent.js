@@ -24,13 +24,13 @@ export class HostedAgent {
     this.db = env.DB;
     this.operations = new OperationalAlerts(env);
   }
-  async chat(actor, id) {
+  async chat(actor, id, { metadataOnly = false } = {}) {
     const row = await this.db
-      .prepare("SELECT * FROM senda_agent_chats WHERE id=? AND owner=?")
+      .prepare(metadataOnly ? 'SELECT project FROM senda_agent_chats WHERE id=? AND owner=?' : 'SELECT * FROM senda_agent_chats WHERE id=? AND owner=?')
       .bind(z.uuid().parse(id), actor.userId)
       .first();
     requireThat(row, "NOT_FOUND", "This conversation is not available.");
-    if (row.project) await this.projects.authorize(actor, row.project);
+    if (row.project) row.projectGeneration = (await this.projects.authorize(actor, row.project)).generation;
     return row;
   }
   async trialProjectRoom(actor) {
@@ -128,7 +128,8 @@ export class HostedAgent {
     const input = Turn.parse(await request.json()),
       runId = input.requestId,
       now = Date.now(),
-      day = new Date().toISOString().slice(0, 10);
+      day = new Date().toISOString().slice(0, 10),
+      projectGeneration = row.projectGeneration ?? null;
     requireThat(!(await this.db.prepare("SELECT 1 FROM senda_agent_runs WHERE id=? AND owner=? AND chat=?")
       .bind(runId, actor.userId, row.id).first()), "CONFLICT", "This message was already received. Reload the conversation to check its saved reply.");
     const locked = await this.db
@@ -144,6 +145,7 @@ export class HostedAgent {
     );
     row = locked;
     try {
+      if (row.project) await this.projects.authorize(actor,row.project,projectGeneration);
       if (trial) {
         if (!trial.chatId && !row.project)
           requireThat(await this.trialProjectRoom(actor), 'PROJECT_LIMIT',
@@ -160,7 +162,7 @@ export class HostedAgent {
     const display = [...JSON.parse(row.display), { role: "user", text: input.text }];
     await this.db.prepare("UPDATE senda_agent_chats SET display=?,updated=? WHERE id=? AND lock_id=?")
       .bind(JSON.stringify(display), new Date().toISOString(), row.id, runId).run();
-    const params = { runId, chatId: row.id, entitlement: entitlement || null, origin: this.origin };
+    const params = { runId, chatId: row.id, entitlement: entitlement || null, origin: this.origin, projectGeneration };
     try {
       if (this.dispatch) await this.dispatch(params);
       else await this.env.AGENT_WORKFLOW.create({ id: runId, params });
@@ -215,7 +217,7 @@ export class HostedAgent {
       'x-content-type-options': 'nosniff',
     } });
   }
-  async execute({ runId, chatId, entitlement = null }) {
+  async execute({ runId, chatId, entitlement = null, projectGeneration = null }) {
     const run = await this.db.prepare("SELECT * FROM senda_agent_runs WHERE id=? AND chat=? AND status='running'")
       .bind(z.uuid().parse(runId), z.uuid().parse(chatId)).first();
     if (!run) return { executed: false };
@@ -226,7 +228,7 @@ export class HostedAgent {
     if (!claimed) return { executed: false };
     const executionStarted=performance.now();
     console.info('Senda agent timing',{runId,phase:'queue',durationMs:Math.max(0,Date.now()-Date.parse(run.created)),status:'success'});
-    const actor = { userId: run.owner }, controller = new AbortController();
+    const actor = { userId: run.owner, ...(projectGeneration === null ? {} : {projectGeneration}) }, controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 540000);
     let statusWrites = Promise.resolve();
     const emit = event => {
@@ -242,6 +244,7 @@ export class HostedAgent {
     let usageKnown = true, row, display, base;
     try {
       row = await this.chat(actor, chatId);
+      if (row.project) actor.projectGeneration ??= row.projectGeneration;
       display = JSON.parse(row.display);
       base = display.map(message => ({ role: message.role, content: message.text }));
       const result = await this.run({
@@ -251,12 +254,17 @@ export class HostedAgent {
         signal: controller.signal, emit,
         onTiming:event=>console.info('Senda agent timing',{runId,...event}),
         onProgress:()=>emit({type:'status',text:'A draft is saved. Finishing its checks…'}),
-        reserveCall: kind => budget.reserve(kind), settleCall: usage => budget.settle(usage),
+        reserveCall: async kind => {
+          await this.chat(actor, chatId, { metadataOnly: true });
+          return budget.reserve(kind);
+        }, settleCall: usage => budget.settle(usage),
         failCall: error => budget.failure(error),
         onProject: async id => {
           if(entitlement?.kind==='trial')await bindTrialProject(this.db,run.owner,row.id,id,runId);
           else await this.db.prepare("UPDATE senda_agent_chats SET project=? WHERE id=? AND lock_id=?")
             .bind(id, row.id, runId).run();
+          actor.projectGeneration = 0;
+          await this.projects.authorize(actor,id);
         },
         saveStep: async step => {
           console.info('Senda model step', { finishReason: step.finishReason,
@@ -356,7 +364,7 @@ function displayModel(messages) {
 }
 
 export function agentFailure(error) {
-  if (error.code === "LIMIT") return { text: error.message, knownUsage: true };
+  if (['LIMIT','PROJECT_DELETED','STALE_PROJECT'].includes(error.code)) return { text: error.message, knownUsage: true };
   if ([401, 403].includes(error.statusCode)) return {
     text: "Senda could not connect to its AI service. The operator needs to check the connection. Your saved work is safe.",
     // Authentication rejection incurs no provider usage for the failed call.

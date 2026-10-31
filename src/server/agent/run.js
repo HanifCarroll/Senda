@@ -72,7 +72,7 @@ export async function runAgent({
     .filter(Boolean)
     .join("\n\n");
   const definitions = toolDefinitions.filter(
-    (t) => !["list_projects", "get_discovery_method", "get_model_schema", "read_sources", "read_questions", "add_source"].includes(t.name),
+    (t) => !["list_projects", "get_discovery_method", "get_model_schema", "read_sources", "read_questions", "add_source", "delete_project"].includes(t.name),
   );
   const installed = schema();
   const inputSchemas = Object.fromEntries(definitions.map(def => {

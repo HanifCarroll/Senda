@@ -34,6 +34,10 @@ async function application(env, origin) {
 export { SendaAgentWorkflow } from './agent-workflow.js';
 
 export default {
+  async scheduled(controller, env, ctx) {
+    const { CloudProjects } = await import('./projects.js');
+    ctx.waitUntil(new CloudProjects(env.DB, env.SNAPSHOTS).purgeDeleted());
+  },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const local =

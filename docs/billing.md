@@ -1,15 +1,27 @@
 # Billing integration
 
 Launch plans were reviewed from first principles with Claude Opus 5.5 on
-28 October 2026. Free permits creation of 3 saved cloud projects; Pro costs
+28 October 2026. Free lets an account keep up to 3 cloud projects at a time; Pro costs
 US$29/month for up to 100 saved projects and built-in chat with a US$6 monthly
 allowance. Existing projects stay readable, editable through a connected agent,
 and exportable after a lapse. Creation is enforced atomically across UI, MCP
-and built-in agent. There is currently no archive/delete UI. Annual plans,
-trials, top-ups, overages and allowance rollover are not offered.
+and built-in agent. Deleting a project frees a slot immediately. The owner can
+restore it within seven days if the account has room under its current limit;
+a full workspace must delete another project or choose Pro before restoring.
+Annual plans, paid trial subscriptions, top-ups, overages and allowance rollover
+are not offered.
+
+Project deletion keeps private content available for restoration for seven days,
+then scheduled cleanup erases it permanently. Agent grants are revoked immediately
+and must be shared again after restoration. Billing and usage records are retained:
+`senda_agent_runs` continues to hold cost accounting and lifetime trial usage, and
+`senda_agent_trials` keeps its original project assignment even when that project
+is deleted. A freed project slot does not grant another trial or move its remaining
+allowance. Pro’s US$6 monthly allowance belongs to the account and billing period,
+so deletion and restoration do not change its usage or renewal.
 
 The fixed rate card is documented in [hosted agent limits](hosted-agent.md).
-Paid operating limits are US$3/day, US$1/turn and a US$0.35 admission minimum.
+Paid operating limits are US$3/day, US$1/turn and a US$0.10 admission minimum.
 Unsuccessful/incomplete turns use no customer allowance; a separate US$3
 absorbed-cost limit can pause service until renewal. Shared admission budgets
 include all accounts, operators, pending and unknown outcomes: US$10/UTC day

@@ -11,7 +11,7 @@ import { billingNow, emailListed } from '../src/server/billing/plan.js';
 
 function database() {
   const db = memoryD1();
-  for (const name of ['0002_projects.sql','0004_hosted_agent.sql','0005_billing.sql','0006_agent_meter.sql','0007_agent_workflow.sql','0008_agent_billing_period.sql','0009_service_budget.sql'])
+  for (const name of ['0002_projects.sql','0004_hosted_agent.sql','0005_billing.sql','0006_agent_meter.sql','0007_agent_workflow.sql','0008_agent_billing_period.sql','0009_service_budget.sql','0011_project_deletion.sql'])
     db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
   return db;
 }

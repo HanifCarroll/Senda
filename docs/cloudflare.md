@@ -45,6 +45,8 @@ npx wrangler deploy --config dist-cloudflare/server/wrangler.json --secrets-file
 
 The secrets JSON must contain a unique `BETTER_AUTH_SECRET` of at least 32 characters. Keep it outside version control. Retain this secret and both storage resources between releases. The checked-in Wrangler configuration identifies the Senda resources and custom domain; changing accounts requires explicit new resources and bindings.
 
+Migration `0011_project_deletion.sql` needs a coordinated release with the matching Worker. Pause project writes and in-flight agent turns while applying it and replacing the Worker: the previous Worker uses positional project inserts and does not understand deleted projects. Verify the new lifecycle fields, candidate ownership table, foreign keys and hourly cron before reopening writes. Once private R2 objects have been erased, recovering D1 alone cannot restore them; an older Worker is not a safe rollback.
+
 Cloudflare Workers Builds is connected to `HanifCarroll/Senda` on `main`, using Node 24.18.0. Its build runs the Node suite, Cloudflare build, typecheck and publication checks; deployment applies pending D1 migrations and uploads the built Worker. The existing production signing secret remains in Workers secrets and is never copied into the build environment. GitHub separately runs both Node and real local Worker workflows. Verify the Cloudflare build result and deployed version after each push.
 
 Wrangler uploads built assets, the Worker and the sender/database/bucket bindings. The custom domain provisions DNS and TLS. Avoid changing unrelated domain records or another project's bindings. API health is `/health`; OAuth protected-resource metadata is `/.well-known/oauth-protected-resource`.

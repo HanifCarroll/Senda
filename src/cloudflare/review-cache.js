@@ -1,4 +1,5 @@
 import { hash } from "../core/hash.js";
+import { deleteObjects } from './store.js';
 
 // Derived, private review data. Ownership and project grants are checked by
 // CloudProjects before this cache is consulted. Canonical revisions are untouched.
@@ -35,6 +36,11 @@ export class ReviewCache {
       httpMetadata: { contentType: "application/json" },
       customMetadata: { source: context.record.digest, checksum: hash(text) },
     }).catch(() => {});
+  }
+  async removeModels(modelIds) {
+    if (!modelIds.length) return;
+    const wanted = new Set(modelIds);
+    await deleteObjects(this.bucket, 'review-cache/', key => wanted.has(key.split('/')[2]));
   }
 }
 

@@ -274,8 +274,7 @@ export function Marketing() {
         <Section id="how-it-works">
           <h2 className={cn(h2, "max-w-3xl")}>Draft today’s process, fill the gaps, then plan the next one.</h2>
           <p className={cn(lead, "mt-6 max-w-2xl")}>
-            The method comes from chapter 5 of <cite>Fundamentals of Business Process Management</cite>: start with
-            the process boundaries, then map the activities, handoffs and decisions. Unanswered questions stay
+            Start with the process boundaries, then map the activities, handoffs and decisions. Unanswered questions stay
             visible, and you check each change against the interview.{" "}
             <a href={methodology} className={textLink}>
               Read the method summary
@@ -411,43 +410,31 @@ export function Marketing() {
             <h2 className={h2}>Questions</h2>
             <Accordion type="single" collapsible className="border-t">
               {[
-                [
-                  "What kind of diagram do I get?",
-                  "A BPMN 2.0 process model, the standard notation for activities, decisions, responsibilities and handoffs. You can explore it in Senda or download a .bpmn file with its layout. Exports are tested with bpmn-js, the open-source modeler behind bpmn.io.",
-                ],
-                [
-                  "Can I start in ChatGPT or Claude?",
-                  "Yes. Claude is supported and ChatGPT is in beta. Connect Senda, sign in and choose New projects. Give your agent the transcript and ask it to map the process. Continue answering questions in the same chat and review the saved diagram in Senda. ChatGPT can save changes but fail to display its reply, so check the saved model before repeating a request.",
-                ],
-                [
-                  "Which AI agents can connect?",
-                  "Any agent that can add a remote MCP server and sign in with OAuth. Some assistants call this a custom connector. Add Senda’s server URL, sign in, and allow new projects or select an existing one. Coding agents can also use the command-line tool with the downloadable skill.",
-                ],
-                [
-                  "Does Senda run AI on my transcripts?",
-                  "When you use the built-in agent, on the free trial or in Pro, Senda sends the relevant messages, sources and models to its AI provider. If you connect your own agent, that agent and its provider do the drafting. Senda keeps the evidence and revision history either way. The privacy notice names the provider.",
-                ],
-                [
-                  "Who can read my transcripts?",
-                  "Projects are private to your account. A connected agent can read the sources only in the projects you share with it, and you can disconnect it at any time.",
-                ],
-                [
-                  "Is it free?",
-                  "Free includes a one-project trial of the built-in agent with a $0.50 lifetime allowance, plus up to three saved cloud projects with your own agent. Pro is $29 USD per month for up to 100 projects and a $6 monthly built-in AI allowance. Daily and shared service limits apply, with no automatic overage charges. Read Pricing for details. The source is MIT-licensed.",
-                ],
-                [
-                  "How do I plan a future process?",
-                  "Keep the current process as As-is, then start a To-be model from a saved As-is revision. Describe the changes you want and revise it with your agent. Each model keeps its own history.",
-                ],
-                [
-                  "How do I review the model with my team?",
-                  "Run Review checks to find structural problems and unanswered questions. Then walk through the diagram with the people who do the work, show them the source passages, and save their feedback for the next revision.",
-                ],
-                [
-                  "Can I work locally?",
-                  "Yes. The command-line tool creates and revises local projects, and exports diagrams and offline review bundles.",
-                ],
-              ].map(([question, answer], i) => (
+                {
+                  question: "What kind of diagram do I get?",
+                  answer: "A BPMN 2.0 process model, the standard notation for activities, decisions, responsibilities and handoffs. You can explore it in Senda or download a .bpmn file with its layout. Exports are tested with bpmn-js, the open-source modeler behind bpmn.io.",
+                },
+                {
+                  question: "Which agent should I use?",
+                  answer: "Try the built-in agent free on one project, continue with Pro, or connect your own Claude account on either plan. ChatGPT is in beta: it can save changes but sometimes fails to display its reply. Check the saved diagram before repeating a request. Your connected agent’s subscription is separate.",
+                },
+                {
+                  question: "Is it free?",
+                  answer: <>Free includes a one-project trial of the built-in agent with a $0.50 lifetime allowance. You can keep up to three cloud projects with your own agent. Pro is $29 USD per month for up to 100 projects and a $6 monthly built-in AI allowance. Daily and shared service limits apply, with no automatic overage charges. <a href="#pricing" className={textLink}>Compare plans</a>. The source is MIT-licensed.</>,
+                },
+                {
+                  question: "How much built-in AI is included?",
+                  answer: <>Free includes a $0.50 lifetime allowance on one project; Pro includes $6 per month across your projects. Usage follows Senda’s fixed rate card and varies with the work. At a limit, the built-in agent pauses. Your saved work stays readable, exportable and editable with your connected agent. Daily and shared service limits also apply. Nothing extra is bought or charged automatically. <a href="/usage" className={textLink}>Read the usage policy</a>.</>,
+                },
+                {
+                  question: "Who can see my transcripts?",
+                  answer: <>Projects are private to your account. The built-in agent sends relevant messages, sources and models to its AI provider, named in the <a href="/privacy" className={textLink}>privacy notice</a>. With a connected agent, that agent and its provider do the drafting. It can read only the projects you share with it, and you can disconnect it at any time.</>,
+                },
+                {
+                  question: "What counts as a project?",
+                  answer: "A project holds its sources, As-is model and separate To-be model. Free lets you keep up to three projects at a time. Delete one from its project menu to free a slot. You can restore it within seven days if you have room; after that, its content is permanently erased. Deleting a project does not reset your free trial or Pro allowance.",
+                },
+              ].map(({ question, answer }, i) => (
                 <AccordionItem key={question} value={String(i)}>
                   <AccordionTrigger className="py-5 text-base font-normal sm:text-[1.05rem]">{question}</AccordionTrigger>
                   <AccordionContent className="pb-5 text-base leading-relaxed text-muted-foreground">{answer}</AccordionContent>

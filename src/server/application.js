@@ -10,9 +10,25 @@ export async function createApplication({ origin, directory, secret }) {
     projects,
     auth: service.auth,
   });
+  let cleaning = false;
+  const cleanup = async () => {
+    if (cleaning) return;
+    cleaning = true;
+    try {
+      await projects.purgeDeleted();
+    } catch (error) {
+      console.error("Deleted project cleanup failed:", error.name);
+    } finally {
+      cleaning = false;
+    }
+  };
+  await cleanup();
+  const cleanupTimer = setInterval(() => { void cleanup(); }, 60 * 60 * 1000);
+  cleanupTimer.unref();
   return {
     ...app,
     close() {
+      clearInterval(cleanupTimer);
       projects.close();
       service.close();
     },
