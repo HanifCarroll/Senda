@@ -44,7 +44,7 @@ export function createDiagramGestureMachine(services) {
   });
 }
 
-/** The actor stays within the canvas effect; pointer moves do not render React.
+/**
  * @param {HTMLElement} host
  * @param {{camera: () => {x: number, y: number}, capture: (id: number) => void, pan: (drag: any) => void, select: (id?: string) => void}} services
  * @param {AbortSignal} signal

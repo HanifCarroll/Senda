@@ -1,7 +1,7 @@
 import Markdown from "react-markdown";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { useMachine } from "@xstate/react";
+import { shallowEqual, useActorRef, useSelector } from "@xstate/react";
 import { ArrowLeft, ArrowUpRight, Send, Paperclip, Plus } from "lucide-react";
 import { AccountFrame } from "@/components/account-frame";
 import { Button } from "@/components/ui/button";
@@ -61,9 +61,12 @@ function AgentChat() {
     unauthorized: error => error instanceof ApiError && error.status === 401,
     signIn: () => window.location.assign("/sign-in"),
   }));
-  const [snapshot, dispatch] = useMachine(machine, { input: { chat: search.chat, project: search.project } });
-  const { chat, project, available, accessMessage, trial, status, error } = snapshot.context;
-  const pending = snapshot.hasTag("pending") || available === null;
+  const actor = useActorRef(machine, { input: { chat: search.chat, project: search.project } });
+  const { chat, project, available, accessMessage, trial, status, error, pending } = useSelector(actor, snapshot => {
+    const { chat, project, available, accessMessage, trial, status, error } = snapshot.context;
+    return { chat, project, available, accessMessage, trial, status, error, pending: snapshot.hasTag("pending") || available === null };
+  }, shallowEqual);
+  const dispatch = actor.send;
   useEffect(() => {
     dispatch({ type: "ROUTE_CHANGED", route: { chat: search.chat, project: search.project } });
   }, [dispatch, search.chat, search.project]);

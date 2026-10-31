@@ -189,6 +189,5 @@ export class CallBudget {
     const amount = this.active;
     this.advance({ type: 'FAILURE', error, outcome });
     if (this.phase.matches('settling')) await this.recordSettlement({ inputTokens: 0, outputTokens: 0 }, amount);
-    // Unknown outcomes have already retained this call's reservation.
   }
 }

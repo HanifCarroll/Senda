@@ -1,7 +1,5 @@
 import { createActor, createAsyncLogic, createMachine, toPromise } from 'xstate';
 
-// One request owns one actor. The surrounding D1 lease and Stripe's canonical
-// records remain authoritative; no payment actor snapshot is persisted.
 export function createCheckoutMachine(services) {
   const failed = ({ event }) => ({ target: 'failed', context: { error: event.error } });
   const step = (name, next) => ({ invoke: {

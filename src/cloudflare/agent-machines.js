@@ -1,7 +1,5 @@
 import { createMachine } from 'xstate';
 
-// SQL supplies the facts and remains the atomic authority. Resolve a fresh
-// decision snapshot for each operation instead of persisting another lifecycle.
 export const hostedRunMachine = createMachine({
   id: 'hostedRun', initial: 'new', context: {},
   states: {

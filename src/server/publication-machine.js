@@ -46,7 +46,6 @@ const publicationMachine = createMachine({
 });
 
 // reject/reconcile must throw the domain error after any permitted cleanup.
-// No retries, actor persistence or inspector are involved in publication.
 export async function publishModelContent(operations) {
   const actor = createActor(publicationMachine, { input: operations });
   actor.start();

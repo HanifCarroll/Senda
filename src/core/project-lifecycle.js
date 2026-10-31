@@ -2,8 +2,6 @@ import { createMachine, initialTransition, transition } from 'xstate';
 
 export const PROJECT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
-// Reconstruct from the catalog for every operation. The database's conditional
-// writes, including generation and quota checks, remain the durable authority.
 const projectLifecycle = createMachine({
   id: 'projectLifecycle',
   context: ({ input }) => input,

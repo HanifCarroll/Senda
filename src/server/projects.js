@@ -313,7 +313,6 @@ export class HostedProjects extends ProjectModels {
       },
       publish: () => {
         this.authorize(actor, id, project.generation);
-        // The unique project key prevents competing requests replacing a plan.
         return this.db
           .prepare("INSERT INTO project_plans SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM projects WHERE id=? AND state='active' AND generation=?)")
           .run(

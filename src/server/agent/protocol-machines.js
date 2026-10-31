@@ -1,8 +1,6 @@
 import { createMachine, initialTransition, transition } from 'xstate';
 import { requireThat } from '../../core/errors.js';
 
-// These snapshots exist only for one invocation. Provider usage and run money
-// remain in the ledger; no actor snapshot is stored or sent to an inspector.
 export const startProtocol = (machine, input) => initialTransition(machine, input)[0];
 export function advanceProtocol(machine, snapshot, event) {
   requireThat(snapshot.can(event), 'CONFLICT', 'The agent execution phase changed.');

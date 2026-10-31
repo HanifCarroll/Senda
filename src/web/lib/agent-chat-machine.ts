@@ -87,7 +87,7 @@ export function createAgentChatMachine(services: Services) {
     status: saved.working ? "A reply is being prepared. Your saved progress will appear here." : "",
   });
   const createdContext = (created: CreatedChat) => ({ chat: created.id, route: { chat: created.id, project: undefined } });
-  return setup({
+  const machineSetup = setup({
     schemas: {
       context: types<Context>(), input: types<AgentRoute>(),
       events: {
@@ -121,14 +121,29 @@ export function createAgentChatMachine(services: Services) {
         return () => { active = false; controller.abort(); };
       }),
     },
-  }).createMachine({
+  });
+  const loadSavedChat = machineSetup.createStateConfig({
+    tags: ["pending"],
+    invoke: {
+      src: "load", input: ({ context }) => context.chat!,
+      onDone: ({ event }, enq) => {
+        enq(services.saved, event.output);
+        return { target: event.output.working ? "resuming" : event.output.messages.at(-1)?.incomplete ? "incomplete" : "ready", context: savedContext(event.output) };
+      },
+      onError: ({ event }, enq) => {
+        const unauthorized = services.unauthorized(event.error);
+        if (unauthorized) enq(() => services.signIn?.());
+        return { target: "error", context: { status: "", error: unauthorized ? "" : message(event.error) } };
+      },
+    },
+  });
+  return machineSetup.createMachine({
     id: "agentChat",
     context: ({ input }) => ({ route: input, chat: input.chat, project: input.project, available: null, accessMessage: "", trial: null, request: "", status: "", error: "" }),
     initial: "active",
     on: {
       CANCEL: { target: ".cancelled" },
       ROUTE_CHANGED: ({ context, event }) => {
-        // The URL created by this actor does not cancel its in-flight turn.
         if (context.route.chat === event.route.chat && context.route.project === event.route.project) return {};
         return { target: ".active", reenter: true, context: { route: event.route, chat: event.route.chat, project: event.route.project, status: "", error: "", request: "" } };
       },
@@ -187,20 +202,8 @@ export function createAgentChatMachine(services: Services) {
                 },
               },
               loading: {
-                tags: ["pending"],
+                ...loadSavedChat,
                 entry: () => ({ context: { status: "Opening your conversation…" } }),
-                invoke: {
-                  src: "load", input: ({ context }) => context.chat!,
-                  onDone: ({ event }, enq) => {
-                    enq(services.saved, event.output);
-                    return { target: event.output.working ? "resuming" : event.output.messages.at(-1)?.incomplete ? "incomplete" : "ready", context: savedContext(event.output) };
-                  },
-                  onError: ({ event }, enq) => {
-                    const unauthorized = services.unauthorized(event.error);
-                    if (unauthorized) enq(() => services.signIn?.());
-                    return { target: "error", context: { status: "", error: unauthorized ? "" : message(event.error) } };
-                  },
-                },
               },
               resuming: {
                 tags: ["pending"],
@@ -293,21 +296,7 @@ export function createAgentChatMachine(services: Services) {
                   },
                 },
               },
-              recovering: {
-                tags: ["pending"],
-                invoke: {
-                  src: "load", input: ({ context }) => context.chat!,
-                  onDone: ({ event }, enq) => {
-                    enq(services.saved, event.output);
-                    return { target: event.output.working ? "resuming" : event.output.messages.at(-1)?.incomplete ? "incomplete" : "ready", context: savedContext(event.output) };
-                  },
-                  onError: ({ event }, enq) => {
-                    const unauthorized = services.unauthorized(event.error);
-                    if (unauthorized) enq(() => services.signIn?.());
-                    return { target: "error", context: { status: "", error: unauthorized ? "" : message(event.error) } };
-                  },
-                },
-              },
+              recovering: loadSavedChat,
             },
           },
         },

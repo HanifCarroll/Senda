@@ -192,7 +192,6 @@ export async function runAgent({
               advanceMutation({ type: 'SUPPORTED' });
             }
             if (changesBehavior) advanceMutation({ type: 'COMMIT' });
-            // Creating the future model copies its fixed, already saved baseline.
             if (def.name === 'create_to_be_model') advanceMutation({ type: 'COPY_BASELINE' });
             const result = prepared ? await projects.applyPreview(actor, selected, prepared, input.model) : await def.run(
               projects,

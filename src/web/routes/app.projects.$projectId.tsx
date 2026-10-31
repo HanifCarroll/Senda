@@ -98,7 +98,6 @@ function Workspace() {
   const models = reviewState.context.models as Models | null;
   const refreshReview = useCallback(async () => {
     sendReview({ type: "REFRESH" });
-    // Navigating away ends the view's wait; request failures are shown by the machine.
     await waitFor(reviewActor, (state) => !state.hasTag("loading")).catch(() => {});
   }, [sendReview, reviewActor]);
   const [saveMachine] = useState(() => createProjectMutationMachine({
