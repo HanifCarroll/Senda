@@ -1,16 +1,26 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "senda local fuzz contracts",
-    "version": "1.0.0",
-    "description": "Real application with a temporary database and synthetic signed-in account. Covers read endpoints and malformed/nonexistent project lookups."
+    "title": "Senda isolated workflow contracts",
+    "version": "2.0.0"
   },
   "paths": {
     "/health": {
       "get": {
         "responses": {
           "200": {
-            "description": "Documented response",
+            "description": "Local application contract",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -25,18 +35,8 @@
                   },
                   "required": [
                     "status"
-                  ]
-                }
-              }
-            },
-            "headers": {
-              "cache-control": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "no-store"
-                  ]
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
@@ -48,7 +48,18 @@
       "get": {
         "responses": {
           "200": {
-            "description": "Documented response",
+            "description": "Local application contract",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -61,42 +72,42 @@
                           "type": "string"
                         },
                         "name": {
-                          "type": "string",
-                          "enum": [
-                            "Fuzz test"
-                          ]
+                          "type": "string"
                         },
                         "email": {
-                          "type": "string",
-                          "enum": [
-                            "fuzz@example.test"
-                          ]
+                          "type": "string"
                         }
                       },
                       "required": [
                         "id",
                         "name",
                         "email"
-                      ]
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
                     "user"
-                  ]
-                }
-              }
-            },
-            "headers": {
-              "cache-control": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "no-store"
-                  ]
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
           }
         }
       }
@@ -105,7 +116,18 @@
       "get": {
         "responses": {
           "200": {
-            "description": "Documented response",
+            "description": "Local application contract",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -114,30 +136,50 @@
                   "maxItems": 1,
                   "items": {
                     "type": "object",
-                    "required": [
-                      "id",
-                      "name",
-                      "created"
-                    ],
                     "properties": {
                       "id": {
                         "type": "string",
                         "format": "uuid"
                       },
                       "name": {
-                        "type": "string",
-                        "enum": [
-                          "Synthetic process"
-                        ]
+                        "type": "string"
                       },
                       "created": {
                         "type": "string"
                       }
-                    }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "created"
+                    ],
+                    "additionalProperties": false
                   }
                 }
               }
-            },
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "responses": {
+          "201": {
+            "description": "Local application contract",
             "headers": {
               "cache-control": {
                 "required": true,
@@ -147,83 +189,650 @@
                     "no-store"
                   ]
                 }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "enum": [
+                        1
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "revision"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "pattern": "^[A-Za-z][A-Za-z0-9 .-]*$"
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "pattern": "^[A-Za-z][A-Za-z0-9 .-]*$"
+                  },
+                  "perspective": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "pattern": "^[A-Za-z][A-Za-z0-9 .-]*$"
+                  }
+                },
+                "required": [
+                  "name",
+                  "purpose",
+                  "perspective"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "name": "New process",
+                "purpose": "Document work",
+                "perspective": "Operations"
               }
             }
           }
         }
       }
     },
+    "/api/projects/{project}/read": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Local application contract",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "revision",
+                    "discovery",
+                    "model",
+                    "history",
+                    "modelKind",
+                    "schema"
+                  ],
+                  "properties": {
+                    "revision": {
+                      "type": "integer",
+                      "enum": [
+                        2
+                      ]
+                    },
+                    "model": {
+                      "type": "array"
+                    },
+                    "modelKind": {
+                      "type": "string",
+                      "enum": [
+                        "as-is"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "OWNER"
+          }
+        ]
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Revision"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedRevision": {
+                    "type": "integer",
+                    "enum": [
+                      1,
+                      2,
+                      3
+                    ]
+                  },
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "pattern": "^[A-Za-z][A-Za-z0-9 .-]*$"
+                  },
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "scopeNotes": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80,
+                        "pattern": "^[A-Za-z][A-Za-z0-9 .-]*$"
+                      }
+                    },
+                    "required": [
+                      "scopeNotes"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "expectedRevision",
+                  "summary",
+                  "context"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "expectedRevision": 2,
+                "summary": "Scope clarified",
+                "context": {
+                  "scopeNotes": "Generated scope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "OWNER"
+          }
+        ]
+      }
+    },
+    "/api/projects/{project}/sources": {
+      "post": {
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Revision"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedRevision": {
+                    "type": "integer",
+                    "enum": [
+                      1,
+                      2,
+                      3
+                    ]
+                  },
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "enum": [
+                          "Additional"
+                        ]
+                      },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80,
+                        "pattern": "^[A-Za-z][A-Za-z0-9 .-]*$"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "document",
+                          "transcript",
+                          "answer"
+                        ]
+                      },
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80,
+                        "pattern": "^[A-Za-z][A-Za-z0-9 .-]*$"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title",
+                      "kind",
+                      "text"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "expectedRevision",
+                  "source"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "expectedRevision": 2,
+                "source": {
+                  "id": "Additional",
+                  "title": "Interview",
+                  "kind": "document",
+                  "text": "Review each order"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "OWNER"
+          }
+        ]
+      }
+    },
+    "/api/projects/{project}/answers": {
+      "post": {
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Revision"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedRevision": {
+                    "type": "integer",
+                    "enum": [
+                      1,
+                      2,
+                      3
+                    ]
+                  },
+                  "questionId": {
+                    "type": "string",
+                    "enum": [
+                      "Question"
+                    ]
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "pattern": "^[A-Za-z][A-Za-z0-9 .-]*$"
+                  }
+                },
+                "required": [
+                  "expectedRevision",
+                  "questionId",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "expectedRevision": 2,
+                "questionId": "Question",
+                "text": "The operator checks orders"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "OWNER"
+          }
+        ]
+      }
+    },
+    "/api/projects/{project}/delete": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Local application contract",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "deleted": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "deletedAt": {
+                      "type": "string"
+                    },
+                    "restoreUntil": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "deleted",
+                    "deletedAt",
+                    "restoreUntil"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "confirm": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  }
+                },
+                "required": [
+                  "confirm"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "confirm": true
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "OWNER"
+          }
+        ]
+      }
+    },
+    "/api/projects/{project}/restore": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Local application contract",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "restored": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "restored"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "example": {}
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "OWNER"
+          }
+        ]
+      }
+    },
     "/api/browser-tools": {
       "get": {
         "responses": {
-          "400": {
-            "description": "Documented response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ]
-                }
-              }
-            },
-            "headers": {
-              "cache-control": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "no-store"
-                  ]
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Documented response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ]
-                }
-              }
-            },
-            "headers": {
-              "cache-control": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "no-store"
-                  ]
-                }
-              }
-            }
-          },
           "200": {
-            "description": "Available tools for the synthetic project",
+            "description": "Local application contract",
             "headers": {
               "cache-control": {
                 "required": true,
@@ -242,11 +851,6 @@
                   "minItems": 1,
                   "items": {
                     "type": "object",
-                    "required": [
-                      "name",
-                      "description",
-                      "inputSchema"
-                    ],
                     "properties": {
                       "name": {
                         "type": "string"
@@ -257,11 +861,32 @@
                       "inputSchema": {
                         "type": "object"
                       }
-                    }
+                    },
+                    "required": [
+                      "name",
+                      "description",
+                      "inputSchema"
+                    ],
+                    "additionalProperties": false
                   }
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
           }
         },
         "parameters": [
@@ -272,7 +897,8 @@
             "schema": {
               "type": "string",
               "format": "uuid"
-            }
+            },
+            "example": "OWNER"
           },
           {
             "name": "model",
@@ -286,6 +912,92 @@
             }
           }
         ]
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "Error": {
+        "description": "Local application contract",
+        "headers": {
+          "cache-control": {
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "no-store"
+              ]
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "code",
+                "message"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Revision": {
+        "description": "Local application contract",
+        "headers": {
+          "cache-control": {
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "no-store"
+              ]
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "revision": {
+                  "type": "integer",
+                  "minimum": 2,
+                  "maximum": 3
+                },
+                "unchanged": {
+                  "type": "boolean"
+                },
+                "quality": {
+                  "type": "object"
+                },
+                "aliases": {
+                  "type": "object"
+                },
+                "backend": {
+                  "nullable": true,
+                  "type": "object"
+                }
+              },
+              "required": [
+                "revision",
+                "unchanged",
+                "quality",
+                "aliases",
+                "backend"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
       }
     }
   }

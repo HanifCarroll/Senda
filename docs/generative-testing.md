@@ -1,48 +1,59 @@
 # Generative testing
 
-Claims need evidence, inferences need a rationale, answered questions cite their answer source, and accepted proposals survive JSON serialization. HTTP tests run the real application with temporary SQLite storage and a synthetic signed-in account and project, covering health, session, project listing, and browser-tool project/model validation. The runner fills the example project ID in a generated copy of the OpenAPI contract so valid requests reach the real tool catalog.
+The three libraries exercise different boundaries. Fast-check generates inputs and action histories against real project storage and billing SQL. Jazzer.js mutates evidence schemas and BPMN imports/edits. Schemathesis sends generated HTTP requests through the real application with temporary accounts and SQLite databases.
+
+## Workflow coverage
+
+| Workflow | Tool and executable coverage | Required invariant |
+| --- | --- | --- |
+| Evidence, sources, answered questions | fast-check: `test/input-properties.test.js`; Jazzer: `test/fuzz/target.js` | Accepted evidence survives serialization; supported claims have evidence; answer citations stay on the answer source. |
+| Edit, preview, human review, retry, reopen | fast-check: `test/workflow-properties.test.js` | Previews and rejected/stale batches leave history unchanged; successful edits append once; old snapshots stay immutable; edits invalidate prior reviews. |
+| BPMN import, edit, portable export, reimport | fast-check workflow suite; Jazzer: `test/fuzz/model-target.js` | Task names and control flow survive real edits and export/import; existing exports cannot be overwritten; accepted XML survives serialization. |
+| As-is and To-be planning | fast-check workflow suite | Both models retain independent revisions and the original pinned baseline after reopening. |
+| Sharing, revocation, delete, restore | fast-check workflow suite | Other owners cannot read or mutate a project; deletion removes grants; restoring never reshares; saved work survives restoration. |
+| Payment notifications and entitlement | fast-check: `test/billing-properties.test.js` | Signed replays are processed once; canonical subscription facts decide access; payload ownership cannot redirect entitlement. Uses the production billing service and SQL with a synthetic Stripe client. |
+| Agent reservation and settlement | fast-check billing suite | Generated measured, rejected and unknown call histories conserve reserved funds, obey the turn ceiling and cannot settle twice. Unknown calls retain their reservation without adding a customer charge. |
+| HTTP create, read, revise, add source/answer, delete, restore, tool discovery | Schemathesis: `test/fuzz/api.js` and `test/fuzz/openapi.json` | Real authenticated writes succeed and persist the expected result; rejected writes preserve storage; anonymous and cross-account writes fail; malformed JSON returns 400. |
+
+These generated suites complement the ordinary tests for OAuth scopes, concurrent planning, deletion expiry, trial and paid allowance limits, refund/dispute holds, finalization, and agent/provider recovery. They do not replace those regressions.
 
 ## Run locally
 
 Use Node.js 24, npm, Python 3.10+ and [uv](https://docs.astral.sh/uv/getting-started/installation/).
-The committed JavaScript lockfile pins `fast-check@4.10.2` and `@jazzer.js/core@4.0.0`. The API runner uses `uvx --from schemathesis==4.32.7`; uv installs it in an isolated cached environment. To also install the CLI on your PATH, run `uv tool install schemathesis==4.32.7`.
+The lockfile pins `fast-check@4.10.2` and `@jazzer.js/core@4.0.0`. The API runner installs `schemathesis==4.32.7` through uv's isolated cache. To install its CLI separately, run `uv tool install schemathesis==4.32.7`.
 
 ```sh
 npm ci --ignore-scripts
-npm run test:generative   # all three tools
-npm run test:property     # 3 properties, 500 examples each
-npm run test:fuzz         # 10,000 coverage-guided Jazzer.js runs
-npm run test:api          # local HTTP contract generation, up to 100 examples per operation
+npm run test:generative
+npm run test:property     # 10 properties, with bounded action histories
+npm run test:fuzz         # 10,000 schema mutations + 1,000 BPMN mutations
+npm run test:api          # 11 HTTP operations, up to 100 generated cases each
 ```
 
-Property tests also run in the normal unit suite. The dedicated GitHub Actions workflow runs all three tools on pushes and pull requests and retains reports, generated corpus, and failure inputs for seven days. These checks do not deploy the application.
+Property tests also run in `npm test`. GitHub Actions runs all three tools on pushes and pull requests and retains reports, corpora and failures for seven days. No deployment is part of this workflow.
 
-## Scope and isolation
+## Isolation and limits
 
-[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) is the JavaScript implementation of Jazzer; the JVM tool does not execute this codebase. Jazzer instruments the original ESM target and application schemas under Node.js. The input limit is 4 KiB and the per-input timeout is five seconds. This is a bounded smoke campaign, not exhaustive assurance.
+[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) is Jazzer's JavaScript implementation. Node instruments the original ESM source. XML syntax failures and declared import-validation errors are expected rejections; unexpected exceptions, timeouts and violated invariants fail the campaign. Inputs are limited to 4 KiB, with five seconds per input. The model corpus includes valid flows, branching, parallelism, extension attributes and escaped labels, so mutation starts inside useful code paths.
 
-The API contract in `test/fuzz/openapi.json` documents only the selected test surface. A small loopback HTTP adapter invokes the production handlers. SvelteKit/Cloudflare middleware and deployment configuration are outside this harness. Schemathesis generates positive and negative inputs and checks server errors, documented status codes, content types, response headers, and response schemas. Validation-policy checks are deliberately separate: an anonymous request remains unauthorized regardless of body validity, and some existing handlers tolerate extra fields.
+The HTTP adapter binds an ephemeral loopback port and invokes production handlers. Each write case starts from the same real stored revision; the fixture restores its synthetic storage after checking the outcome. Required successful writes and anonymous/cross-account denials run before generation, preventing an all-rejected campaign from masquerading as workflow coverage. The local OpenAPI file describes this selected surface, not a complete public API specification. Response checks cover server errors, status codes, content types, headers and schemas; storage assertions add semantic checks. The schema deliberately bounds generated bodies, so it does not use a global rule that every value outside this narrower test schema must be rejected by the application.
 
-The runner clears inherited provider/database credentials, disables Bun's automatic environment-file loading, binds an ephemeral port on `127.0.0.1`, and closes its server and temporary storage after the run. It accepts no external API URL. Generated files stay under ignored `tmp/fuzz/`; reviewed seed inputs live in `test/fuzz/corpus/`.
+Provider credentials are removed from child environments. Stripe responses are synthetic, and no paid model, payment, email or remote database call is made. Runtime output remains under ignored `tmp/fuzz/`; temporary project databases are removed after each run. The runner accepts no external URL.
+
+Remaining separate validation includes real Stripe/provider behavior, deployed Cloudflare bindings and concurrency, browser interaction, full OAuth/MCP transport, and large BPMN graphs beyond the bounded corpus. No finite campaign establishes exhaustive coverage.
 
 ## Reproduce and extend
 
-The default seed is `20261031`. Property failures print their minimized counterexample and replay path. Change the property seed with `FC_SEED=123 npm run test:property`; copy a reported path into that property's `fc.assert` options to replay the exact shrink result.
-
-For a longer Jazzer campaign:
+The default seed is `20261031`. Fast-check reports minimized counterexamples and replay paths. Run `FC_SEED=123 npm run test:property` for a new seed, or put a reported path in that property's `fc.assert` options.
 
 ```sh
 node scripts/run-fuzz.mjs jazzer -runs=100000 -seed=123
-```
-
-Replay a saved failure after building the target with `test:fuzz`:
-
-```sh
 node node_modules/@jazzer.js/core/dist/cli.js test/fuzz/target.js tmp/fuzz/artifacts/crash-HASH --sync -- -runs=1
+node node_modules/@jazzer.js/core/dist/cli.js test/fuzz/model-target.js tmp/fuzz/artifacts/crash-HASH -- -runs=1
 ```
 
-Promote a minimized failure into a named regression test and a reviewed corpus seed. Schemathesis retains its failure database at `tmp/fuzz/hypothesis` and JUnit report at `tmp/fuzz/schemathesis.xml`. To extend API coverage, update the contract and local fixture together; keep provider calls and real account data out of the harness.
+Keep minimized failures as ordinary regression tests and reviewed corpus inputs. Schemathesis retains its failure database at `tmp/fuzz/hypothesis` and its JUnit report at `tmp/fuzz/schemathesis.xml`. Extend the contract, local fixture, and success assertions together.
 
-## Initial local verification
+## Verification
 
-On 2026-10-31, all three properties passed 500 examples each, Jazzer completed 10,000 executions, and Schemathesis passed 104 generated HTTP cases. Seed: `20261031`. These counts describe the selected surfaces above, not whole-application coverage.
+On 2026-10-31, the 10 properties, 10,000 schema mutations and 1,000 BPMN mutations passed. Schemathesis passed 811 cases across 11 operations, plus six required successful write workflows and their anonymous/cross-account denials. The malformed-JSON property first reproduced a 500 response with the single-character body `!`; the request handler now returns 400 without writing data.

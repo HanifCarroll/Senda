@@ -27,6 +27,11 @@ if (mode === 'jazzer') {
     'tmp/fuzz/corpus', 'test/fuzz/corpus', '--sync', '--',
     '-runs=10000', '-seed=20261031', '-max_len=4096', '-timeout=5',
     '-artifact_prefix=tmp/fuzz/artifacts/', ...extra]);
+  mkdirSync('tmp/fuzz/model-corpus', { recursive: true });
+  await run('node', ['node_modules/@jazzer.js/core/dist/cli.js', 'test/fuzz/model-target.js',
+    'tmp/fuzz/model-corpus', 'test/fuzz/model-corpus', '--',
+    '-runs=1000', '-seed=20261031', '-max_len=4096', '-timeout=5',
+    '-artifact_prefix=tmp/fuzz/artifacts/', ...extra]);
 } else if (mode === 'api') {
   if (extra.length) throw new Error('API fuzzing accepts no remote URL or extra arguments. Edit the local fixture and schema to extend coverage.');
   await run('node', ['test/fuzz/api.js']);

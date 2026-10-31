@@ -188,7 +188,15 @@ export async function createRequestHandler({
           401,
         );
       const actor = { userId: session.user.id };
-      const body = async () => Body.parse(await request.json());
+      const body = async () => {
+        let value;
+        try { value = await request.json(); }
+        catch (error) {
+          if (!(error instanceof SyntaxError)) throw error;
+          requireThat(false, 'INVALID_REQUEST', 'Submit a valid JSON request.');
+        }
+        return Body.parse(value);
+      };
       if (pathname === "/api/billing" || pathname.startsWith("/api/billing/")) {
         if (!billing && ["/api/billing", "/api/billing/config"].includes(pathname) && request.method === "GET") return json({ available: false });
         requireThat(billing, "BILLING_UNAVAILABLE", "Paid plans are not available yet.");
