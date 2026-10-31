@@ -93,6 +93,46 @@ test('a slow Stripe read cannot create a Checkout session after its account leas
   } finally { f.db.close(); }
 });
 
+test('a closed Checkout rotates its stored attempt once and reuses the replacement', async () => {
+  const f = fixture();
+  try {
+    const actor = { userId: 'owner' };
+    await f.billing.checkout(actor, 'owner@example.test');
+    const firstAttempt = (await f.billing.customer(actor.userId)).checkout_attempt;
+    let closed = true;
+    f.client.checkout.sessions.retrieve = async () => ({ status: closed ? 'expired' : 'open', url: 'https://checkout.stripe.com/fixture' });
+    await f.billing.checkout(actor, 'owner@example.test');
+    const replacement = await f.billing.customer(actor.userId);
+    assert.notEqual(replacement.checkout_attempt, firstAttempt);
+    assert.equal(f.calls.filter(c => c.kind === 'customer').length, 1);
+    assert.equal(f.calls.filter(c => c.kind === 'checkout').length, 2);
+    assert.equal(f.calls.at(-1).options.idempotencyKey, 'senda-checkout-' + replacement.checkout_attempt);
+    closed = false;
+    await f.billing.checkout(actor, 'owner@example.test');
+    assert.equal(f.calls.filter(c => c.kind === 'checkout').length, 2);
+  } finally { f.db.close(); }
+});
+
+test('an unknown Checkout creation result releases the lease and retains its idempotency attempt', async () => {
+  const f = fixture();
+  try {
+    const actor = { userId: 'owner' }, keys = [];
+    f.client.checkout.sessions.create = async (_data, options) => {
+      keys.push(options.idempotencyKey);
+      if (keys.length === 1) throw new Error('Provider response lost');
+      return { id: 'cs_recovered', livemode: false, url: 'https://checkout.stripe.com/recovered' };
+    };
+    await assert.rejects(f.billing.checkout(actor, 'owner@example.test'), /Provider response lost/);
+    const afterFailure = await f.billing.customer(actor.userId);
+    assert.equal(afterFailure.lock_id, null);
+    assert.equal(afterFailure.checkout_id, null);
+    assert.equal(keys.length, 1, 'The server must not retry an uncertain payment write');
+    assert.deepEqual(await f.billing.checkout(actor, 'owner@example.test'), { url: 'https://checkout.stripe.com/recovered' });
+    assert.equal(keys[0], keys[1], 'A later explicit request uses the same idempotency attempt');
+    assert.equal((await f.billing.customer(actor.userId)).checkout_id, 'cs_recovered');
+  } finally { f.db.close(); }
+});
+
 test('signed webhooks bind canonical customers, deduplicate events and reconcile current status rather than stale payloads', async () => {
   const f = fixture();
   try {

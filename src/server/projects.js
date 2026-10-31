@@ -11,8 +11,9 @@ import { ScribeError, requireThat } from "../core/errors.js";
 
 import { UUID, ModelKind, Plan, Create } from "./contracts.js";
 import { ProjectModels } from "./project-models.js";
+import { nextProjectState, projectIsActive, PROJECT_RETENTION_MS as retention } from '../core/project-lifecycle.js';
+import { publishModelContent } from './publication-machine.js';
 
-const retention = 7 * 24 * 60 * 60 * 1000;
 const fullWorkspace = "Your workspace is full. Delete another project or choose Senda Pro for more room.";
 const deletionInfo = (row) => ({
   id: row.id,
@@ -68,7 +69,7 @@ export class HostedProjects extends ProjectModels {
       .prepare("SELECT * FROM projects WHERE id=? AND owner=?")
       .get(id, actor.userId);
     requireThat(row, "NOT_FOUND", "This project is not available.");
-    requireThat(row.state === "active", "PROJECT_DELETED", "This project was deleted.");
+    requireThat(projectIsActive(row), "PROJECT_DELETED", "This project was deleted.");
     requireThat(generation === undefined || row.generation === generation, 'STALE_PROJECT', 'This project was deleted or restored after this operation started. Open it again before continuing.');
     if (actor.clientId)
       requireThat(
@@ -104,24 +105,33 @@ export class HostedProjects extends ProjectModels {
     if (data.source) this.checkSources([data.source]);
     const id = randomUUID(),
       directory = path.join(this.directory, "projects", id);
-    const project = await Project.create(directory, {
-      name: data.name,
-      purpose: data.purpose,
-      perspective: data.perspective,
-      sources: data.source ? [data.source] : [],
-      mode: "current",
-    });
-    project.close();
-    try {
-      const inserted = this.db
-        .prepare("INSERT INTO projects(id,owner,name,created) SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM projects WHERE owner=? AND state='active')<?")
-        .run(id, actor.userId, data.name, new Date(this.now()).toISOString(), actor.userId, limit);
-      requireThat(inserted.changes === 1, "PROJECT_LIMIT", fullWorkspace);
-      if (actor.clientId) this.grant(actor.userId, actor.clientId, id);
-    } catch (e) {
+    const discard = async error => {
       await rm(directory, { recursive: true, force: true });
-      throw e;
-    }
+      throw error;
+    };
+    await publishModelContent({
+      prepare: async () => {
+        const project = await Project.create(directory, {
+          name: data.name,
+          purpose: data.purpose,
+          perspective: data.perspective,
+          sources: data.source ? [data.source] : [],
+          mode: 'current',
+        });
+        project.close();
+        return { directory };
+      },
+      publish: () => {
+        const inserted = this.db
+          .prepare("INSERT INTO projects(id,owner,name,created) SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM projects WHERE owner=? AND state='active')<?")
+          .run(id, actor.userId, data.name, new Date(this.now()).toISOString(), actor.userId, limit);
+        if (inserted.changes && actor.clientId) this.grant(actor.userId, actor.clientId, id);
+        return inserted;
+      },
+      accepted: result => result.changes === 1,
+      reject: () => discard(new ScribeError('PROJECT_LIMIT', fullWorkspace)),
+      reconcile: (_, error) => discard(error),
+    });
     return { id, name: data.name, revision: 1 };
   }
   async allowance(actor) {
@@ -137,10 +147,11 @@ export class HostedProjects extends ProjectModels {
   }
   async delete(actor, id) {
     const row = this.authorize(actor, id), deletedAt = new Date(this.now()).toISOString();
+    const state = nextProjectState(row, 'DELETE', this.now());
     this.db.exec("BEGIN IMMEDIATE");
     try {
-      const changed = this.db.prepare("UPDATE projects SET state='deleted',deleted_at=?,generation=generation+1 WHERE id=? AND owner=? AND state='active' AND generation=?")
-        .run(deletedAt, id, actor.userId, row.generation);
+      const changed = this.db.prepare("UPDATE projects SET state=?,deleted_at=?,generation=generation+1 WHERE id=? AND owner=? AND state='active' AND generation=?")
+        .run(state, deletedAt, id, actor.userId, row.generation);
       requireThat(changed.changes === 1, 'STALE_PROJECT', 'The project changed. Open it again before continuing.');
       this.db.prepare("DELETE FROM grants WHERE project=?").run(id);
       this.db.exec("COMMIT");
@@ -154,11 +165,12 @@ export class HostedProjects extends ProjectModels {
     requireThat(!actor.clientId, "FORBIDDEN", "Open Senda to restore a deleted project.");
     UUID.parse(id);
     const row = this.db.prepare("SELECT * FROM projects WHERE id=? AND owner=?").get(id, actor.userId);
-    requireThat(row?.state === "deleted" && Date.parse(row.deleted_at) + retention > this.now(),
+    const state = nextProjectState(row, 'RESTORE', this.now());
+    requireThat(state,
       "NOT_FOUND", "This deleted project is no longer available to restore.");
     const limit = await this.allowance(actor), cutoff = new Date(this.now() - retention).toISOString();
-    const restored = this.db.prepare("UPDATE projects SET state='active',deleted_at=NULL WHERE id=? AND owner=? AND state='deleted' AND generation=? AND deleted_at>? AND (SELECT COUNT(*) FROM projects WHERE owner=? AND state='active')<?")
-      .run(id, actor.userId, row.generation, cutoff, actor.userId, limit);
+    const restored = this.db.prepare("UPDATE projects SET state=?,deleted_at=NULL WHERE id=? AND owner=? AND state='deleted' AND generation=? AND deleted_at>? AND (SELECT COUNT(*) FROM projects WHERE owner=? AND state='active')<?")
+      .run(state, id, actor.userId, row.generation, cutoff, actor.userId, limit);
     if (!restored.changes) {
       const latest = this.db.prepare("SELECT state,deleted_at,generation FROM projects WHERE id=? AND owner=?").get(id, actor.userId);
       requireThat(latest?.generation === row.generation, 'STALE_PROJECT', 'The project changed. Open it again before continuing.');
@@ -170,10 +182,12 @@ export class HostedProjects extends ProjectModels {
   }
   async purgeDeleted() {
     const cutoff = new Date(this.now() - retention).toISOString();
-    const rows = this.db.prepare("SELECT id FROM projects WHERE state IN ('deleted','purging') AND deleted_at<=?").all(cutoff);
+    const rows = this.db.prepare("SELECT id,state,deleted_at FROM projects WHERE state IN ('deleted','purging') AND deleted_at<=?").all(cutoff);
     let purged = 0;
-    for (const { id } of rows) {
-      const claimed = this.db.prepare("UPDATE projects SET state='purging' WHERE id=? AND state IN ('deleted','purging') AND deleted_at<=?").run(id, cutoff);
+    for (const row of rows) {
+      const { id } = row, state = nextProjectState(row, 'BEGIN_PURGE', this.now());
+      if (!state) continue;
+      const claimed = this.db.prepare("UPDATE projects SET state=? WHERE id=? AND state IN ('deleted','purging') AND deleted_at<=?").run(state, id, cutoff);
       if (!claimed.changes) continue;
       const models = this.db.prepare('SELECT ? AS model_id UNION SELECT model_id FROM project_plans WHERE project_id=? UNION SELECT model_id FROM model_candidates WHERE project_id=?').all(id,id,id);
       for (const {model_id:modelId} of models)
@@ -183,7 +197,7 @@ export class HostedProjects extends ProjectModels {
         this.db.prepare("DELETE FROM grants WHERE project=?").run(id);
         this.db.prepare("DELETE FROM project_plans WHERE project_id=?").run(id);
         this.db.prepare('DELETE FROM model_candidates WHERE project_id=?').run(id);
-        this.db.prepare("UPDATE projects SET state='purged',name='' WHERE id=? AND state='purging'").run(id);
+        this.db.prepare("UPDATE projects SET state=?,name='' WHERE id=? AND state='purging'").run(nextProjectState({ ...row, state }, 'FINISH_PURGE', this.now()), id);
         this.db.exec("COMMIT");
         purged++;
       } catch (error) {
@@ -263,61 +277,59 @@ export class HostedProjects extends ProjectModels {
       directory = path.join(this.directory, "projects", modelId);
     const registered = this.db.prepare("INSERT INTO model_candidates(model_id,project_id) SELECT ?,? WHERE EXISTS(SELECT 1 FROM projects WHERE id=? AND state='active' AND generation=?)").run(modelId,id,id,project.generation);
     if (!registered.changes) this.authorize(actor,id,project.generation);
-    try {
-      const p = await Project.create(
-        directory,
-        {
-          name: baseline.name,
-          mode: "proposed",
-          purpose:
-            `Plan the future process: ${baseline.discovery.context.purpose}`.slice(
-              0,
-              8000,
-            ),
-          perspective: baseline.discovery.context.perspective,
-          sources: [
-            {
-              id: "Design_Brief",
-              kind: "document",
-              title: "To-be design brief",
-              text: data.brief,
-              origin: `as-is:revision-${baseline.revision}`,
-            },
-          ],
-        },
-        {
-          baselineXml: baseline.xml,
-          summary: `Start To-be planning from As-is revision ${baseline.revision}`,
-        },
-      );
-      p.close();
-      this.authorize(actor, id, project.generation);
-      // The unique project key also prevents two concurrent requests from replacing a plan.
-      const published = this.db
-        .prepare("INSERT INTO project_plans SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM projects WHERE id=? AND state='active' AND generation=?)")
-        .run(
-          id,
-          modelId,
-          baseline.revision,
-          contentHash(baseline),
-          new Date().toISOString(),
-          id,
-          project.generation,
-        );
-      requireThat(published.changes === 1, 'STALE_PROJECT', 'The project changed. Open it again before continuing.');
-    } catch (error) {
+    const discard = async error => {
       await rm(directory, { recursive: true, force: true });
-      if (
-        this.db
-          .prepare("SELECT 1 FROM project_plans WHERE project_id=?")
-          .get(id)
-      )
-        throw new ScribeError(
-          "MODEL_EXISTS",
-          "A To-be model already exists. Revise the existing plan instead.",
-        );
+      if (this.db.prepare('SELECT 1 FROM project_plans WHERE project_id=?').get(id))
+        throw new ScribeError('MODEL_EXISTS', 'A To-be model already exists. Revise the existing plan instead.');
       throw error;
-    }
+    };
+    await publishModelContent({
+      prepare: async () => {
+        try {
+          const p = await Project.create(
+            directory,
+            {
+              name: baseline.name,
+              mode: 'proposed',
+              purpose:
+                `Plan the future process: ${baseline.discovery.context.purpose}`.slice(0, 8000),
+              perspective: baseline.discovery.context.perspective,
+              sources: [{
+                id: 'Design_Brief',
+                kind: 'document',
+                title: 'To-be design brief',
+                text: data.brief,
+                origin: `as-is:revision-${baseline.revision}`,
+              }],
+            },
+            {
+              baselineXml: baseline.xml,
+              summary: `Start To-be planning from As-is revision ${baseline.revision}`,
+            },
+          );
+          p.close();
+          return { directory };
+        } catch (error) { return discard(error); }
+      },
+      publish: () => {
+        this.authorize(actor, id, project.generation);
+        // The unique project key prevents competing requests replacing a plan.
+        return this.db
+          .prepare("INSERT INTO project_plans SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM projects WHERE id=? AND state='active' AND generation=?)")
+          .run(
+            id,
+            modelId,
+            baseline.revision,
+            contentHash(baseline),
+            new Date().toISOString(),
+            id,
+            project.generation,
+          );
+      },
+      accepted: result => result.changes === 1,
+      reject: () => discard(new ScribeError('STALE_PROJECT', 'The project changed. Open it again before continuing.')),
+      reconcile: (_, error) => discard(error),
+    });
     return {
       id,
       model: "to-be",

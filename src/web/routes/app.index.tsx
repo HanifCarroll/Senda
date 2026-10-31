@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useMachine } from "@xstate/react";
+import { createProjectListMachine, createProjectMutationMachine } from "@/lib/project-machines.js";
 import { SendaAgentLink } from "@/components/senda-agent-link";
 import { Plus, ArrowUpRight } from "lucide-react";
-import { api, post, ApiError } from "@/lib/api";
+import { api, post } from "@/lib/api";
 import { AccountFrame } from "@/components/account-frame";
 import { ConnectAgent } from "@/components/connect-agent";
 import { projectTitle } from "@/lib/review-navigation";
@@ -31,78 +33,36 @@ export const Route = createFileRoute("/app/")({
 type DeletedProject = { id: string; name: string; deletedAt: string; restoreUntil: string };
 function Projects() {
   const search = Route.useSearch();
-  const projectRequest = useRef(0);
-  const [projects, setProjects] = useState<any[] | null>(null),
-    [quota, setQuota] = useState<{ available: boolean; projectLimit: number } | null>(null),
-    [error, setError] = useState(""),
-    [open, setOpen] = useState(false),
-    [text, setText] = useState(""),
-    [busy, setBusy] = useState(false),
-    [deletedProjects, setDeletedProjects] = useState<DeletedProject[]>([]),
-    [restoring, setRestoring] = useState<string | null>(null),
-    [restoreError, setRestoreError] = useState(""),
-    [restoredId, setRestoredId] = useState<string | null>(null);
-  const loadProjects = useCallback(async () => {
-    const request = ++projectRequest.current;
-    try {
-      const list = await api<any[]>('/api/projects');
-      if (request === projectRequest.current) setProjects(list);
-    } catch (error) {
-      if (request === projectRequest.current) throw error;
-    }
-  }, []);
-  useEffect(() => {
-    void api<{ available: boolean; projectLimit: number }>("/api/billing").then(setQuota).catch(() => {});
-    void api<DeletedProject[]>("/api/projects/deleted").then(setDeletedProjects).catch((e) => setRestoreError(e.message));
-    void loadProjects()
-      .catch((e) => {
-        if (e instanceof ApiError && e.status === 401) window.location.assign("/sign-in");
-        else setError(e.message);
-      });
-    return () => { projectRequest.current++; };
-  }, [loadProjects]);
+  const [open, setOpen] = useState(false), [text, setText] = useState("");
+  const [listMachine] = useState(() => createProjectListMachine({
+    list: (signal: AbortSignal) => api<any[]>("/api/projects", { signal }),
+    deleted: (signal: AbortSignal) => api<DeletedProject[]>("/api/projects/deleted", { signal }),
+    quota: (signal: AbortSignal) => api("/api/billing", { signal }),
+    restore: (id: string) => post(`/api/projects/${id}/restore`, {}),
+    navigate: (url: string) => window.location.assign(url),
+  }));
+  const [list, sendList] = useMachine(listMachine);
+  const [createMachine] = useState(() => createProjectMutationMachine({
+    submit: (data: unknown) => post("/api/projects", data),
+    committed: (project: { id: string }) => window.location.assign(`/app/projects/${project.id}`),
+    redirecting: true,
+  }));
+  const [creation, sendCreate] = useMachine(createMachine);
+  const projects = list.context.projects as any[] | null;
+  const deletedProjects = list.context.deletedProjects as DeletedProject[];
+  const { quota, restoring, restoreError, restoredId } = list.context;
+  const error = creation.context.error || list.context.error;
+  const busy = creation.hasTag("busy");
+  useEffect(() => { sendList({ type: "START" }); }, [sendList]);
   const justDeleted = deletedProjects.find((project) => project.id === search.deleted);
-  async function restore(projectId: string) {
-    if (restoring) return;
-    setRestoring(projectId);
-    setRestoreError("");
-    try {
-      await post(`/api/projects/${projectId}/restore`, {});
-      setDeletedProjects((previous) => previous.filter((project) => project.id !== projectId));
-      setRestoredId(projectId);
-      await loadProjects().catch(() => setError("Your project was restored, but the list could not refresh. Reload this page."));
-    } catch (e: any) {
-      setRestoreError(e.message);
-    } finally {
-      setRestoring(null);
-    }
-  }
-  async function create(event: React.FormEvent<HTMLFormElement>) {
+  function restore(projectId: string) { sendList({ type: "RESTORE", projectId }); }
+  function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
-    setError("");
     const f = new FormData(event.currentTarget);
-    try {
-      const project = await post("/api/projects", {
-        name: f.get("name"),
-        purpose: f.get("purpose"),
-        perspective: f.get("perspective"),
-        ...(text.trim()
-          ? {
-              source: {
-                id: `Transcript_${crypto.randomUUID()}`,
-                title: "Initial process interview",
-                kind: "transcript",
-                text,
-              },
-            }
-          : {}),
-      });
-      window.location.assign(`/app/projects/${project.id}`);
-    } catch (e: any) {
-      setError(e.message);
-      setBusy(false);
-    }
+    sendCreate({ type: "SUBMIT", data: {
+      name: f.get("name"), purpose: f.get("purpose"), perspective: f.get("perspective"),
+      ...(text.trim() ? { source: { id: `Transcript_${crypto.randomUUID()}`, title: "Initial process interview", kind: "transcript", text } } : {}),
+    } });
   }
   return (
     <AccountFrame>
@@ -172,7 +132,7 @@ function Projects() {
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file && file.size <= 300000) setText(await file.text());
-                        else if (file) setError("Choose a text transcript smaller than 300 KB.");
+                        else if (file) sendCreate({ type: "ERROR", message: "Choose a text transcript smaller than 300 KB." });
                       }}
                     />
                   </Field>

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { hash, contentHash } from "../core/hash.js";
 import { requireThat } from "../core/errors.js";
+import { publishModelContent } from '../server/publication-machine.js';
 
 export async function deleteObjects(bucket, prefix, include = () => true) {
   const keys = [];
@@ -82,30 +83,33 @@ export class CloudStore {
     }));
   }
   async append(expectedRevision, candidate, summary) {
-    const prepared = await prepareSnapshot(
-      this.bucket,
-      this.modelId,
-      expectedRevision,
-      candidate,
-      summary,
-    );
-    const result = await this.db
-      .prepare(
-        "INSERT INTO senda_revisions (model_id,revision,parent,created,summary,object_key,digest,content_hash) SELECT ?,?,?,?,?,?,?,? WHERE COALESCE((SELECT MAX(revision) FROM senda_revisions WHERE model_id=?),0)=? AND EXISTS(SELECT 1 FROM senda_models m JOIN senda_projects p ON p.id=m.project_id WHERE m.id=? AND p.state='active' AND p.generation=?)",
-      )
-      .bind(...prepared.values, this.modelId, expectedRevision, this.modelId, this.generation)
-      .run();
-    if (!result.meta.changes) {
-      await this.bucket.delete(prepared.row.object_key).catch(() => {});
-      const active = await this.db.prepare("SELECT p.generation FROM senda_models m JOIN senda_projects p ON p.id=m.project_id WHERE m.id=? AND p.state='active'").bind(this.modelId).first();
-      requireThat(active, 'PROJECT_DELETED', 'This project was deleted.');
-      requireThat(active.generation === this.generation, 'STALE_PROJECT', 'This project was deleted or restored after this operation started. Open it again before continuing.');
-      requireThat(
-        false,
-        "STALE_REVISION",
-        "The model changed. Read its latest revision and reconcile your proposal.",
-      );
-    }
+    const prepared = await publishModelContent({
+      prepare: () => prepareSnapshot(
+        this.bucket,
+        this.modelId,
+        expectedRevision,
+        candidate,
+        summary,
+      ),
+      publish: prepared => this.db
+        .prepare(
+          "INSERT INTO senda_revisions (model_id,revision,parent,created,summary,object_key,digest,content_hash) SELECT ?,?,?,?,?,?,?,? WHERE COALESCE((SELECT MAX(revision) FROM senda_revisions WHERE model_id=?),0)=? AND EXISTS(SELECT 1 FROM senda_models m JOIN senda_projects p ON p.id=m.project_id WHERE m.id=? AND p.state='active' AND p.generation=?)",
+        )
+        .bind(...prepared.values, this.modelId, expectedRevision, this.modelId, this.generation)
+        .run(),
+      accepted: result => result.meta.changes === 1,
+      reject: async prepared => {
+        await this.bucket.delete(prepared.row.object_key).catch(() => {});
+        const active = await this.db.prepare("SELECT p.generation FROM senda_models m JOIN senda_projects p ON p.id=m.project_id WHERE m.id=? AND p.state='active'").bind(this.modelId).first();
+        requireThat(active, 'PROJECT_DELETED', 'This project was deleted.');
+        requireThat(active.generation === this.generation, 'STALE_PROJECT', 'This project was deleted or restored after this operation started. Open it again before continuing.');
+        requireThat(
+          false,
+          'STALE_REVISION',
+          'The model changed. Read its latest revision and reconcile your proposal.',
+        );
+      },
+    });
     // Never delete a candidate blob after an ambiguous database/network error:
     // its conditional insert may already have committed. Unpublished blobs stay
     // private and can be reconciled separately without risking a saved revision.

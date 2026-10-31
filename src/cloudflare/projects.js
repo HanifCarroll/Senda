@@ -9,8 +9,8 @@ import { ReviewCache, cacheResult } from "./review-cache.js";
 import { CloudStore, prepareSnapshot, deleteObjects } from "./store.js";
 
 import { ProjectModels } from "../server/project-models.js";
-
-const retention = 7 * 86400000;
+import { nextProjectState, projectIsActive, PROJECT_RETENTION_MS as retention } from '../core/project-lifecycle.js';
+import { publishModelContent } from '../server/publication-machine.js';
 
 export class CloudProjects extends ProjectModels {
   revokesAuthTokens = true;
@@ -28,7 +28,7 @@ export class CloudProjects extends ProjectModels {
       .bind(id, actor.userId)
       .first();
     requireThat(row, "NOT_FOUND", "This project is not available.");
-    requireThat(row.state === 'active', 'PROJECT_DELETED', 'This project was deleted.');
+    requireThat(projectIsActive(row), 'PROJECT_DELETED', 'This project was deleted.');
     requireThat(generation === undefined || row.generation === generation, 'STALE_PROJECT', 'This project was deleted or restored after this operation started. Open it again before continuing.');
     if (actor.clientId)
       requireThat(
@@ -79,42 +79,41 @@ export class CloudProjects extends ProjectModels {
       sources,
       mode: "current",
     });
-    const prepared = await prepareSnapshot(
-      this.bucket,
-      id,
-      0,
-      snapshot,
-      "Initialize process discovery",
-    );
-    const statements = [
-      this.db
-        .prepare("INSERT INTO senda_projects(id,owner,name,created) SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM senda_projects WHERE owner=? AND state='active')<?")
-        .bind(id, actor.userId, data.name, prepared.snapshot.createdAt, actor.userId, limit),
-      this.db
-        .prepare("INSERT INTO senda_models SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM senda_projects WHERE id=? AND owner=?)")
-        .bind(id, id, "as-is", id, actor.userId),
-      this.insertInitial(prepared),
-    ];
-    if (actor.clientId)
-      statements.push(
-        this.db
-          .prepare("INSERT INTO senda_grants SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM senda_projects WHERE id=? AND owner=?)")
-          .bind(actor.userId, actor.clientId, id, id, actor.userId),
-      );
-    const results = await this.db.batch(statements);
-    if (results[0].meta.changes !== 1) {
-      await this.bucket.delete(prepared.row.object_key).catch(() => {});
-      requireThat(false, 'PROJECT_LIMIT', limit === 3
-        ? 'Free lets you keep up to 3 projects at a time. Delete a project to free a slot, or choose Senda Pro in Your plan.'
-        : 'This account has reached its 100-project allowance. Your existing work stays available. Contact support if you need more room.');
-    }
+    await publishModelContent({
+      prepare: () => prepareSnapshot(this.bucket, id, 0, snapshot, 'Initialize process discovery'),
+      publish: prepared => {
+        const statements = [
+          this.db
+            .prepare("INSERT INTO senda_projects(id,owner,name,created) SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM senda_projects WHERE owner=? AND state='active')<?")
+            .bind(id, actor.userId, data.name, prepared.snapshot.createdAt, actor.userId, limit),
+          this.db
+            .prepare("INSERT INTO senda_models SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM senda_projects WHERE id=? AND owner=?)")
+            .bind(id, id, 'as-is', id, actor.userId),
+          this.insertInitial(prepared),
+        ];
+        if (actor.clientId) statements.push(
+          this.db
+            .prepare("INSERT INTO senda_grants SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM senda_projects WHERE id=? AND owner=?)")
+            .bind(actor.userId, actor.clientId, id, id, actor.userId),
+        );
+        return this.db.batch(statements);
+      },
+      accepted: results => results[0].meta.changes === 1,
+      reject: async prepared => {
+        await this.bucket.delete(prepared.row.object_key).catch(() => {});
+        requireThat(false, 'PROJECT_LIMIT', limit === 3
+          ? 'Free lets you keep up to 3 projects at a time. Delete a project to free a slot, or choose Senda Pro in Your plan.'
+          : 'This account has reached its 100-project allowance. Your existing work stays available. Contact support if you need more room.');
+      },
+    });
     return { id, name: data.name, revision: 1 };
   }
   async delete(actor, id) {
     const project = await this.authorize(actor, id), deletedAt = new Date(this.now()).toISOString();
+    const state = nextProjectState(project, 'DELETE', this.now());
     const [changed] = await this.db.batch([
-      this.db.prepare("UPDATE senda_projects SET state='deleted',deleted_at=?,generation=generation+1 WHERE id=? AND owner=? AND state='active' AND generation=?")
-        .bind(deletedAt, id, actor.userId, project.generation),
+      this.db.prepare("UPDATE senda_projects SET state=?,deleted_at=?,generation=generation+1 WHERE id=? AND owner=? AND state='active' AND generation=?")
+        .bind(state, deletedAt, id, actor.userId, project.generation),
       this.db.prepare("DELETE FROM senda_grants WHERE project=? AND owner=? AND EXISTS(SELECT 1 FROM senda_projects WHERE id=? AND state='deleted')")
         .bind(id, actor.userId, id),
       ...this.settleDeletedRuns(id),
@@ -135,18 +134,21 @@ export class CloudProjects extends ProjectModels {
     requireThat(row, 'NOT_FOUND', 'This project is not available.');
     const limit = await this.allowance(actor);
     const cutoff = new Date(this.now() - retention).toISOString();
-    requireThat(row.state === 'deleted' && row.deleted_at > cutoff, 'RESTORE_EXPIRED', 'The seven-day restore window has ended. This project cannot be restored.');
-    const restored = await this.db.prepare("UPDATE senda_projects SET state='active',deleted_at=NULL WHERE id=? AND owner=? AND state='deleted' AND generation=? AND deleted_at>? AND (SELECT COUNT(*) FROM senda_projects WHERE owner=? AND state='active')<?")
-      .bind(id, actor.userId, row.generation, cutoff, actor.userId, limit).run();
+    const state = nextProjectState(row, 'RESTORE', this.now());
+    requireThat(state, 'RESTORE_EXPIRED', 'The seven-day restore window has ended. This project cannot be restored.');
+    const restored = await this.db.prepare("UPDATE senda_projects SET state=?,deleted_at=NULL WHERE id=? AND owner=? AND state='deleted' AND generation=? AND deleted_at>? AND (SELECT COUNT(*) FROM senda_projects WHERE owner=? AND state='active')<?")
+      .bind(state, id, actor.userId, row.generation, cutoff, actor.userId, limit).run();
     requireThat(restored.meta.changes === 1, 'PROJECT_LIMIT', 'Your workspace is full. Delete another project to make room, or choose Pro, then restore this project.');
     return { id, name: row.name, restored: true };
   }
   async purgeDeleted() {
     await this.db.batch(this.settleDeletedRuns());
     const cutoff = new Date(this.now() - retention).toISOString();
-    const rows = (await this.db.prepare("SELECT id FROM senda_projects WHERE state IN ('deleted','purging') AND deleted_at<=?").bind(cutoff).all()).results;
-    for (const { id } of rows) {
-      const claim = await this.db.prepare("UPDATE senda_projects SET state='purging' WHERE id=? AND state IN ('deleted','purging') AND deleted_at<=?").bind(id, cutoff).run();
+    const rows = (await this.db.prepare("SELECT id,state,deleted_at FROM senda_projects WHERE state IN ('deleted','purging') AND deleted_at<=?").bind(cutoff).all()).results;
+    for (const row of rows) {
+      const { id } = row, state = nextProjectState(row, 'BEGIN_PURGE', this.now());
+      if (!state) continue;
+      const claim = await this.db.prepare("UPDATE senda_projects SET state=? WHERE id=? AND state IN ('deleted','purging') AND deleted_at<=?").bind(state, id, cutoff).run();
       if (!claim.meta.changes) continue;
       const models = (await this.db.prepare('SELECT id FROM senda_models WHERE project_id=? UNION SELECT model_id AS id FROM senda_model_candidates WHERE project_id=?').bind(id,id).all()).results;
       for (const model of models) await deleteObjects(this.bucket, `models/${model.id}/`);
@@ -160,7 +162,7 @@ export class CloudProjects extends ProjectModels {
         this.db.prepare('DELETE FROM senda_project_plans WHERE project_id=?').bind(id),
         this.db.prepare('DELETE FROM senda_models WHERE project_id=?').bind(id),
         this.db.prepare('DELETE FROM senda_model_candidates WHERE project_id=?').bind(id),
-        this.db.prepare("UPDATE senda_projects SET state='purged',name='' WHERE id=? AND state='purging'").bind(id),
+        this.db.prepare("UPDATE senda_projects SET state=?,name='' WHERE id=? AND state='purging'").bind(nextProjectState({ ...row, state }, 'FINISH_PURGE', this.now()), id),
       ]);
     }
   }
@@ -279,15 +281,20 @@ export class CloudProjects extends ProjectModels {
       },
       { baselineXml: baseline.xml },
     );
-    const prepared = await prepareSnapshot(
-      this.bucket,
-      modelId,
-      0,
-      snapshot,
-      `Start To-be planning from As-is revision ${baseline.revision}`,
-    );
-    try {
-      const result = await this.db.batch([
+    const reconcile = async (prepared, error) => {
+      const plan = await this.db.prepare('SELECT model_id FROM senda_project_plans WHERE project_id=?').bind(id).first();
+      if (plan) {
+        if (plan.model_id !== modelId) await this.bucket.delete(prepared.row.object_key).catch(() => {});
+        throw new ScribeError(
+          'MODEL_EXISTS',
+          'A To-be model already exists. Revise the existing plan instead.',
+        );
+      }
+      throw error;
+    };
+    await publishModelContent({
+      prepare: () => prepareSnapshot(this.bucket, modelId, 0, snapshot, `Start To-be planning from As-is revision ${baseline.revision}`),
+      publish: prepared => this.db.batch([
         this.db
           .prepare("INSERT INTO senda_models SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM senda_projects WHERE id=? AND state='active' AND generation=?)")
           .bind(modelId, id, "to-be", id, project.generation),
@@ -302,23 +309,17 @@ export class CloudProjects extends ProjectModels {
             prepared.snapshot.createdAt,
             modelId,
           ),
-      ]);
-      if (!result[0].meta.changes) {
+      ]),
+      accepted: result => result[0].meta.changes === 1,
+      reject: async prepared => {
         await this.bucket.delete(prepared.row.object_key).catch(() => {});
-        await this.authorize(actor,id,project.generation);
-        requireThat(false, 'STALE_PROJECT', 'The project changed. Open it again before continuing.');
-      }
-    } catch (e) {
-      const plan = await this.db.prepare('SELECT model_id FROM senda_project_plans WHERE project_id=?').bind(id).first();
-      if (plan) {
-        if (plan.model_id !== modelId) await this.bucket.delete(prepared.row.object_key).catch(() => {});
-        throw new ScribeError(
-          "MODEL_EXISTS",
-          "A To-be model already exists. Revise the existing plan instead.",
-        );
-      }
-      throw e;
-    }
+        try {
+          await this.authorize(actor, id, project.generation);
+          requireThat(false, 'STALE_PROJECT', 'The project changed. Open it again before continuing.');
+        } catch (error) { return reconcile(prepared, error); }
+      },
+      reconcile,
+    });
     return {
       id,
       model: "to-be",

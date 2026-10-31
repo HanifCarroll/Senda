@@ -5,6 +5,7 @@ import { hash } from '../core/hash.js';
 import { paidUsage, budgetPause, MIN_TURN_USD, serviceLimits } from './agent-budget.js';
 import { SENDA_PLAN, billingNow, emailListed } from '../server/billing/plan.js';
 import { OperationalAlerts } from './operations.js';
+import { checkoutSession } from '../server/billing/checkout-machine.js';
 
 const idOf = value => typeof value === 'string' ? value : value?.id;
 const ACCOUNTS = { live: 'acct_1TX0nfGSlAkX1ZYL', sandbox: 'acct_1TX0nqK7alsSe3q5' };
@@ -93,9 +94,10 @@ export class CloudBilling {
     this.requireConfigured();
     requireThat(this.config.paidAgentEnabled, 'BILLING_UNAVAILABLE', 'The hosted plan is not available yet.');
     await this.verifyCatalog({ forCheckout: true });
-    return this.withCustomer(actor.userId, async row => {
-      requireThat(!(await this.reviewHold(actor.userId)), 'FORBIDDEN', 'Your payment needs operator review before another subscription can be started. Your saved work remains available.');
-      if (!row.customer) {
+    return this.withCustomer(actor.userId, row => checkoutSession({
+      checkHold: async () => requireThat(!(await this.reviewHold(actor.userId)), 'FORBIDDEN', 'Your payment needs operator review before another subscription can be started. Your saved work remains available.'),
+      resolveCustomer: async () => {
+        if (row.customer) return;
         await this.renewLease(actor.userId, row.lock_id);
         const customer = await this.stripe.customers.create({ email, metadata: { application: 'senda' } }, {
           idempotencyKey: `senda-customer-${hash(this.config.context + ':' + actor.userId)}`,
@@ -104,37 +106,44 @@ export class CloudBilling {
         await this.db.prepare('UPDATE senda_billing_customers SET customer=? WHERE context=? AND owner=? AND lock_id=?')
           .bind(customer.id, this.config.context, actor.userId, row.lock_id).run();
         row.customer = customer.id;
-      }
+      },
       // Canonical provider state prevents duplicate subscriptions even if a
       // successful payment's webhook is still in flight.
-      for await (const subscription of this.stripe.subscriptions.list({ customer: row.customer, status: 'all', limit: 100 }))
-        requireThat(!['active', 'trialing', 'past_due', 'unpaid', 'paused', 'incomplete'].includes(subscription.status),
-          'SUBSCRIPTION_EXISTS', 'You already have a subscription. Use Manage subscription to update it.');
-      if (row.checkout_id) {
+      checkSubscriptions: async () => {
+        for await (const subscription of this.stripe.subscriptions.list({ customer: row.customer, status: 'all', limit: 100 }))
+          requireThat(!['active', 'trialing', 'past_due', 'unpaid', 'paused', 'incomplete'].includes(subscription.status),
+            'SUBSCRIPTION_EXISTS', 'You already have a subscription. Use Manage subscription to update it.');
+      },
+      readSession: async () => {
+        if (!row.checkout_id) return { exists: false };
         const prior = await this.stripe.checkout.sessions.retrieve(row.checkout_id);
-        if (prior.status === 'open' && prior.url) return { url: prior.url };
+        return { exists: true, url: prior.status === 'open' ? prior.url : null };
+      },
+      rotateAttempt: async () => {
         await this.renewLease(actor.userId, row.lock_id);
         const attempt = randomUUID();
         const changed = await this.db.prepare('UPDATE senda_billing_customers SET checkout_id=NULL,checkout_attempt=? WHERE context=? AND owner=? AND lock_id=? AND lock_until>?')
           .bind(attempt, this.config.context, actor.userId, row.lock_id, Date.now()).run();
         requireThat(changed.meta.changes === 1, 'CONFLICT', 'Your billing account changed during this request. Please try again.');
         row.checkout_attempt = attempt;
-      }
-      await this.renewLease(actor.userId, row.lock_id);
-      const session = await this.stripe.checkout.sessions.create({
-        mode: 'subscription', customer: row.customer,
-        line_items: [{ price: this.config.priceId, quantity: 1 }],
-        subscription_data: { billing_mode: { type: 'flexible' }, metadata: { application: 'senda' } },
-        integration_identifier: `senda_${row.checkout_attempt.replace(/[^a-z]/g, '').slice(0, 8).padEnd(8, 's')}`,
-        success_url: this.origin + '/app/billing?checkout=complete',
-        cancel_url: this.origin + '/app/billing',
-        metadata: { application: 'senda' },
-      }, { idempotencyKey: 'senda-checkout-' + row.checkout_attempt });
-      requireThat(session.livemode === this.config.live && session.url, 'BILLING_CONTEXT_MISMATCH', 'The payment environment changed.');
-      await this.db.prepare('UPDATE senda_billing_customers SET checkout_id=? WHERE context=? AND owner=? AND lock_id=?')
-        .bind(session.id, this.config.context, actor.userId, row.lock_id).run();
-      return { url: session.url };
-    });
+      },
+      createSession: async () => {
+        await this.renewLease(actor.userId, row.lock_id);
+        const session = await this.stripe.checkout.sessions.create({
+          mode: 'subscription', customer: row.customer,
+          line_items: [{ price: this.config.priceId, quantity: 1 }],
+          subscription_data: { billing_mode: { type: 'flexible' }, metadata: { application: 'senda' } },
+          integration_identifier: `senda_${row.checkout_attempt.replace(/[^a-z]/g, '').slice(0, 8).padEnd(8, 's')}`,
+          success_url: this.origin + '/app/billing?checkout=complete',
+          cancel_url: this.origin + '/app/billing',
+          metadata: { application: 'senda' },
+        }, { idempotencyKey: 'senda-checkout-' + row.checkout_attempt });
+        requireThat(session.livemode === this.config.live && session.url, 'BILLING_CONTEXT_MISMATCH', 'The payment environment changed.');
+        await this.db.prepare('UPDATE senda_billing_customers SET checkout_id=? WHERE context=? AND owner=? AND lock_id=?')
+          .bind(session.id, this.config.context, actor.userId, row.lock_id).run();
+        return { url: session.url };
+      },
+    }));
   }
   async portal(actor, { paymentMethod = false } = {}) {
     this.requireConfigured();

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useMachine } from "@xstate/react";
+import { createProjectMutationMachine } from "@/lib/project-machines.js";
 import { ArrowRight, Info } from "lucide-react";
 import { post } from "@/lib/api";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
@@ -47,26 +49,16 @@ export function ModelNavigation({
 }) {
   const [open, setOpen] = useState(false),
     [brief, setBrief] = useState(""),
-    [baseline, setBaseline] = useState(String(models.asIs.revision)),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  async function create(event: React.FormEvent) {
+    [baseline, setBaseline] = useState(String(models.asIs.revision));
+  const [machine] = useState(() => createProjectMutationMachine({
+    submit: (data: unknown) => post(`/api/projects/${models.projectId}/models`, data),
+    committed: async () => { setOpen(false); setBrief(""); await onCreated(); },
+  }));
+  const [state, send] = useMachine(machine);
+  const busy = state.hasTag("busy"), error = state.context.error;
+  function create(event: React.FormEvent) {
     event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      await post(`/api/projects/${models.projectId}/models`, {
-        baselineRevision: Number(baseline),
-        brief,
-      });
-      setOpen(false);
-      setBrief("");
-      await onCreated();
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
+    send({ type: "SUBMIT", data: { baselineRevision: Number(baseline), brief } });
   }
   return (
     <section
@@ -122,7 +114,7 @@ export function ModelNavigation({
                 className="mt-4"
                 onClick={() => {
                   setBaseline(String(models.asIs.revision));
-                  setError("");
+                  send({ type: "CLEAR" });
                   setOpen(true);
                 }}
               >

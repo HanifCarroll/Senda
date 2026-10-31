@@ -6,6 +6,7 @@ import {
   type Ref,
 } from "react";
 import { safeSvg } from "@/lib/svg";
+import { bindDiagramGestures } from "@/lib/diagram-gesture-machine";
 import type { DiagramView, ModelElement } from "@/lib/types";
 import { Alert, AlertTitle, AlertDescription } from "./ui/alert";
 
@@ -225,67 +226,19 @@ export function DiagramCanvas({
         camera.fitted ? fit() : draw();
       });
       observer.observe(host);
-      let drag:
-        | {
-            id: number;
-            x: number;
-            y: number;
-            cx: number;
-            cy: number;
-            moved: boolean;
-          }
-        | undefined;
-      let suppress = false;
-      host.addEventListener(
-        "pointerdown",
-        (e) => {
-          if (e.button !== 0) return;
-          suppress = false;
-          drag = {
-            id: e.pointerId,
-            x: e.clientX,
-            y: e.clientY,
-            cx: camera.x,
-            cy: camera.y,
-            moved: false,
-          };
+      bindDiagramGestures(host, {
+        camera: () => camera,
+        capture: (id) => host.setPointerCapture(id),
+        pan: ({ cx, cy, dx, dy }) => {
+          camera.x = cx - dx / camera.scale;
+          camera.y = cy - dy / camera.scale;
+          camera.fitted = false;
+          draw();
         },
-        { signal: abort.signal },
-      );
-      host.addEventListener(
-        "pointermove",
-        (e) => {
-          if (!drag || e.pointerId !== drag.id) return;
-          if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 5) {
-            drag.moved = true;
-            host.setPointerCapture(e.pointerId);
-            camera.x = drag.cx - (e.clientX - drag.x) / camera.scale;
-            camera.y = drag.cy - (e.clientY - drag.y) / camera.scale;
-            camera.fitted = false;
-            draw();
-          }
-        },
-        { signal: abort.signal },
-      );
-      const end = () => {
-        suppress = !!drag?.moved;
-        drag = undefined;
-      };
-      host.addEventListener("pointerup", end, { signal: abort.signal });
-      host.addEventListener("pointercancel", end, { signal: abort.signal });
-      host.addEventListener(
-        "click",
-        (e) => {
-          if (suppress) {
-            suppress = false;
-            return;
-          }
-          const node = (e.target as Element).closest<SVGGElement>("g[data-id]");
-          const id = node?.dataset.id;
+        select: (id) => {
           if (id && catalog.has(id)) callbacks.current.onSelect(id);
         },
-        { signal: abort.signal },
-      );
+      }, abort.signal);
       host.addEventListener(
         "keydown",
         (e) => {
