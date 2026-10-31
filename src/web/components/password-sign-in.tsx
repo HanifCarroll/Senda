@@ -1,5 +1,7 @@
 import { Brand } from "@/components/brand";
 import { useEffect, useState } from "react";
+import { useMachine } from "@xstate/react";
+import { createPasswordMachine } from "@/lib/account-machines.js";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -14,90 +16,31 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { signInDestination, signInRetry } from '../../shared/model-links.js';
 
 export function PasswordSignIn() {
-  const [register, setRegister] = useState(false),
-    [ready, setReady] = useState(false),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [reset, setReset] = useState(false),
-    [notice, setNotice] = useState(""),
-    [accountEmail, setAccountEmail] = useState(false),
-    [verifyEmail, setVerifyEmail] = useState("");
-  useEffect(() => {
-    setReady(true);
-    void api<{ accountEmail: boolean }>("/api/config")
-      .then((x) => setAccountEmail(x.accountEmail))
-      .catch(() => {});
-  }, []);
-  async function resend() {
-    setBusy(true);
-    setError("");
-    try {
-      const result = await authClient.sendVerificationEmail({
-        email: verifyEmail,
-        callbackURL: window.location.origin + signInRetry(window.location.search),
-      });
-      if (result.error) setError(result.error.message || "Try again in a moment.");
-      else
-        setNotice(
-          "If this address needs verification, a new link is on its way. Check your inbox and spam folder.",
-        );
-    } catch {
-      setError("The email service could not be reached. Try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  const [machine] = useState(() => createPasswordMachine({
+    load: (signal: AbortSignal) => api<{ accountEmail: boolean }>("/api/config", { signal }),
+    location: () => window.location,
+    navigate: (url: string) => window.location.assign(url),
+    signUp: (input: any) => authClient.signUp.email(input),
+    signIn: (input: any) => authClient.signIn.email(input),
+    reset: (input: any) => authClient.requestPasswordReset(input),
+    verify: (input: any) => authClient.sendVerificationEmail(input),
+  }));
+  const [state, send] = useMachine(machine);
+  const { error, notice, accountEmail, verifyEmail } = state.context;
+  const ready = !state.matches("unready"), busy = state.hasTag("busy");
+  const register = state.matches({ ready: { form: "register" } });
+  const reset = state.matches({ ready: { form: "reset" } });
+  useEffect(() => { send({ type: "START" }); }, [send]);
+  function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setNotice("");
-    setBusy(true);
-    const fields = new FormData(event.currentTarget),
-      data = {
-        email: String(fields.get("email")),
-        password: String(fields.get("password")),
-        name: String(fields.get("name") || ""),
-      };
-    try {
-      if (reset) {
-        const result = await authClient.requestPasswordReset({
-          email: data.email,
-          redirectTo: window.location.origin + "/reset-password",
-        });
-        if (result.error) setError(result.error.message || "Try again in a moment.");
-        else
-          setNotice(
-            "If an account uses this email address, a password-reset link is on its way. Check your inbox and spam folder.",
-          );
-        return;
-      }
-      const result = register
-        ? await authClient.signUp.email({
-            ...data,
-            callbackURL: window.location.origin + "/sign-in" + window.location.search,
-          })
-        : await authClient.signIn.email(data);
-      if (result.error) {
-        setError(result.error.message || "Check your email and password.");
-        if (result.error.code === "EMAIL_NOT_VERIFIED") setVerifyEmail(data.email);
-      } else {
-        const value = result.data as any;
-        if (register && !value?.token) {
-          setVerifyEmail(data.email);
-          setNotice(
-            "Check your inbox for a verification link. Once your email is verified, return here to sign in.",
-          );
-          setRegister(false);
-        } else window.location.assign(signInDestination(window.location.search));
-      }
-    } catch {
-      setError("The account service could not be reached. Try again.");
-    } finally {
-      setBusy(false);
-    }
+    const fields = new FormData(event.currentTarget);
+    send({ type: "SUBMIT", data: {
+      email: String(fields.get("email")),
+      password: String(fields.get("password")),
+      name: String(fields.get("name") || ""),
+    } });
   }
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-4 py-12">
@@ -119,7 +62,7 @@ export function PasswordSignIn() {
             </Alert>
           )}
           {accountEmail && verifyEmail && (
-            <Button variant="outline" className="mb-5 w-full" disabled={busy} onClick={resend}>
+            <Button variant="outline" className="mb-5 w-full" disabled={busy} onClick={() => send({ type: "RESEND" })}>
               Resend verification email
             </Button>
           )}
@@ -182,13 +125,7 @@ export function PasswordSignIn() {
             variant="link"
             className="px-0"
             disabled={!ready || busy}
-            onClick={() => {
-              setRegister(reset ? false : !register);
-              setReset(false);
-              setNotice("");
-              setVerifyEmail("");
-              setError("");
-            }}
+            onClick={() => send({ type: "TOGGLE_ACCOUNT" })}
           >
             {reset || register ? "Back to sign in" : "New here? Create an account"}
           </Button>
@@ -196,12 +133,8 @@ export function PasswordSignIn() {
             <Button
               variant="link"
               className="px-0"
-              onClick={() => {
-                setReset(true);
-                setError("");
-                setNotice("");
-                setVerifyEmail("");
-              }}
+              disabled={!ready || busy}
+              onClick={() => send({ type: "RESET" })}
             >
               Forgot password?
             </Button>

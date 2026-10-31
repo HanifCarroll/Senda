@@ -6,13 +6,13 @@ const plans = [
   {
     name: "Free", price: "$0", detail: "No payment card needed",
     intro: "Try the built-in agent before deciding whether to pay.",
-    features: ["Try the built-in agent on one project with a $0.50 lifetime allowance", "Create up to 3 saved cloud projects", "Keep using your own Claude or ChatGPT (beta)", "Separate As-is and To-be models", "Source evidence and revision history", "Download standard BPMN diagrams"],
+    features: ["Try the built-in agent on one project with a $0.50 lifetime allowance", "Keep up to 3 cloud projects at a time", "Keep using your own Claude or ChatGPT (beta)", "Separate As-is and To-be models", "Source evidence and revision history", "Download standard BPMN diagrams"],
     href: "/app", action: "Start free",
   },
   {
     name: "Pro", price: "$29", detail: "USD per month · cancel any time",
     intro: "Work directly with the Senda agent.",
-    features: ["Create up to 100 saved cloud projects", "Everything in Free", "Built-in chat with the Senda agent", "$6 monthly AI allowance, with usage shown", "No automatic overage charges"],
+    features: ["Keep up to 100 cloud projects at a time", "Everything in Free", "Built-in chat with the Senda agent", "$6 monthly AI allowance, with usage shown", "No automatic overage charges"],
     href: "/app/billing", action: "Choose Pro",
   },
 ];

@@ -339,7 +339,7 @@ test(
       async function call(name, arguments_ = {}, connection = client) {
         if (
           arguments_.projectId &&
-          !["list_models", "create_to_be_model"].includes(name)
+          !["list_models", "create_to_be_model", "delete_project"].includes(name)
         )
           arguments_ = { model: "as-is", ...arguments_ };
         const result = await connection.callTool({
@@ -936,6 +936,19 @@ test(
           );
         },
       );
+      await t.test('real OAuth deletion needs write scope and revokes only the project grant',async()=>{
+        const cookie=await signup('deletion@example.test'),writer=await connect(undefined,cookie,{createProjects:true});
+        const created=(await call('create_project',{name:'Customer requests',purpose:'Map requests',perspective:'Operations'},writer.client)).value;
+        const reader=await connect('openid offline_access projects:read',cookie,{projectId:created.id});
+        const blocked=await fetch(origin+'/mcp',{method:'POST',headers:{authorization:`Bearer ${reader.token.access_token}`,'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'delete_project',arguments:{projectId:created.id,confirm:true}}})});
+        assert.equal(blocked.status,403);assert.match(blocked.headers.get('www-authenticate'),/projects:write/);
+        const deleted=await call('delete_project',{projectId:created.id,confirm:true},writer.client);assert.equal(deleted.value.deleted,true);
+        assert.equal((await call('read_project',{projectId:created.id},writer.client)).value.code,'PROJECT_DELETED');
+        for(const suffix of ['review','bpmn'])assert.equal((await request(`/api/projects/${created.id}/${suffix}`,cookie)).status,404);
+        await content(await request(`/api/projects/${created.id}/restore`,cookie,{}));
+        assert.equal((await call('read_project',{projectId:created.id},writer.client)).value.code,'NOT_FOUND');
+        assert.equal((await content(await request(`/api/projects/${created.id}/read`,cookie))).revision,1);
+      });
     } finally {
       for (const client of clients) await client.close();
       server.closeAllConnections();

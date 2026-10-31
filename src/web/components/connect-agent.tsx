@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useMachine } from "@xstate/react";
+import { createConnectionMachine } from "@/lib/account-machines.js";
 import { Copy, Download, Link2, Unplug } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "./ui/button";
@@ -15,38 +17,22 @@ import { Input } from "./ui/input";
 import { Field, FieldLabel } from "./ui/field";
 
 export function ConnectAgent({ label = "Connect your agent" }: { label?: string }) {
-  const [open, setOpen] = useState(false),
-    [data, setData] = useState<any>(null),
-    [error, setError] = useState(""),
-    [copied, setCopied] = useState(false),
-    [browserTools, setBrowserTools] = useState<number | null>(null);
-  useEffect(() => {
-    if (open) {
-      setError("");
-      void api("/api/connections")
-        .then(setData)
-        .catch((e) => setError(e.message));
+  const [copied, setCopied] = useState(false);
+  const [machine] = useState(() => createConnectionMachine({
+    load: (signal: AbortSignal) => api("/api/connections", { signal }),
+    revoke: (signal: AbortSignal) => api("/api/connections", { method: "DELETE", body: "{}", signal }),
+    tools: async () => {
       const context = (document as any).modelContext;
-      if (typeof context?.getTools === "function")
-        void context
-          .getTools()
-          .then((tools: any[]) =>
-            setBrowserTools(tools.some((t) => t.name === "apply_revision") ? tools.length : 0),
-          )
-          .catch(() => setBrowserTools(null));
-      else setBrowserTools(null);
-    }
-  }, [open]);
-  async function revoke() {
-    try {
-      await api("/api/connections", { method: "DELETE", body: "{}" });
-      setData({ ...data, connections: [] });
-    } catch (e: any) {
-      setError(e.message);
-    }
-  }
+      if (typeof context?.getTools !== "function") return null;
+      const tools: any[] = await context.getTools();
+      return tools.some((t) => t.name === "apply_revision") ? tools.length : 0;
+    },
+  }));
+  const [state, send] = useMachine(machine);
+  const { data, error, browserTools } = state.context;
+  const open = state.matches("open");
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(open) => send({ type: open ? "OPEN" : "CLOSE" })}>
       <DialogTrigger asChild>
         <Button variant="outline">
           <Link2 data-icon="inline-start" />
@@ -101,7 +87,7 @@ export function ConnectAgent({ label = "Connect your agent" }: { label?: string 
                       await navigator.clipboard.writeText(data.url);
                       setCopied(true);
                     } catch {
-                      setError("Select the URL and copy it from the field.");
+                      send({ type: "COPY_FAILED" });
                     }
                   }}
                 >
@@ -142,7 +128,7 @@ export function ConnectAgent({ label = "Connect your agent" }: { label?: string 
                   </li>
                 ))}
               </ul>
-              <Button variant="destructive" onClick={revoke}>
+              <Button variant="destructive" disabled={!state.can({ type: "REVOKE" })} onClick={() => send({ type: "REVOKE" })}>
                 <Unplug data-icon="inline-start" />
                 Disconnect remote agents
               </Button>

@@ -158,6 +158,7 @@ export async function createRequestHandler({
         references,
         remoteTools: [
           "list_projects",
+          "delete_project",
           "list_models",
           "create_to_be_model",
           "read_project",
@@ -260,6 +261,8 @@ export async function createRequestHandler({
         if (request.method === "GET") return json(await projects.list(actor));
         if (request.method === "POST") return json(await projects.create(actor, await body()), 201);
       }
+      if (pathname === '/api/projects/deleted' && request.method === 'GET')
+        return json(await projects.deleted(actor));
       if (pathname === "/api/connections") {
         if (request.method === "GET")
           return json({
@@ -327,11 +330,19 @@ export async function createRequestHandler({
         }
       }
       const match =
-        /^\/api\/projects\/([^/]+)(?:\/(head|read|review|sources|questions|checks|bpmn|export-info|answers|models))?$/.exec(
+        /^\/api\/projects\/([^/]+)(?:\/(head|read|review|sources|questions|checks|bpmn|export-info|answers|models|delete|restore))?$/.exec(
           pathname,
         );
       if (match) {
         const [, id, action = "read"] = match;
+        if (request.method === 'POST' && action === 'delete') {
+          z.strictObject({ confirm: z.literal(true) }).parse(await body());
+          return json(await projects.delete(actor, id));
+        }
+        if (request.method === 'POST' && action === 'restore') {
+          z.strictObject({}).parse(await body());
+          return json(await projects.restore(actor, id));
+        }
         const model = ModelKind.parse(url.searchParams.get("model") || "as-is");
         const revision = url.searchParams.has("revision")
           ? z.coerce.number().int().positive().parse(url.searchParams.get("revision"))
@@ -410,13 +421,16 @@ export async function createRequestHandler({
       }
       return json({ code: "NOT_FOUND", message: "This endpoint is not available." }, 404);
     } catch (error) {
-      const e = publicError(error),
+      const e = error.code === 'PROJECT_DELETED'
+          ? { code: 'NOT_FOUND', message: 'This project is not available.' }
+          : publicError(error),
         status =
           {
             NOT_FOUND: 404,
             FORBIDDEN: 403,
             TRIAL_PROJECT: 403,
             STALE_REVISION: 409,
+            STALE_PROJECT: 409,
             MODEL_EXISTS: 409,
             LIMIT: 413,
             FAILED: 500,

@@ -1,7 +1,9 @@
 import { Brand } from "@/components/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { api, post, ApiError } from "@/lib/api";
+import { useMachine } from "@xstate/react";
+import { createConsentMachine } from "@/lib/account-machines.js";
+import { api, post } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,10 +24,14 @@ import {
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 export const Route = createFileRoute("/consent")({ component: Consent });
 function Consent() {
-  const [data, setData] = useState<any>(null),
-    [project, setProject] = useState(""),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+  const [machine] = useState(() => createConsentMachine({
+    load: (query: string, signal: AbortSignal) => api(`/api/consent?query=${encodeURIComponent(query)}`, { signal }),
+    decide: (input: any) => post("/api/consent", input),
+    navigate: (url: string) => window.location.assign(url),
+  }));
+  const [state, send] = useMachine(machine);
+  const { data, project, error } = state.context;
+  const busy = state.hasTag("busy");
   const canCreate = !!data?.scopes.includes("projects:write");
   const accessDescription = project === "new"
     ? canCreate
@@ -33,44 +39,8 @@ function Consent() {
       : "Connect your agent now. It can ask for permission to create a project when you start. No existing projects are added to this connection."
     : `The agent can read both As-is and To-be models in the selected project, including their transcripts, evidence and diagrams${canCreate ? ", and save revisions or create a new project" : ""}.`;
   useEffect(() => {
-    const query = window.location.search.slice(1);
-    void api(`/api/consent?query=${encodeURIComponent(query)}`)
-      .then((value) => {
-        setData(value);
-        if (value.scopes.includes("projects:write")) setProject("new");
-        else if (value.projects.length === 1) setProject(value.projects[0].id);
-        else setProject("new");
-      })
-      .catch((e) => {
-        if (e instanceof ApiError && e.status === 401)
-          window.location.assign(`/sign-in?${query}`);
-        else setError(e.message);
-      });
-  }, []);
-  async function decide(accept: boolean) {
-    setBusy(true);
-    setError("");
-    try {
-      const access = project === "new"
-        ? canCreate ? { createProjects: true } : { connectOnly: true }
-        : { projectId: project };
-      const value = await post("/api/consent", {
-        query: window.location.search.slice(1),
-        accept,
-        ...(accept ? access : {}),
-      });
-      const target = value.redirect_uri || value.url;
-      if (target) window.location.assign(target);
-      else
-        setError(
-          "The agent did not provide a return address. Start the connection again.",
-        );
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
+    send({ type: "START", query: window.location.search.slice(1) });
+  }, [send]);
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-6 px-4 py-12">
       <a href="/" aria-label="Senda home" className="w-fit"><Brand className="h-10" /></a>
@@ -97,7 +67,7 @@ function Consent() {
                 <FieldLabel htmlFor="consent-project">
                   What can your agent work on?
                 </FieldLabel>
-                <Select value={project} onValueChange={setProject}>
+                <Select value={project} onValueChange={(project) => send({ type: "SELECT", project })}>
                   <SelectTrigger
                     id="consent-project"
                     className="h-auto min-h-10 w-full [&>span]:whitespace-normal [&>span]:text-left"
@@ -130,14 +100,14 @@ function Consent() {
               <div className="flex gap-3">
                 <Button
                   disabled={busy || !project}
-                  onClick={() => decide(true)}
+                  onClick={() => send({ type: "ACCEPT" })}
                 >
                   Allow connection
                 </Button>
                 <Button
                   variant="outline"
                   disabled={busy}
-                  onClick={() => decide(false)}
+                  onClick={() => send({ type: "REJECT" })}
                 >
                   Cancel
                 </Button>

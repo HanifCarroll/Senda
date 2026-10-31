@@ -13,5 +13,6 @@ test('tool results carry a short readable summary for saves, lists, reviews and 
   assert.equal(summarizeResult('review_project', { model: 'to-be', revision: 2, url: 'https://senda.test/r' }), 'Review To-be revision 2 at https://senda.test/r');
   assert.equal(summarizeResult('export_bpmn', { model: 'as-is', revision: 4, filename: 'as-is-r4.bpmn', browserDownload: 'https://senda.test/d' }),
     'Exported As-is revision 4 as as-is-r4.bpmn. Download it at https://senda.test/d');
+  assert.equal(summarizeResult('delete_project', { id: 'p', name: 'Print orders' }), 'Deleted “Print orders”. Restore it in the app within 7 days.');
   assert.equal(summarizeResult('read_sources', { sources: [] }), null);
 });

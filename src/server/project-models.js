@@ -32,7 +32,7 @@ export class ProjectModels {
     requireThat(proposal.operations.length <= 500, "LIMIT", "Submit at most 500 model operations per revision.");
     return this.withProject(actor, id, async project => {
       this.checkSources([...project.read().discovery.sources, ...proposal.sources]);
-      return { ...(await project.preview(proposal)), context: { projectId: id, model, owner: actor.userId } };
+      return { ...(await project.preview(proposal)), context: { projectId: id, model, owner: actor.userId, generation: project.store.generation } };
     }, model);
   }
 
@@ -42,6 +42,7 @@ export class ProjectModels {
     requireThat(prepared.context?.projectId === id && prepared.context.model === model && prepared.context.owner === actor.userId,
       'FORBIDDEN', 'Use the project for this conversation.');
     return this.withProject(actor, id, project => {
+      requireThat(prepared.context.generation === project.store.generation, 'STALE_PROJECT', 'This project was deleted or restored after this operation started. Open it again before continuing.');
       this.checkSources(prepared.candidate.discovery.sources);
       return project.applyPreview(prepared);
     }, model);

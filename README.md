@@ -19,7 +19,7 @@ Senda turns interview transcripts into BPMN process diagrams people can agree on
 
 ### In the hosted app
 
-Create an account at [senda.hanifcarroll.com](https://senda.hanifcarroll.com). You can work with the built-in agent, or connect Claude or ChatGPT: add Senda as a connector in your assistant's settings, sign in, and ask it to map the interview. Plans and limits are on the [pricing page](https://senda.hanifcarroll.com/pricing).
+Create an account at [senda.hanifcarroll.com](https://senda.hanifcarroll.com). You can work with the built-in agent, or connect Claude or ChatGPT: add Senda as a connector in your assistant's settings, sign in, and ask it to map the interview. Plans and limits are on the [pricing page](https://senda.hanifcarroll.com/pricing). To free a slot, delete a project from its menu. You can restore it from **Recently deleted** for seven days, as long as your plan has room.
 
 ### With an agent on your computer
 
@@ -109,6 +109,8 @@ Run the build before the typecheck on a fresh checkout, because the build genera
 - [Exports and layout](docs/portable-bpmn.md): BPMN files, views and diagram layout
 - [What Senda checks](docs/quality.md): validation and review
 - [Client testing](docs/client-testing.md): tested agent connections
+- [State machines](docs/state-machines.md): how chat, account, project and billing workflows are modeled
+- [Generative testing](docs/generative-testing.md): property, fuzz and API tests
 - [Branding](docs/branding.md) and [marketing page](docs/marketing-design.md)
 
 Working notes from testing and research are in [docs/notes](docs/notes/README.md).

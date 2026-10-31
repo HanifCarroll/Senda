@@ -12,6 +12,8 @@ import { CallBudget, measuredUsage, reserveTurn, serviceLimits,MIN_TURN_USD } fr
 import {trialStatus,trialMatches,claimTrial,bindTrialProject} from './agent-trial.js';
 import { billingNow, emailListed } from '../server/billing/plan.js';
 import { OperationalAlerts } from './operations.js';
+import { hostedRunMachine, hostedRunFromFacts } from './agent-machines.js';
+import { startProtocol, advanceProtocol } from '../server/agent/protocol-machines.js';
 export { measuredUsage } from './agent-budget.js';
 
 const Turn = z.strictObject({
@@ -24,13 +26,13 @@ export class HostedAgent {
     this.db = env.DB;
     this.operations = new OperationalAlerts(env);
   }
-  async chat(actor, id) {
+  async chat(actor, id, { metadataOnly = false } = {}) {
     const row = await this.db
-      .prepare("SELECT * FROM senda_agent_chats WHERE id=? AND owner=?")
+      .prepare(metadataOnly ? 'SELECT project FROM senda_agent_chats WHERE id=? AND owner=?' : 'SELECT * FROM senda_agent_chats WHERE id=? AND owner=?')
       .bind(z.uuid().parse(id), actor.userId)
       .first();
     requireThat(row, "NOT_FOUND", "This conversation is not available.");
-    if (row.project) await this.projects.authorize(actor, row.project);
+    if (row.project) row.projectGeneration = (await this.projects.authorize(actor, row.project)).generation;
     return row;
   }
   async trialProjectRoom(actor) {
@@ -128,7 +130,8 @@ export class HostedAgent {
     const input = Turn.parse(await request.json()),
       runId = input.requestId,
       now = Date.now(),
-      day = new Date().toISOString().slice(0, 10);
+      day = new Date().toISOString().slice(0, 10),
+      projectGeneration = row.projectGeneration ?? null;
     requireThat(!(await this.db.prepare("SELECT 1 FROM senda_agent_runs WHERE id=? AND owner=? AND chat=?")
       .bind(runId, actor.userId, row.id).first()), "CONFLICT", "This message was already received. Reload the conversation to check its saved reply.");
     const locked = await this.db
@@ -143,7 +146,11 @@ export class HostedAgent {
       "A reply is already being prepared. Wait for it to finish.",
     );
     row = locked;
+    let admission = startProtocol(hostedRunMachine);
+    const advanceAdmission = event => { admission = advanceProtocol(hostedRunMachine, admission, event); };
+    advanceAdmission({ type: 'LOCKED' });
     try {
+      if (row.project) await this.projects.authorize(actor,row.project,projectGeneration);
       if (trial) {
         if (!trial.chatId && !row.project)
           requireThat(await this.trialProjectRoom(actor), 'PROJECT_LIMIT',
@@ -152,7 +159,9 @@ export class HostedAgent {
       }
       await reserveTurn(this.db, { runId, chatId: row.id, owner: actor.userId, day, entitlement,
         nowMs: billingNow(this.env), limits: serviceLimits(this.env) });
+      advanceAdmission({ type: 'ADMITTED' });
     } catch (error) {
+      advanceAdmission({ type: 'DENIED' });
       await this.operations.observe();
       await this.unlock(row.id, runId);
       throw error;
@@ -160,20 +169,25 @@ export class HostedAgent {
     const display = [...JSON.parse(row.display), { role: "user", text: input.text }];
     await this.db.prepare("UPDATE senda_agent_chats SET display=?,updated=? WHERE id=? AND lock_id=?")
       .bind(JSON.stringify(display), new Date().toISOString(), row.id, runId).run();
-    const params = { runId, chatId: row.id, entitlement: entitlement || null, origin: this.origin };
+    const params = { runId, chatId: row.id, entitlement: entitlement || null, origin: this.origin, projectGeneration };
+    advanceAdmission({ type: 'DISPATCH' });
     try {
       if (this.dispatch) await this.dispatch(params);
       else await this.env.AGENT_WORKFLOW.create({ id: runId, params });
+      advanceAdmission({ type: 'QUEUED' });
     } catch {
       // A lost create response may still have queued the job. Never dispatch it
       // again or release its reservation while the outcome is unknown.
-      let known = false;
+      advanceAdmission({ type: 'QUEUE_UNKNOWN' });
       if (this.env.AGENT_WORKFLOW) try {
         const instance = await this.env.AGENT_WORKFLOW.get(runId);
-        known = !!(await instance.status());
+        if (await instance.status()) advanceAdmission({ type: 'QUEUED' });
       } catch {}
-      if (!known) await this.interrupt(row.id, runId,
-        'Senda could not confirm that this reply started. Your saved work is safe. Please try again.', { unstartedOnly: true });
+      if (admission.can({ type: 'INTERRUPT_UNSTARTED' })) {
+        advanceAdmission({ type: 'INTERRUPT_UNSTARTED' });
+        await this.interrupt(row.id, runId,
+          'Senda could not confirm that this reply started. Your saved work is safe. Please try again.', { unstartedOnly: true });
+      }
     }
     await this.operations.observe();
     return this.observe(request, row.id, runId);
@@ -215,18 +229,25 @@ export class HostedAgent {
       'x-content-type-options': 'nosniff',
     } });
   }
-  async execute({ runId, chatId, entitlement = null }) {
-    const run = await this.db.prepare("SELECT * FROM senda_agent_runs WHERE id=? AND chat=? AND status='running'")
-      .bind(z.uuid().parse(runId), z.uuid().parse(chatId)).first();
-    if (!run) return { executed: false };
+  runFacts(runId, chatId) {
+    return this.db.prepare(`SELECT r.*,c.lock_id,c.lock_until FROM senda_agent_runs r
+      LEFT JOIN senda_agent_chats c ON c.id=r.chat WHERE r.id=? AND r.chat=?`)
+      .bind(runId, chatId).first();
+  }
+  async execute({ runId, chatId, entitlement = null, projectGeneration = null }) {
+    const run = await this.runFacts(z.uuid().parse(runId), z.uuid().parse(chatId));
+    let execution = hostedRunFromFacts(run, run);
+    if (!execution.can({ type: 'CLAIM' })) return { executed: false };
+    execution = advanceProtocol(hostedRunMachine, execution, { type: 'CLAIM' });
     // Workflow replays and duplicate deliveries cannot contact the provider twice.
     const claimed = await this.db.prepare(`UPDATE senda_agent_runs SET started=1 WHERE id=? AND status='running' AND started=0 AND
       EXISTS(SELECT 1 FROM senda_agent_chats WHERE id=? AND owner=? AND lock_id=? AND lock_until>?) RETURNING id`)
       .bind(runId, chatId, run.owner, runId, Date.now()).first();
-    if (!claimed) return { executed: false };
+    execution = advanceProtocol(hostedRunMachine, execution, { type: claimed ? 'CLAIMED' : 'LOST' });
+    if (!execution.matches('started')) return { executed: false };
     const executionStarted=performance.now();
     console.info('Senda agent timing',{runId,phase:'queue',durationMs:Math.max(0,Date.now()-Date.parse(run.created)),status:'success'});
-    const actor = { userId: run.owner }, controller = new AbortController();
+    const actor = { userId: run.owner, ...(projectGeneration === null ? {} : {projectGeneration}) }, controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 540000);
     let statusWrites = Promise.resolve();
     const emit = event => {
@@ -242,6 +263,7 @@ export class HostedAgent {
     let usageKnown = true, row, display, base;
     try {
       row = await this.chat(actor, chatId);
+      if (row.project) actor.projectGeneration ??= row.projectGeneration;
       display = JSON.parse(row.display);
       base = display.map(message => ({ role: message.role, content: message.text }));
       const result = await this.run({
@@ -251,12 +273,17 @@ export class HostedAgent {
         signal: controller.signal, emit,
         onTiming:event=>console.info('Senda agent timing',{runId,...event}),
         onProgress:()=>emit({type:'status',text:'A draft is saved. Finishing its checks…'}),
-        reserveCall: kind => budget.reserve(kind), settleCall: usage => budget.settle(usage),
-        failCall: error => budget.failure(error),
+        reserveCall: async kind => {
+          await this.chat(actor, chatId, { metadataOnly: true });
+          return budget.reserve(kind);
+        }, settleCall: usage => budget.settle(usage),
+        failCall: (error, phase) => budget.failure(error, phase),
         onProject: async id => {
           if(entitlement?.kind==='trial')await bindTrialProject(this.db,run.owner,row.id,id,runId);
           else await this.db.prepare("UPDATE senda_agent_chats SET project=? WHERE id=? AND lock_id=?")
             .bind(id, row.id, runId).run();
+          actor.projectGeneration = 0;
+          await this.projects.authorize(actor,id);
         },
         saveStep: async step => {
           console.info('Senda model step', { finishReason: step.finishReason,
@@ -271,32 +298,40 @@ export class HostedAgent {
         },
       });
       await statusWrites;
+      const current = await this.runFacts(runId, chatId);
+      execution = hostedRunFromFacts(current, current);
+      if (!execution.can({ type: 'COMPLETE' })) return { executed: true };
+      execution = advanceProtocol(hostedRunMachine, execution, { type: 'COMPLETE' });
       display.push({ role: 'assistant', text: result.text, model: result.model, incomplete: !!result.incomplete });
       const response = { type: 'done', text: result.text, projectId: result.projectId,
         model: result.model, incomplete: !!result.incomplete,
         usage: { inputTokens: result.usage?.inputTokens, outputTokens: result.usage?.outputTokens } };
       await this.db.batch([
-        this.db.prepare("UPDATE senda_agent_chats SET messages=?,display=?,updated=? WHERE id=? AND lock_id=?")
-          .bind(JSON.stringify([...base, ...result.messages]), JSON.stringify(display), new Date().toISOString(), chatId, runId),
-        this.db.prepare("UPDATE senda_agent_runs SET status='complete',cost_usd=CASE WHEN ? THEN reserved_usd ELSE ? END,meter_usd=?,input_tokens=?,output_tokens=?,response=? WHERE id=?")
+        this.db.prepare("UPDATE senda_agent_chats SET messages=?,display=?,updated=? WHERE id=? AND lock_id=? AND EXISTS(SELECT 1 FROM senda_agent_runs WHERE id=? AND status='running' AND started=1)")
+          .bind(JSON.stringify([...base, ...result.messages]), JSON.stringify(display), new Date().toISOString(), chatId, runId, runId),
+        this.db.prepare("UPDATE senda_agent_runs SET status='complete',cost_usd=CASE WHEN ? THEN reserved_usd ELSE ? END,meter_usd=?,input_tokens=?,output_tokens=?,response=? WHERE id=? AND status='running' AND started=1 AND EXISTS(SELECT 1 FROM senda_agent_chats WHERE id=? AND lock_id=?)")
           .bind(Number(!budget.first), measuredUsage(result.usage) ? usageCost(result.usage) : null,
             !result.incomplete ? (!budget.first ? budget.customerUsd : measuredUsage(result.usage) ? usageCost(result.usage) : 0) : 0,
-            result.usage?.inputTokens ?? null, result.usage?.outputTokens ?? null, JSON.stringify(response), runId),
+            result.usage?.inputTokens ?? null, result.usage?.outputTokens ?? null, JSON.stringify(response), runId, chatId, runId),
       ]);
     } catch (error) {
       await statusWrites.catch(() => {});
       await budget.failure(error);
       console.error('Senda agent stopped', { name: error.name, code: error.code, status: error.statusCode });
+      const current = await this.runFacts(runId, chatId);
+      execution = hostedRunFromFacts(current, current);
+      if (!execution.can({ type: 'FAIL' })) return { executed: true };
+      execution = advanceProtocol(hostedRunMachine, execution, { type: 'FAIL' });
       const failure = agentFailure(error);
       const cost = !budget.first ? null : failure.knownUsage && usageKnown ? usageCost(used) : null;
       const response = { type: 'error', text: failure.text };
       if (!display) display = JSON.parse((await this.db.prepare('SELECT display FROM senda_agent_chats WHERE id=?').bind(chatId).first())?.display || '[]');
       display.push({ role: 'assistant', text: failure.text, model: lastModel([...(base || []), ...pending], displayModel(display)), incomplete: true });
       await this.db.batch([
-        this.db.prepare("UPDATE senda_agent_runs SET status='failed',cost_usd=CASE WHEN ? THEN reserved_usd ELSE ? END,meter_usd=0,input_tokens=?,output_tokens=?,response=? WHERE id=?")
-          .bind(Number(!budget.first), cost, used.inputTokens, used.outputTokens, JSON.stringify(response), runId),
-        this.db.prepare('UPDATE senda_agent_chats SET display=?,updated=? WHERE id=? AND lock_id=?')
-          .bind(JSON.stringify(display), new Date().toISOString(), chatId, runId),
+        this.db.prepare("UPDATE senda_agent_chats SET display=?,updated=? WHERE id=? AND lock_id=? AND EXISTS(SELECT 1 FROM senda_agent_runs WHERE id=? AND status='running' AND started=1)")
+          .bind(JSON.stringify(display), new Date().toISOString(), chatId, runId, runId),
+        this.db.prepare("UPDATE senda_agent_runs SET status='failed',cost_usd=CASE WHEN ? THEN reserved_usd ELSE ? END,meter_usd=0,input_tokens=?,output_tokens=?,response=? WHERE id=? AND status='running' AND started=1 AND EXISTS(SELECT 1 FROM senda_agent_chats WHERE id=? AND lock_id=?)")
+          .bind(Number(!budget.first), cost, used.inputTokens, used.outputTokens, JSON.stringify(response), runId, chatId, runId),
       ]);
     } finally {
       clearTimeout(timeout);
@@ -307,9 +342,9 @@ export class HostedAgent {
     return { executed: true };
   }
   async interrupt(chatId, runId, text, { unstartedOnly = false } = {}) {
-    const run = await this.db.prepare("SELECT * FROM senda_agent_runs WHERE id=? AND chat=? AND status='running'")
-      .bind(runId, chatId).first();
-    if (!run || (unstartedOnly && run.started)) return;
+    const run = await this.runFacts(runId, chatId);
+    const phase = hostedRunFromFacts(run, run), event = { type: unstartedOnly ? 'INTERRUPT_UNSTARTED' : 'INTERRUPT' };
+    if (!phase.can(event)) return;
     const row = await this.db.prepare('SELECT * FROM senda_agent_chats WHERE id=? AND lock_id=?').bind(chatId, runId).first();
     if (!row) return;
     const display = JSON.parse(row.display);
@@ -318,8 +353,8 @@ export class HostedAgent {
       this.db.prepare(`UPDATE senda_agent_runs SET status='failed',cost_usd=CASE WHEN started=0 THEN 0 ELSE reserved_usd END,meter_usd=0,response=? WHERE id=? AND status='running'${unstartedOnly ? ' AND started=0' : ''}`)
         .bind(JSON.stringify({ type: 'error', text }), runId),
       this.db.prepare(`UPDATE senda_agent_chats SET display=?,lock_id=NULL,lock_until=0,updated=? WHERE id=? AND lock_id=? AND
-        EXISTS(SELECT 1 FROM senda_agent_runs WHERE id=? AND status='failed'${unstartedOnly ? ' AND started=0' : ''})`)
-        .bind(JSON.stringify(display), new Date().toISOString(), chatId, runId, runId),
+        EXISTS(SELECT 1 FROM senda_agent_runs WHERE id=? AND status='failed' AND response=?${unstartedOnly ? ' AND started=0' : ''})`)
+        .bind(JSON.stringify(display), new Date().toISOString(), chatId, runId, runId, JSON.stringify({ type: 'error', text })),
     ]);
   }
   async recover(row) {
@@ -356,7 +391,7 @@ function displayModel(messages) {
 }
 
 export function agentFailure(error) {
-  if (error.code === "LIMIT") return { text: error.message, knownUsage: true };
+  if (['LIMIT','PROJECT_DELETED','STALE_PROJECT'].includes(error.code)) return { text: error.message, knownUsage: true };
   if ([401, 403].includes(error.statusCode)) return {
     text: "Senda could not connect to its AI service. The operator needs to check the connection. Your saved work is safe.",
     // Authentication rejection incurs no provider usage for the failed call.

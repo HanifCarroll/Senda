@@ -1,10 +1,13 @@
 import { SendaAgentLink } from "@/components/senda-agent-link";
 import { createFileRoute } from "@tanstack/react-router";
 import { savedModelSignIn } from '../../shared/model-links.js';
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, MessageSquare, ArrowLeft, MoreHorizontal, Download, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useMachine } from "@xstate/react";
+import { waitFor } from "xstate";
+import { createProjectReviewMachine, createProjectMutationMachine } from "@/lib/project-machines.js";
+import { Plus, MessageSquare, ArrowLeft, MoreHorizontal, Download, RefreshCw, Trash2 } from "lucide-react";
 import { projectTitle } from "@/lib/review-navigation";
-import { api, post, ApiError } from "@/lib/api";
+import { api, post } from "@/lib/api";
 import type { Review, ReviewChoice, Section } from "@/lib/types";
 import { AccountFrame } from "@/components/account-frame";
 import { ReviewApp } from "@/components/review-app";
@@ -77,144 +80,68 @@ function Workspace() {
   const { projectId } = Route.useParams(),
     location = Route.useSearch(),
     navigate = Route.useNavigate();
-  const [review, setReview] = useState<ProjectReview | null>(null),
-    [models, setModels] = useState<Models | null>(null),
-    [error, setError] = useState(""),
-    [notice, setNotice] = useState(""),
-    [sourceOpen, setSourceOpen] = useState(false),
+  const [sourceOpen, setSourceOpen] = useState(false),
     [answerOpen, setAnswerOpen] = useState(false),
     [detailsOpen, setDetailsOpen] = useState(false),
-    [busy, setBusy] = useState(false),
+    [deleteOpen, setDeleteOpen] = useState(false),
     [text, setText] = useState(""),
     [question, setQuestion] = useState("");
-  const hasModels = models !== null;
-  const latest = useRef(0),
-    requestId = useRef(0),
-    refreshing = useRef(0);
-  const activeProject = useRef(projectId);
-  activeProject.current = projectId;
+  const [reviewMachine] = useState(() => createProjectReviewMachine({
+    models: (input: any, signal: AbortSignal) => api<Models>(`/api/projects/${input.projectId}/models`, { signal }),
+    review: (input: any, signal: AbortSignal) => api<ProjectReview>(
+      `/api/projects/${input.projectId}/review?model=${input.model}${input.revision ? `&revision=${input.revision}` : ""}`, { signal }),
+    visible: () => !document.hidden,
+    navigate: (input: any) => window.location.assign(savedModelSignIn(input.projectId, input.model, input.revision)),
+  }));
+  const [reviewState, sendReview, reviewActor] = useMachine(reviewMachine);
+  const review = reviewState.context.review as ProjectReview | null;
+  const models = reviewState.context.models as Models | null;
+  const refreshReview = useCallback(async () => {
+    sendReview({ type: "REFRESH" });
+    await waitFor(reviewActor, (state) => !state.hasTag("loading")).catch(() => {});
+  }, [sendReview, reviewActor]);
+  const [saveMachine] = useState(() => createProjectMutationMachine({
+    submit: (data: any) => post(data.url, data.body),
+    committed: async (_result: unknown, data: any) => {
+      setSourceOpen(false); setAnswerOpen(false); setText("");
+      sendReview({ type: "NOTICE", message: data.kind === "answer"
+        ? "Your answer is saved. Ask your agent to update the diagram from it."
+        : "Transcript saved. Your agent can read it from this project." });
+      await refreshReview();
+    },
+    failure: (error: any) => error.status === 409
+      ? "Your project changed while you were writing. Close this dialog, refresh and save against the latest revision."
+      : error.message,
+  }));
+  const [saving, sendSave] = useMachine(saveMachine);
+  const [deleteMachine] = useState(() => createProjectMutationMachine({
+    submit: () => post(`/api/projects/${projectId}/delete`, { confirm: true }),
+    committed: () => {
+      sendReview({ type: "STOP" });
+      window.location.assign(`/app?deleted=${encodeURIComponent(projectId)}`);
+    },
+    redirecting: true,
+  }));
+  const [deletion, sendDelete] = useMachine(deleteMachine);
+  const busy = saving.hasTag("busy"), deleting = deletion.hasTag("busy");
+  const error = saving.context.error || reviewState.context.error;
+  const deleteError = deletion.context.error, notice = reviewState.context.notice;
   const refresh = useCallback(async () => {
-    if (activeProject.current !== projectId) return;
-    const id = ++requestId.current;
-    refreshing.current++;
-    try {
-      // Start independent requests together. Metadata can paint the header while
-      // the first render is prepared; an absent To-be model is a normal state.
-      const rendered = api<ProjectReview>(
-        `/api/projects/${projectId}/review?model=${location.model}${location.revision ? `&revision=${location.revision}` : ""}`,
-      ).then(value => ({ value, error: null }), error => ({ value: null, error }));
-      const list = await api<Models>(`/api/projects/${projectId}/models`);
-      if (id === requestId.current && activeProject.current === projectId) setModels(list);
-      const exists = location.model === "as-is" || !!list.toBe;
-      const result = await rendered;
-      if (exists && result.error) throw result.error;
-      const value = exists ? result.value : null;
-      if (id !== requestId.current || activeProject.current !== projectId)
-        return;
-      latest.current = value?.revision || 0;
-      setModels(list);
-      setReview(value);
-      setError("");
-    } catch (e: any) {
-      if (id !== requestId.current || activeProject.current !== projectId)
-        return;
-      if (e instanceof ApiError && e.status === 401)
-        window.location.assign(savedModelSignIn(projectId, location.model, location.revision));
-      else setError(e.message);
-    } finally {
-      refreshing.current--;
-    }
-  }, [projectId, location.revision, location.model]);
+    sendSave({ type: "CLEAR" });
+    await refreshReview();
+  }, [sendSave, refreshReview]);
   useEffect(() => {
-    void refresh();
-    return () => {
-      requestId.current++;
-    };
-  }, [refresh]);
-  useEffect(() => {
-    if (location.revision || !hasModels) return;
-    const controller = new AbortController();
-    let polling = false;
-    const timer = setInterval(async () => {
-      // A cold diagram can take longer than the polling interval. Starting
-      // another refresh would invalidate that result and starve the first load.
-      if (document.hidden || polling || refreshing.current > 0) return;
-      polling = true;
-      try {
-        const list = await api<Models>(`/api/projects/${projectId}/models`, {
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) return;
-        const revision =
-          (location.model === "as-is" ? list.asIs : list.toBe)?.revision || 0;
-        setModels(list);
-        setNotice(previous => previous === "Updates paused. Use Refresh to reconnect." ? "" : previous);
-        if (revision !== latest.current && refreshing.current === 0) {
-          await refresh();
-          setNotice("The latest revision is ready.");
-        }
-      } catch (e: any) {
-        if (e.name !== "AbortError")
-          setNotice("Updates paused. Use Refresh to reconnect.");
-      } finally {
-        polling = false;
-      }
-    }, 5000);
-    return () => {
-      clearInterval(timer);
-      controller.abort();
-    };
-  }, [projectId, location.revision, location.model, refresh, hasModels]);
-  async function save(
-    event: React.FormEvent<HTMLFormElement>,
-    kind: "transcript" | "answer",
-  ) {
+    sendReview({ type: "SELECT", selection: { projectId, model: location.model, revision: location.revision } });
+  }, [sendReview, projectId, location.model, location.revision]);
+  function save(event: React.FormEvent<HTMLFormElement>, kind: "transcript" | "answer") {
     event.preventDefault();
     if (!review) return;
-    setBusy(true);
-    setError("");
-    try {
-      if (kind === "answer")
-        await post(
-          `/api/projects/${projectId}/answers?model=${location.model}`,
-          {
-            expectedRevision: review.revision,
-            questionId: question,
-            text,
-          },
-        );
-      else
-        await post(
-          `/api/projects/${projectId}/sources?model=${location.model}`,
-          {
-            expectedRevision: review.revision,
-            source: {
-              id: `Transcript_${crypto.randomUUID()}`,
-              title: String(new FormData(event.currentTarget).get("title")),
-              kind,
-              text,
-            },
-          },
-        );
-      setSourceOpen(false);
-      setAnswerOpen(false);
-      setText("");
-      setNotice(
-        kind === "answer"
-          ? "Your answer is saved. Ask your agent to update the diagram from it."
-          : "Transcript saved. Your agent can read it from this project.",
-      );
-      await refresh();
-    } catch (e: any) {
-      setError(
-        e.status === 409
-          ? "Your project changed while you were writing. Close this dialog, refresh and save against the latest revision."
-          : e.message,
-      );
-    } finally {
-      setBusy(false);
-    }
+    const body = kind === "answer"
+      ? { expectedRevision: review.revision, questionId: question, text }
+      : { expectedRevision: review.revision, source: { id: `Transcript_${crypto.randomUUID()}`, title: String(new FormData(event.currentTarget).get("title")), kind, text } };
+    sendSave({ type: "SUBMIT", data: { kind, url: `/api/projects/${projectId}/${kind === "answer" ? "answers" : "sources"}?model=${location.model}`, body } });
   }
+  function deleteProject() { sendDelete({ type: "SUBMIT", data: null }); }
   const openQuestions =
     review?.discovery.questions.filter((q) => q.status !== "answered") || [];
   return (
@@ -246,6 +173,23 @@ function Workspace() {
                 <Button variant="outline" disabled={!review || !!location.revision} onClick={() => { setDetailsOpen(false); setText(""); setSourceOpen(true); }}><Plus data-icon="inline-start" />Add transcript</Button>
                 <Button variant="outline" disabled={!openQuestions.length || !!location.revision} onClick={() => { setDetailsOpen(false); setText(""); setAnswerOpen(true); }}><MessageSquare data-icon="inline-start" />Add an answer</Button>
                 <Button variant="outline" onClick={() => { setDetailsOpen(false); void refresh(); }}><RefreshCw data-icon="inline-start" />Refresh project</Button>
+                <Button variant="destructive" disabled={!models || busy} onClick={() => { setDetailsOpen(false); sendDelete({ type: "CLEAR" }); setDeleteOpen(true); }}><Trash2 data-icon="inline-start" />Delete project</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={deleteOpen} onOpenChange={(value) => { if (!deleting) { setDeleteOpen(value); sendDelete({ type: "CLEAR" }); } }}>
+            <DialogContent className="max-h-[90dvh] overflow-y-auto">
+              <DialogHeader className="pr-8">
+                <DialogTitle>Delete project?</DialogTitle>
+                <DialogDescription className="break-words leading-6">
+                  Delete “{projectTitle(models?.name || "this project") }”? You can restore it from Your processes within seven days if you have room under your plan.
+                </DialogDescription>
+              </DialogHeader>
+              <p className="text-sm leading-6">The project disappears from your workspace and connected agents lose access. After seven days, its diagrams, sources and conversations are permanently erased. Deleting does not reset your AI allowance.</p>
+              {deleteError && <p role="alert" className="text-sm leading-6 text-destructive">{deleteError}</p>}
+              <div className="flex flex-wrap justify-end gap-3">
+                <Button variant="outline" disabled={deleting} onClick={() => setDeleteOpen(false)}>Keep project</Button>
+                <Button variant="destructive" disabled={deleting} onClick={() => void deleteProject()}>{deleting ? "Deleting…" : "Delete project"}</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -290,7 +234,7 @@ function Workspace() {
                         const f = e.target.files?.[0];
                         if (f && f.size <= 300000) setText(await f.text());
                         else if (f)
-                          setError("Choose a text file smaller than 300 KB.");
+                          sendSave({ type: "ERROR", message: "Choose a text file smaller than 300 KB." });
                       }}
                     />
                   </Field>

@@ -12,7 +12,7 @@ function Privacy() {
       <a href="/" aria-label="Senda home" className="w-fit"><Brand className="h-10" /></a>
       <header className="space-y-3">
         <h1 className="text-3xl font-semibold tracking-tight">Privacy</h1>
-        <p className="text-sm text-muted-foreground">Updated 28 October 2026</p>
+        <p className="text-sm text-muted-foreground">Updated 31 October 2026</p>
         <p className="leading-relaxed">
           Senda is operated by HC Studio LLC, with support from Hanif Carroll. It stores process transcripts, supporting evidence,
           and separate As-is and To-be diagrams so you can review and revise them with your own agent.
@@ -36,7 +36,11 @@ function Privacy() {
           and agent permissions. Projects are private to your account and the agents you authorize.
           Earlier revisions remain stored so you can inspect how the model changed. Closing your
           browser or removing a Google connection does not delete your Senda account or project history.
-          There is currently no automatic expiry for accounts or projects.
+          Active projects and accounts have no automatic expiry. When you delete a project, it is hidden
+          immediately and kept privately for a seven-day restore window. After that, scheduled cleanup
+          permanently removes its sources, models, revisions, cached reviews and built-in conversations.
+          Usage and billing records remain; deletion does not reset AI allowances.
+          A minimal project record also remains so old requests can be recognized as deleted.
         </p>
       </section>
       <section className="space-y-3">
@@ -81,12 +85,15 @@ function Privacy() {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Access, correction, and deletion</h2>
         <p className="leading-relaxed">
-          You can download diagrams from your projects. For access to your account data, corrections,
-          or deletion of your account and project history, contact{" "}
+          You can download diagrams from your projects and choose Delete project from a project’s menu.
+          Restore it from Recently deleted in Your processes within seven days if your plan has room.
+          Deleting a project revokes its agent permissions; share it again after restoring if you want
+          your connected agent to continue. For access to your account data, corrections, or deletion
+          of your account, contact{" "}
           <a className="underline underline-offset-4" href="mailto:hanifcarroll@gmail.com">
             hanifcarroll@gmail.com
           </a>{" "}
-          using your account email. Deletion requests are handled manually and require verification
+          using your account email. Account deletion requests are handled manually and require verification
           of account ownership. Copies already exported or received by an agent are held separately
           from Senda. You can also remove Senda’s Google connection in your Google Account settings.
         </p>

@@ -22,7 +22,7 @@ async function budgetFixture() {
     db.exec(readFileSync(new URL('../src/cloudflare/migrations/' + name, import.meta.url), 'utf8'));
   await reserveTurn(db, { runId: 'run', chatId: 'chat', owner: 'owner', day });
   const budget = new CallBudget(db, { runId: 'run', owner: 'owner', day });
-  const callbacks = kind => ({ reserveCall: () => budget.reserve(kind), settleCall: usage => budget.settle(usage), failCall: error => budget.failure(error) });
+  const callbacks = kind => ({ reserveCall: () => budget.reserve(kind), settleCall: usage => budget.settle(usage), failCall: (error, phase) => budget.failure(error, phase) });
   return { db, budget, callbacks };
 }
 
@@ -144,4 +144,33 @@ test('a settlement failure propagates after HTTP rather than returning a success
   assert.equal(requests, 1);
   assert.equal(failures, 1);
   assert.equal(mutations, 0, 'An unaccounted response must not run a mutation tool');
+});
+
+test('a settlement authorization failure after a provider response retains the reservation without redispatch', async () => {
+  const { db, budget, callbacks } = await budgetFixture();
+  const error = Object.assign(new Error('Fixture settlement authorization failed'), { statusCode: 401 });
+  let requests = 0, failSettlement = true;
+  const prepare = db.prepare.bind(db);
+  db.prepare = sql => {
+    const statement = prepare(sql);
+    if (sql.includes('SET reserved_usd=MAX')) {
+      const run = statement.run;
+      statement.run = () => {
+        if (failSettlement) { failSettlement = false; throw error; }
+        return run();
+      };
+    }
+    return statement;
+  };
+  const model = budgetedModel(createAgentModel('fixture-key', { fetch: async () => {
+    requests++;
+    return response([message('Ready')]);
+  } }), callbacks('main'));
+  try {
+    await assert.rejects(generateText({ model, prompt: 'Map the order.', maxOutputTokens: 100, maxRetries: 0 }), value => value === error);
+    assert.equal(requests, 1);
+    assert.equal(budget.customerUsd, 0);
+    assert.equal(db.prepare('SELECT reserved_usd FROM senda_agent_runs').first().reserved_usd, CALL_RESERVES.main,
+      'A failed ledger write after a returned response cannot establish zero provider usage');
+  } finally { db.close(); }
 });

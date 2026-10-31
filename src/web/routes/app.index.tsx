@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useMachine } from "@xstate/react";
+import { createProjectListMachine, createProjectMutationMachine } from "@/lib/project-machines.js";
 import { SendaAgentLink } from "@/components/senda-agent-link";
 import { Plus, ArrowUpRight } from "lucide-react";
-import { api, post, ApiError } from "@/lib/api";
+import { api, post } from "@/lib/api";
 import { AccountFrame } from "@/components/account-frame";
 import { ConnectAgent } from "@/components/connect-agent";
 import { projectTitle } from "@/lib/review-navigation";
@@ -22,49 +24,45 @@ import {
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const Route = createFileRoute("/app/")({ component: Projects });
+export const Route = createFileRoute("/app/")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    deleted: typeof search.deleted === "string" ? search.deleted : undefined,
+  }),
+  component: Projects,
+});
+type DeletedProject = { id: string; name: string; deletedAt: string; restoreUntil: string };
 function Projects() {
-  const [projects, setProjects] = useState<any[] | null>(null),
-    [quota, setQuota] = useState<{ available: boolean; projectLimit: number } | null>(null),
-    [error, setError] = useState(""),
-    [open, setOpen] = useState(false),
-    [text, setText] = useState(""),
-    [busy, setBusy] = useState(false);
-  useEffect(() => {
-    void api<{ available: boolean; projectLimit: number }>("/api/billing").then(setQuota).catch(() => {});
-    void api<any[]>("/api/projects")
-      .then(setProjects)
-      .catch((e) => {
-        if (e instanceof ApiError && e.status === 401) window.location.assign("/sign-in");
-        else setError(e.message);
-      });
-  }, []);
-  async function create(event: React.FormEvent<HTMLFormElement>) {
+  const search = Route.useSearch();
+  const [open, setOpen] = useState(false), [text, setText] = useState("");
+  const [listMachine] = useState(() => createProjectListMachine({
+    list: (signal: AbortSignal) => api<any[]>("/api/projects", { signal }),
+    deleted: (signal: AbortSignal) => api<DeletedProject[]>("/api/projects/deleted", { signal }),
+    quota: (signal: AbortSignal) => api("/api/billing", { signal }),
+    restore: (id: string) => post(`/api/projects/${id}/restore`, {}),
+    navigate: (url: string) => window.location.assign(url),
+  }));
+  const [list, sendList] = useMachine(listMachine);
+  const [createMachine] = useState(() => createProjectMutationMachine({
+    submit: (data: unknown) => post("/api/projects", data),
+    committed: (project: { id: string }) => window.location.assign(`/app/projects/${project.id}`),
+    redirecting: true,
+  }));
+  const [creation, sendCreate] = useMachine(createMachine);
+  const projects = list.context.projects as any[] | null;
+  const deletedProjects = list.context.deletedProjects as DeletedProject[];
+  const { quota, restoring, restoreError, restoredId } = list.context;
+  const error = creation.context.error || list.context.error;
+  const busy = creation.hasTag("busy");
+  useEffect(() => { sendList({ type: "START" }); }, [sendList]);
+  const justDeleted = deletedProjects.find((project) => project.id === search.deleted);
+  function restore(projectId: string) { sendList({ type: "RESTORE", projectId }); }
+  function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
-    setError("");
     const f = new FormData(event.currentTarget);
-    try {
-      const project = await post("/api/projects", {
-        name: f.get("name"),
-        purpose: f.get("purpose"),
-        perspective: f.get("perspective"),
-        ...(text.trim()
-          ? {
-              source: {
-                id: `Transcript_${crypto.randomUUID()}`,
-                title: "Initial process interview",
-                kind: "transcript",
-                text,
-              },
-            }
-          : {}),
-      });
-      window.location.assign(`/app/projects/${project.id}`);
-    } catch (e: any) {
-      setError(e.message);
-      setBusy(false);
-    }
+    sendCreate({ type: "SUBMIT", data: {
+      name: f.get("name"), purpose: f.get("purpose"), perspective: f.get("perspective"),
+      ...(text.trim() ? { source: { id: `Transcript_${crypto.randomUUID()}`, title: "Initial process interview", kind: "transcript", text } } : {}),
+    } });
   }
   return (
     <AccountFrame>
@@ -134,7 +132,7 @@ function Projects() {
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file && file.size <= 300000) setText(await file.text());
-                        else if (file) setError("Choose a text transcript smaller than 300 KB.");
+                        else if (file) sendCreate({ type: "ERROR", message: "Choose a text transcript smaller than 300 KB." });
                       }}
                     />
                   </Field>
@@ -163,7 +161,10 @@ function Projects() {
             </DialogContent>
           </Dialog></div>
         </div>
-        {quota?.available && projects !== null && <p className="text-sm leading-6 text-muted-foreground">{projects.length} of {quota.projectLimit} saved projects. {projects.length >= quota.projectLimit ? <>You’ve reached your creation limit. Your existing work stays available. {quota.projectLimit === 3 && <a className="underline underline-offset-4" href="/app/billing">Upgrade to Pro for up to 100 projects.</a>}</> : <>Projects cannot currently be deleted in the app. <a className="underline underline-offset-4" href="/#pricing">Compare plans</a></>}</p>}
+        {quota?.available && projects !== null && <p className="text-sm leading-6 text-muted-foreground">{projects.length} of {quota.projectLimit} saved projects. {projects.length >= quota.projectLimit ? <>You’ve reached your project limit. Delete a project to free a slot. {quota.projectLimit === 3 && <a className="underline underline-offset-4" href="/app/billing">Choose Pro for up to 100 projects.</a>}</> : <>You can keep up to {quota.projectLimit} projects at a time. Deleting one frees a slot. <a className="underline underline-offset-4" href="/#pricing">Compare plans</a>.</>}</p>}
+        {justDeleted && <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3 text-sm"><span>Deleted.</span><Button variant="link" className="h-auto px-0" disabled={restoring !== null} onClick={() => void restore(justDeleted.id)}>{restoring === justDeleted.id ? "Restoring…" : "Restore"}</Button></div>}
+        {restoredId && <p role="status" className="text-sm leading-6">Restored. <a className="underline underline-offset-4" href={`/app/projects/${restoredId}`}>Open project</a>.</p>}
+        {restoreError && <Alert variant="destructive"><AlertTitle>Deleted projects need attention</AlertTitle><AlertDescription>{restoreError}</AlertDescription></Alert>}
         {error && !open && (
           <Alert variant="destructive">
             <AlertTitle>Projects could not be loaded</AlertTitle>
@@ -210,6 +211,15 @@ function Projects() {
             </CardContent>
           </Card>
         )}
+        {deletedProjects.length > 0 && <section className="flex flex-col gap-4 border-t pt-6" aria-labelledby="deleted-projects-heading">
+          <div><h2 id="deleted-projects-heading" className="text-xl font-semibold">Recently deleted</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">You have seven days to restore a project if there is room under your plan. Agent access must be shared again after restoring.</p></div>
+          <ul className="flex flex-col divide-y rounded-xl border px-4">
+            {deletedProjects.map((project) => <li key={project.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
+              <div className="min-w-0 flex-1 basis-48"><p className="break-words font-medium">{projectTitle(project.name)}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">Restore before {new Date(project.restoreUntil).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.</p></div>
+              <Button variant="outline" aria-label={`Restore ${projectTitle(project.name)}`} disabled={restoring !== null} onClick={() => void restore(project.id)}>{restoring === project.id ? "Restoring…" : "Restore"}</Button>
+            </li>)}
+          </ul>
+        </section>}
       </main>
     </AccountFrame>
   );
