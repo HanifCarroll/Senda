@@ -31,6 +31,5 @@ export function PricingPlans() {
         <Button size="lg" variant={plan.name === "Pro" ? "default" : "outline"} asChild><a href={plan.href}>{plan.action}<ArrowRight /></a></Button>
       </section>)}
     </div>
-    <p className="text-sm text-muted-foreground">Sold by HC Studio LLC. <a href="/usage" className="underline underline-offset-4">Usage and subscription terms</a></p>
   </>;
 }
