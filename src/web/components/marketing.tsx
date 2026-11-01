@@ -282,7 +282,7 @@ export function Marketing() {
           </p>
           <div className="mt-16 grid gap-16 lg:mt-20 lg:grid-cols-[200px_1fr] lg:gap-20">
             <nav aria-label="How it works" className="hidden lg:block">
-              <ol className="sticky top-32 flex flex-col">
+              <ol className="sticky top-[max(8rem,calc(50dvh-4rem))] flex flex-col">
                 {stories.map((story) => (
                   <li key={story.id}>
                     <a
