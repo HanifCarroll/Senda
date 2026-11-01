@@ -29,10 +29,6 @@ Work with the built-in agent, or open **Connect your agent** for the current Cla
 
 Requires Node.js 24 or later.
 
-The npm release is prepared but not published yet. Until it is available, clone this repository, run `npm ci`, then run `npm run install:skill`.
-
-After the npm release is published:
-
 Install the skill for Claude Code and Codex without cloning the repository:
 
 ```sh
@@ -60,8 +56,6 @@ The plugin includes the skill and Senda’s hosted connector. Run `/mcp` to sign
 
 ### From the command line
 
-After the npm release is published:
-
 Install the command once:
 
 ```sh
@@ -88,7 +82,7 @@ Every change names the revision it was based on, so a stale or invalid edit leav
 
 ### As a JavaScript library
 
-After the npm release is published, install `@hanifcarroll/senda` and import `Project`, `exportBundle` and `assess` from it. The package exports them from [`src/core/index.js`](src/core/index.js). The command line and the web app both use them.
+Run `npm install @hanifcarroll/senda`, then import `Project`, `exportBundle` and `assess` from it. The package exports them from [`src/core/index.js`](src/core/index.js). The command line and the web app both use them.
 
 ## Try it locally
 

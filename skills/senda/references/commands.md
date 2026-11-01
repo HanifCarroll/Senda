@@ -1,7 +1,5 @@
 # Command and proposal reference
 
-The npm release is prepared but not published yet. Until it is available, clone this repository, run `npm ci`, then run `npm run install:skill`.
-
 Run `node <skill-directory>/scripts/run.mjs`, which uses a matching installed CLI or downloads its pinned npm version. Requires Node.js 24 or later with npm. From a development checkout, `node bin/senda.js` also works after `npm ci`. Commands below omit that prefix. Set `SENDA_PROJECT` once to choose the project directory; `--project` overrides it, and the default is `.senda` in the current folder.
 
 ## Read and create

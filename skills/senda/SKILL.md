@@ -11,10 +11,6 @@ When the user requests a future process, follow [planning.md](references/plannin
 
 Accept ordinary business descriptions, interview notes and clarification answers. Discover the connected tools and resolve project IDs, model selection, operation schemas and revision numbers yourself. Ask the user about business meaning or which process they intend when that is unclear; do not require them to prescribe tool calls or supply technical identifiers. Explain changes and open questions in the vocabulary of the process.
 
-The npm release is prepared but not published yet. Until it is available, clone this repository, run `npm ci`, then run `npm run install:skill`.
-
-After the npm release is published:
-
 In local mode, run `node <skill-directory>/scripts/run.mjs --help` to confirm availability. Install with `npx @hanifcarroll/senda install-skill` or the Claude Code plugin. The installer copies the skill, so no permanent checkout is required. The runner uses its matching companion CLI when available, or downloads the pinned package version with npm. A first download needs network access. Run the install command with `@latest` to update the skill and its version pin. If the runner fails, report its error rather than substituting another CLI. The remote ZIP contains the method and references; it does not install the local CLI.
 
 ## Establish the project

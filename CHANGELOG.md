@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - Import TXT, Markdown, VTT, SRT and DOCX transcripts in the app, retaining speaker turns and checking file and extracted-text limits.
 - Start a project with only a transcript; agents can draft its name, purpose and perspective in a saved revision.
