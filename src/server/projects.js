@@ -223,7 +223,13 @@ export class HostedProjects extends ProjectModels {
       () => this.authorize(actor,id,record.generation), record.generation,
     ));
     try {
-      return await work(project);
+      const result = await work(project);
+      const name = model === 'as-is' ? project.read().name : record.name;
+      if (name !== record.name) {
+        this.db.prepare("UPDATE projects SET name=? WHERE id=? AND owner=? AND state='active' AND generation=?")
+          .run(name, id, actor.userId, record.generation);
+      }
+      return result;
     } finally {
       project.close();
     }

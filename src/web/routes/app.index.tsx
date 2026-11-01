@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TranscriptUpload } from '@/components/transcript-upload';
+import { TRANSCRIPT_MAX_TEXT_BYTES } from '../../shared/transcript-files.js';
 
 export const Route = createFileRoute("/app/")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -33,7 +35,7 @@ export const Route = createFileRoute("/app/")({
 type DeletedProject = { id: string; name: string; deletedAt: string; restoreUntil: string };
 function Projects() {
   const search = Route.useSearch();
-  const [open, setOpen] = useState(false), [text, setText] = useState("");
+  const [open, setOpen] = useState(false), [text, setText] = useState(""), [uploading, setUploading] = useState(false);
   const [listMachine] = useState(() => createProjectListMachine({
     list: (signal: AbortSignal) => api<any[]>("/api/projects", { signal }),
     deleted: (signal: AbortSignal) => api<DeletedProject[]>("/api/projects/deleted", { signal }),
@@ -59,9 +61,13 @@ function Projects() {
   function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const f = new FormData(event.currentTarget);
+    if (!text.trim() || new TextEncoder().encode(text).length > TRANSCRIPT_MAX_TEXT_BYTES) {
+      sendCreate({ type: 'ERROR', message: !text.trim() ? 'Add a transcript to get started. Everything else is optional.' : 'Transcripts can be up to 300 KB of plain text. Shorten the transcript and try again.' });
+      return;
+    }
     sendCreate({ type: "SUBMIT", data: {
       name: f.get("name"), purpose: f.get("purpose"), perspective: f.get("perspective"),
-      ...(text.trim() ? { source: { id: `Transcript_${crypto.randomUUID()}`, title: "Initial process interview", kind: "transcript", text } } : {}),
+      source: { id: `Transcript_${crypto.randomUUID()}`, title: "Initial process interview", kind: "transcript", text },
     } });
   }
   return (
@@ -83,20 +89,31 @@ function Projects() {
             </DialogTrigger>
             <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
               <DialogHeader>
-                <DialogTitle>Start a process project</DialogTitle>
+                <DialogTitle>New project</DialogTitle>
                 <DialogDescription>
-                  Describe the process you want to understand. You can add more sources as the
-                  conversation continues.
+                  Add a transcript to get started. Everything else is optional.
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={create} className="flex flex-col gap-5">
                 <FieldGroup>
                   <Field>
+                    <FieldLabel htmlFor="initial-file">Upload a transcript</FieldLabel>
+                    <TranscriptUpload id="initial-file" disabled={busy} onText={setText} onReading={setUploading} onError={message => sendCreate({ type: 'ERROR', message })} />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="transcript">Transcript text</FieldLabel>
+                    <Textarea id="transcript" value={text} onChange={e => setText(e.target.value)} rows={6} maxLength={300000} required disabled={busy} placeholder="Paste the transcript here, or upload a file above." />
+                  </Field>
+                </FieldGroup>
+                <details className="space-y-3 rounded-lg border p-4">
+                  <summary className="cursor-pointer text-sm font-medium">Optional details</summary>
+                  <p className="text-sm leading-6 text-muted-foreground">Leave these blank to start a draft. Your agent can fill them in from the transcript and ask about anything unclear.</p>
+                  <FieldGroup className="mt-4">
+                  <Field>
                     <FieldLabel htmlFor="project-name">Process name</FieldLabel>
                     <Input
                       id="project-name"
                       name="name"
-                      required
                       maxLength={160}
                       placeholder="Client onboarding"
                     />
@@ -108,7 +125,6 @@ function Projects() {
                     <Input
                       id="project-purpose"
                       name="purpose"
-                      required
                       maxLength={2000}
                       placeholder="How a signed order becomes a ready-to-start project"
                     />
@@ -118,44 +134,20 @@ function Projects() {
                     <Input
                       id="perspective"
                       name="perspective"
-                      required
                       maxLength={2000}
                       placeholder="The onboarding team"
                     />
                   </Field>
-                  <Field>
-                    <FieldLabel htmlFor="initial-file">Upload a transcript (optional)</FieldLabel>
-                    <Input
-                      id="initial-file"
-                      type="file"
-                      accept=".txt,.md,text/plain,text/markdown"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file && file.size <= 300000) setText(await file.text());
-                        else if (file) sendCreate({ type: "ERROR", message: "Choose a text transcript smaller than 300 KB." });
-                      }}
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="transcript">Transcript text</FieldLabel>
-                    <Textarea
-                      id="transcript"
-                      value={text}
-                      onChange={(e) => setText(e.target.value)}
-                      rows={6}
-                      maxLength={300000}
-                      placeholder="Paste the interview here, or upload a text file above."
-                    />
-                  </Field>
                 </FieldGroup>
+                </details>
                 {error && (
                   <Alert variant="destructive">
                     <AlertTitle>Project could not be created</AlertTitle>
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-                <Button type="submit" disabled={busy}>
-                  {busy ? "Saving project…" : "Create private project"}
+                <Button type="submit" disabled={busy || uploading || !text.trim()}>
+                  {busy ? "Saving project…" : "Create project"}
                 </Button>
               </form>
             </DialogContent>

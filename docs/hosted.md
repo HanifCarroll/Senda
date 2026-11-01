@@ -4,11 +4,17 @@ The product is Senda, live at `https://senda.hanifcarroll.com` on Cloudflare Wor
 
 ## Local development
 
-Use Node 24. `npm ci`, `npm run build`, then `npm run serve` runs the public homepage, example, account screens, private project app, HTTP API and MCP endpoint. Local development defaults to `http://127.0.0.1:3000`. `APP_URL` must match the loopback origin without a trailing slash. Set `PORT` and `APP_URL` together to use another port. `npm run dev:hosted` enables the same API in Vite development.
+Use Node 24 or later; CI checks 24 and 26. `npm ci`, `npm run build`, then `npm run serve` runs the public homepage, example, account screens, private project app, HTTP API and MCP endpoint. Local development defaults to `http://127.0.0.1:3000`. `APP_URL` must match the loopback origin without a trailing slash. Set `PORT` and `APP_URL` together to use another port. `npm run dev:hosted` enables the same API in Vite development.
 
 `SENDA_DATA` defaults to `.senda/hosted`. It contains the account database, project catalog and one ordinary Senda project database per opaque UUID. Do not put it in a publicly served directory. The service reuses `Project` for all source/model mutations and the improved `diagramViews` pipeline for review and export. The local CLI, local review mode and offline bundles retain their existing behavior. Local export-file server functions are disabled in hosted mode: private local files are never made available as a public example.
 
 The public `/example` is an explicitly generated synthetic fixture, independent of private account data. Rebuild it with `node scripts/build-public-example.js` after relevant modeling/layout changes. Its first draft and final version include scripted clarification rounds and unapproved human-review cases.
+
+## Transcript imports
+
+New projects require only a transcript. The name, purpose and perspective are optional draft details; agents can infer them from the transcript and save them in a later revision. An As-is name change updates the project list while earlier revisions and To-be titles keep their own names. Existing API clients can still create an empty workspace by supplying all three details.
+
+All three transcript upload fields accept TXT, Markdown, VTT, SRT and DOCX. Conversion happens in the browser before submission. VTT and SRT timing and formatting are removed while speaker turns are retained; DOCX paragraphs, tables and line breaks become plain text. The source file can be up to 5,000,000 bytes; extracted or pasted project text can be up to 300,000 UTF-8 bytes. Built-in chat retains its 60,000-character message limit. DOCX import reads only the document text, never loads external relationships, and rejects malformed or oversized content.
 
 ## Accounts and authorization
 

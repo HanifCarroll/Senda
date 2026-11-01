@@ -2,6 +2,8 @@
 
 Senda turns interview transcripts into BPMN process diagrams people can agree on. An AI agent drafts the diagram, every step links back to the passage it came from, and anything the interview left unclear becomes a question you can take back to the people who do the work.
 
+**Most people: use the hosted app with its built-in agent or the Claude connector. Building on Senda: use the CLI or JavaScript library.**
+
 **[Try Senda](https://senda.hanifcarroll.com)** · **[See the example](https://senda.hanifcarroll.com/example)** · **[Documentation](#documentation)**
 
 <img src="public/marketing/evidence.svg" alt="A deposit invoice step selected in a client onboarding diagram, with the transcript passage that supports it." width="100%">
@@ -19,56 +21,85 @@ Senda turns interview transcripts into BPMN process diagrams people can agree on
 
 ### In the hosted app
 
-Create an account at [senda.hanifcarroll.com](https://senda.hanifcarroll.com). You can work with the built-in agent, or connect Claude or ChatGPT: add Senda as a connector in your assistant's settings, sign in, and ask it to map the interview. Plans and limits are on the [pricing page](https://senda.hanifcarroll.com/pricing). To free a slot, delete a project from its menu. You can restore it from **Recently deleted** for seven days, as long as your plan has room.
+Create an account at [senda.hanifcarroll.com](https://senda.hanifcarroll.com). Paste a transcript or upload TXT, Markdown, VTT, SRT or DOCX. Only the transcript is required; the agent can draft the name, purpose and perspective from it. Files are converted in your browser before you submit them, preserving speaker turns. Uploads can be up to 5 MB, with up to 300 KB of converted text; built-in chat accepts up to 60,000 characters per message.
+
+Work with the built-in agent, or open **Connect your agent** for the current Claude and ChatGPT setup steps, server URL and starter prompt. ChatGPT support is in beta. Saving diagrams from ChatGPT requires a Business, Enterprise or Edu plan; ChatGPT Pro can only read from Senda. Workspace settings may also limit custom connections. Plans and limits are on the [pricing page](https://senda.hanifcarroll.com/pricing). To free a slot, delete a project from its menu. You can restore it from **Recently deleted** for seven days, as long as your plan has room.
 
 ### With an agent on your computer
 
-The `senda` skill teaches an agent the discovery method and how to use the `senda` command. Install it from a checkout of this repository:
+Requires Node.js 24 or later.
+
+The npm release is prepared but not published yet. Until it is available, clone this repository, run `npm ci`, then run `npm run install:skill`.
+
+After the npm release is published:
+
+Install the skill for Claude Code and Codex without cloning the repository:
 
 ```sh
-npm ci
-npm run install:skill
+npx @hanifcarroll/senda install-skill
 ```
 
-This links the skill into Claude Code (`~/.claude/skills/senda`) and Codex (`~/.codex/skills/senda`). Add `-- --agent claude` or `-- --agent codex` to install it for one of them. Keep the checkout where it is, because the skill runs the command from it. For the Claude desktop or web app, download the [skill as a ZIP file](https://senda.hanifcarroll.com/api/skill.zip) and upload it under Skills in Claude's settings.
+Add `--agent claude` or `--agent codex` to install for one assistant. The installer copies the skill into `~/.claude/skills/senda` and `~/.codex/skills/senda`. The copy does not depend on a checkout: it uses the matching CLI when one is installed, or downloads that pinned version with npm when needed. A first download needs network access. Run `npx @hanifcarroll/senda@latest install-skill` to update it.
 
-Then start a new session and ask something like:
+Start a new agent session and ask:
 
 > Use the Senda skill to model this interview as the current process. Ask me about missing decisions and keep the evidence attached.
 
+For Claude desktop or web, download the [skill as a ZIP file](https://senda.hanifcarroll.com/api/skill.zip) and upload it under Skills in Claude's settings. The ZIP supplies the discovery method; use the hosted connector to save projects from those apps.
+
+### Claude Code plugin
+
+In Claude Code, run:
+
+```text
+/plugin marketplace add HanifCarroll/Senda
+/plugin install senda@senda
+```
+
+The plugin includes the skill and Senda’s hosted connector. Run `/mcp` to sign in to Senda and choose which projects it can use. For local projects, the skill runs the CLI, downloading its pinned npm version when the plugin copy cannot run it directly. You can use `/senda:senda` to load the method explicitly.
+
 ### From the command line
 
-The `senda` command keeps each project in a folder with its own database. Run it from the checkout with `node bin/senda.js`, or run `npm link` once to put `senda` on your path.
+After the npm release is published:
+
+Install the command once:
 
 ```sh
-senda --project workspaces/booking init \
+npm install --global @hanifcarroll/senda
+```
+
+Each project has its own folder and database. Set the project path once and create a project from your own transcript. An agent using the skill, or `senda apply`, then adds the diagram:
+
+```sh
+export SENDA_PROJECT=workspaces/booking
+senda init \
   --name "Project booking" \
   --purpose "Explain how accepted proposals become bookings" \
   --perspective "Freelancer" \
-  --transcript examples/transcript.txt
+  --transcript interview.txt
 
-senda --project workspaces/booking apply --file examples/01-discover.json
-senda --project workspaces/booking apply --file examples/02-answer-and-model.json
-senda --project workspaces/booking validate
-senda --project workspaces/booking export
+senda status --human
+senda export --open
 ```
+
+Without `SENDA_PROJECT`, Senda uses `.senda` in the current folder. An explicit `--project <directory>` takes precedence. Commands print JSON by default for agents; `status --human` shows a readable summary. `export` saves the review bundle; `export --open` also opens its review page.
 
 Every change names the revision it was based on, so a stale or invalid edit leaves the saved project unchanged. `senda --help` lists every command, and the [command reference](skills/senda/references/commands.md) describes the change format.
 
 ### As a JavaScript library
 
-The package exports `Project`, `exportBundle` and `assess` from [`src/core/index.js`](src/core/index.js). The command line and the web app both use them.
+After the npm release is published, install `@hanifcarroll/senda` and import `Project`, `exportBundle` and `assess` from it. The package exports them from [`src/core/index.js`](src/core/index.js). The command line and the web app both use them.
 
 ## Try it locally
 
-You need Node.js 24 and npm.
+For development, clone this repository and use Node.js 24 or later with npm. CI checks Node.js 24 and 26.
 
 ```sh
 npm ci
 npm run demo
 ```
 
-The demo builds a synthetic project under `output/` and prints the path to a review page. Open it in a browser to explore the diagram, follow a step to its source passage, and read the clarification that shaped the model. The page works offline.
+The demo builds a synthetic project under `output/` and opens its review page in your browser. Add `-- --no-open` to keep it closed; CI and headless Linux skip opening automatically. Explore the diagram, follow a step to its source passage, and read the clarification that shaped the model. The page works offline.
 
 For a longer interview with three rounds of clarification, run `npm run test:workflow -- --keep-output`. The [example notes](examples/complex-onboarding/README.md) describe what it covers.
 

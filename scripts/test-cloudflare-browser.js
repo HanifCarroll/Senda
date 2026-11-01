@@ -136,7 +136,7 @@ try {
   await p.getByRole("button", { name: "Set up your agent", exact: true }).waitFor();
   assert.ok(await p.getByRole("button", { name: "Set up your agent", exact: true }).isVisible());
   await p.getByRole("button", { name: "Set up your agent", exact: true }).click();
-  assert.match(await p.getByRole("dialog").innerText(), /Choose New projects/);
+  assert.match(await p.getByRole("dialog").innerText(), /New projects/);
   await p.getByRole("button", { name: "Close", exact: true }).click();
   console.log("UI magic link and scanner-safe confirmation passed");
   const post = async (path, data) => {
@@ -144,6 +144,71 @@ try {
     assert.ok(r.ok(), await r.text());
     return r.json();
   };
+  const captions = [
+    'Eva: We receive a booking request\nand check the date.',
+    'Luis: What happens if it is unavailable?\nEva: We email the customer & close the request.',
+    'Eva: Olá — we also keep Türkçe names.',
+  ].join('\n\n');
+  const wordText = [
+    'Photo-session booking interview', 'Eva: We receive a request & check the date.',
+    'Luis: What happens next?', 'Eva: We email a quote.\nThen we wait for a reply.',
+    'Luis:\tWhat if there is no reply?', 'Eva:\tThe request stays open.', 'Eva: Olá — keep Türkçe names.',
+  ].join('\n');
+  const plain = 'Eva: We receive a booking request.\nLuis: Then we check the date.';
+  const uploads = [
+    { name: 'interview.txt', mimeType: 'text/plain', buffer: Buffer.from(plain), expected: plain },
+    { name: 'interview.md', mimeType: 'text/markdown', buffer: Buffer.from('# Interview\n'+plain), expected: '# Interview\n'+plain },
+    ...await Promise.all(['vtt', 'srt', 'docx'].map(async ext => ({
+      name: 'interview.'+ext, mimeType: 'application/octet-stream',
+      buffer: await readFile(new URL('../test/fixtures/transcripts/interview.'+ext, import.meta.url)),
+      expected: ext === 'docx' ? wordText : captions,
+    }))),
+  ];
+  await p.getByRole('button', { name: 'New project', exact: true }).click();
+  assert.ok(await p.getByRole('button', { name: 'Create project', exact: true }).isDisabled());
+  assert.equal(await p.locator('#project-name').getAttribute('required'), null);
+  assert.equal(await p.locator('#project-purpose').getAttribute('required'), null);
+  assert.equal(await p.locator('#perspective').getAttribute('required'), null);
+  for (const { expected, ...file } of uploads) {
+    await p.locator('#initial-file').setInputFiles(file);
+    await p.waitForFunction(value => document.querySelector('#transcript')?.value === value, expected);
+  }
+  await p.locator('#initial-file').setInputFiles({ name: 'bad.docx', mimeType: 'application/octet-stream', buffer: Buffer.from('broken') });
+  await p.getByText(/This Word file could not be read/).waitFor();
+  assert.equal(await p.locator('#transcript').inputValue(), wordText, 'A failed conversion retains the previous transcript');
+  await p.locator('#initial-file').setInputFiles(uploads[0]);
+  await p.waitForFunction(value => document.querySelector('#transcript')?.value === value, plain);
+  await p.getByRole('button', { name: 'Create project', exact: true }).click();
+  await p.waitForURL(url => /^\/app\/projects\//.test(url.pathname));
+  const draftId = new URL(p.url()).pathname.split('/').at(-1);
+  await p.getByRole('heading', { name: 'Untitled process', exact: true }).waitFor();
+  assert.equal((await (await context.request.get(base+'/api/projects/'+draftId+'/sources')).json())[0].text, plain);
+  await p.getByRole('button', { name: 'Project actions', exact: true }).click();
+  await p.getByRole('button', { name: 'Add transcript', exact: true }).click();
+  for (const { expected, ...file } of uploads) {
+    await p.locator('#source-file').setInputFiles(file);
+    await p.waitForFunction(value => document.querySelector('#source-text')?.value === value, expected);
+  }
+  await p.getByLabel('Source title', { exact: true }).fill('Converted Word interview');
+  await p.getByRole('button', { name: 'Save transcript', exact: true }).click();
+  await p.getByRole('dialog').waitFor({ state: 'hidden' });
+  assert.equal((await (await context.request.get(base+'/api/projects/'+draftId+'/sources')).json()).at(-1).text, wordText);
+  await p.route('**/api/agent/config*', route => route.fulfill({ json: { available: true } }));
+  await p.goto(base+'/app/agent');
+  await p.locator('#agent-transcript').waitFor();
+  await p.waitForFunction(() => !document.querySelector('#agent-transcript')?.disabled);
+  for (const { expected, ...file } of uploads) {
+    await p.locator('#agent-transcript').setInputFiles(file);
+    await p.waitForFunction(value => document.querySelector('#agent-message')?.value === value, expected);
+  }
+  await p.locator('#agent-transcript').setInputFiles({ name: 'long-interview.txt', mimeType: 'text/plain', buffer: Buffer.from('x'.repeat(60001)) });
+  await p.getByText('Built-in chat accepts up to 60,000 characters per message. Shorten the transcript, or add it to a project instead.', { exact: true }).waitFor();
+  assert.equal(await p.locator('#agent-message').inputValue(), wordText);
+  assert.ok(await p.getByRole('button', { name: 'Send message', exact: true }).isEnabled());
+  await p.unroute('**/api/agent/config*');
+  await post('/api/projects/'+draftId+'/delete', { confirm: true });
+  await p.goto(base+'/app');
+  console.log('All five formats work in all three transcript fields; transcript-only creation saves evidence and failed conversion preserves text');
   const redirect = base + "/agent-test/callback";
   const registration = await post("/api/auth/oauth2/register", {
     client_name: "Agent-first browser test",

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "senda": {
+      "type": "http",
+      "url": "https://senda.hanifcarroll.com/mcp"
+    }
+  }
+}

@@ -98,6 +98,7 @@ export const Walkthrough = z.strictObject({
 export const Proposal = z.strictObject({
   expectedRevision: Revision,
   summary: Text,
+  name: z.string().trim().min(1).max(160).optional(),
   context: Context.partial().optional(),
   stage: Stage.optional(),
   sources: z.array(SourceInput).default([]),

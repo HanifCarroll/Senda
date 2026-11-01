@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Project, schema, exportBundle, publicError } from '../src/core/index.js';
 import { moveLegacyDataFolder } from '../src/core/store.js';
+import { installSkill } from '../scripts/install-skill.js';
+import { openReviewPage } from '../scripts/open-review.js';
 
 const integer = value => {
   if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value))) throw new InvalidArgumentError('Use a positive integer revision.');
@@ -16,7 +18,10 @@ const program = new Command().name('senda').description('Create and revise BPMN 
 program.exitOverride();
 program.configureOutput({ writeErr: () => {} });
 const projectDirectory = () => {
-  if (program.getOptionValueSource('project') === 'default') moveLegacyDataFolder();
+  if (program.getOptionValueSource('project') === 'default') {
+    if (process.env.SENDA_PROJECT?.trim()) return process.env.SENDA_PROJECT;
+    moveLegacyDataFolder();
+  }
   return program.opts().project;
 };
 const run = operation => async (...args) => {
@@ -33,12 +38,19 @@ program.command('init').description('Create a private local discovery project')
     try { print(await p.inspect()); } finally { p.close(); }
   });
 program.command('schema').description('Print proposal and Miragon operation schemas').action(() => print(schema()));
+program.command('install-skill').description('Install the Senda skill for Claude Code and Codex')
+  .option('--agent <agent>', 'claude, codex or all', 'all').action(async opts => print(await installSkill({ agent: opts.agent })));
 program.command('inspect').description('Read model elements, sources, claims and questions').option('--revision <n>', 'Saved revision', integer).action(run((p, o) => p.inspect(o.revision)));
 program.command('history').description('Read revision summaries').action(run(p => p.history()));
-program.command('status').description('Show current state and outstanding review work').action(run(async p => {
-  const s = p.read(), q = await p.validate();
-  return { name: s.name, revision: s.revision, status: s.status, stage: s.discovery.stage, readyToFinalize: q.readyToFinalize, blockers: q.blockers };
-}));
+program.command('status').description('Show current state and outstanding review work').option('--human', 'Show a readable summary')
+  .action(async opts => {
+    const project = new Project(projectDirectory());
+    try {
+      const s = project.read(), q = await project.validate();
+      if (!opts.human) print({ name: s.name, revision: s.revision, status: s.status, stage: s.discovery.stage, readyToFinalize: q.readyToFinalize, blockers: q.blockers });
+      else process.stdout.write(`${s.name}\nRevision ${s.revision} · ${s.status}\nDiscovery stage: ${s.discovery.stage}\n${q.readyToFinalize ? 'Ready to finalize.' : 'Review work remains.'}\n${q.blockers.length ? `\nNeeds attention:\n${q.blockers.map(blocker => `- ${blocker.message}`).join('\n')}\n` : ''}`);
+    } finally { project.close(); }
+  });
 program.command('apply').description('Atomically apply a proposal with evidence and BPMN operations')
   .requiredOption('--file <json>').action(run(async (p, o) => p.apply(JSON.parse(await readFile(o.file, 'utf8')))));
 program.command('import').description('Import BPMN, preserving existing linked evidence when IDs still exist')
@@ -59,7 +71,13 @@ program.command('review-scenario').description('Record a human walkthrough of on
 program.command('finalize').description('Mark a fully reviewed snapshot as reviewed')
   .requiredOption('--expected-revision <n>', 'Current revision', integer).action(run((p, o) => p.finalize(o.expectedRevision)));
 program.command('export').description('Write a new self-contained review bundle containing source evidence').option('--out <directory>')
-  .action(run((p, o) => exportBundle(p, o.out)));
+  .option('--open', 'Open the exported review in your browser', false).option('--no-open', 'Save the export without opening a browser')
+  .action(run(async (p, o) => {
+    const result = await exportBundle(p, o.out);
+    if (o.open && !await openReviewPage(path.join(result.directory, 'review.html')))
+      process.stderr.write(`${JSON.stringify({ warning: { code: 'BROWSER_NOT_OPENED', message: 'The review was saved. Open review.html from the export directory.' } })}\n`);
+    return result;
+  }));
 
 try { await program.parseAsync(); }
 catch (error) {

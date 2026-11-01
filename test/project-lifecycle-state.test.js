@@ -57,24 +57,22 @@ test('a known competing publication removes only its own losing blob', async t =
   assert.equal(f.objects.size, 2);
   assert.equal(second.read().revision, 1, 'A failed append does not advance the opened store');
   assert.equal((await f.projects.read(f.actor, project.id)).name, 'Winning requests');
+  assert.equal((await f.projects.list(f.actor))[0].name, 'Winning requests');
 });
 
 test('a lost publication response preserves a committed blob and can be read after reopening', async t => {
   const f = fixture(t), project = await f.create(), opened = await f.projects.open(f.actor, project.id);
-  const prepare = f.db.prepare;
-  f.db.prepare = sql => {
-    const statement = prepare(sql);
-    if (sql.startsWith('INSERT INTO senda_revisions')) {
-      const run = statement.run;
-      statement.run = () => { run(); throw new Error('Lost database response'); };
-    }
-    return statement;
+  const batch = f.db.batch;
+  f.db.batch = statements => {
+    batch(statements);
+    throw new Error('Lost database response');
   };
   await assert.rejects(opened.store.append(1, { ...opened.read(), name: 'Committed requests' }, 'Save despite lost response'), /Lost database response/);
-  f.db.prepare = prepare;
+  f.db.batch = batch;
   assert.equal(opened.read().revision, 1, 'The caller cannot infer success from an uncertain response');
   assert.equal(f.objects.size, 2, 'Uncertainty never triggers destructive cleanup');
   assert.equal((await f.projects.read(f.actor, project.id)).name, 'Committed requests');
+  assert.equal((await f.projects.list(f.actor))[0].name, 'Committed requests');
 });
 
 test('a failed upload never starts publication or changes the saved model', async t => {

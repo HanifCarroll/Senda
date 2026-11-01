@@ -1,12 +1,18 @@
 {
-  "name": "senda",
-  "version": "0.3.0",
+  "name": "@hanifcarroll/senda",
+  "version": "0.4.0",
   "description": "Turn process interviews into clear BPMN diagrams and revise current and future processes with your agent",
-  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HanifCarroll/Senda.git"
+  },
   "type": "module",
   "license": "MIT",
   "engines": {
-    "node": ">=24.0.0 <25"
+    "node": ">=24.0.0"
   },
   "bin": {
     "senda": "bin/senda.js"
@@ -16,8 +22,19 @@
     "bin",
     "src",
     "branding/artwork.js",
+    "scripts/install-skill.js",
+    "scripts/open-review.js",
+    "scripts/demo.js",
+    "examples",
+    ".claude-plugin",
+    ".mcp.json",
     "skills",
     "docs",
+    "public/brand/logo.svg",
+    "public/marketing/evidence.svg",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "THIRD_PARTY_NOTICES.md",
     "README.md",
     "LICENSE"
   ],
@@ -72,6 +89,7 @@
     "react-dom": "19.3.1",
     "react-markdown": "10.1.0",
     "react-resizable-panels": "^4.15.0",
+    "saxen": "11.2.0",
     "sonner": "^2.0.8",
     "stripe": "23.0.1",
     "tailwind-merge": "3.7.0",

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Import TXT, Markdown, VTT, SRT and DOCX transcripts in the app, retaining speaker turns and checking file and extracted-text limits.
+- Start a project with only a transcript; agents can draft its name, purpose and perspective in a saved revision.
+- Add current Claude and ChatGPT connection steps, copyable starter prompts, and browser tools under Advanced when supported.
+- Distribute the CLI and persistent skill through npm, plus a Claude Code plugin with the hosted connector.
+- Check Node.js 24 and 26 in CI and support Node.js 24 or later.
+- Add `SENDA_PROJECT`, `status --human`, `export --open` and a demo that opens its review page, with options for automated work.
+
 - Keep reply setup running across browser disconnection, recover abandoned setup without spending allowance, and prevent recovered setup from starting later.
 - Make chat, account, project, billing and hosted diagram workflows explicit with native XState 6 machines while keeping stored records and provider state authoritative.
 - Fence late agent completion and failure against concurrent recovery so a recovered reply cannot be overwritten or charged again.

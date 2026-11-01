@@ -1,0 +1,11 @@
+{
+  "name": "senda",
+  "version": "0.4.0",
+  "description": "Create and revise process diagrams from transcripts with Senda.",
+  "icon": "./.claude-plugin/icon.png",
+  "author": { "name": "Hanif Carroll" },
+  "homepage": "https://senda.hanifcarroll.com",
+  "privacyPolicyUrl": "https://senda.hanifcarroll.com/privacy",
+  "repository": "https://github.com/HanifCarroll/Senda",
+  "license": "MIT"
+}

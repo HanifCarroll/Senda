@@ -1,0 +1,13 @@
+1
+00:00:01,000 --> 00:00:04,200
+Eva: <i>We receive a booking request</i>
+and check the date.
+
+2
+00:00:04,200 --> 00:00:06,500
+Luis: What happens if it is unavailable?
+Eva: We email the customer &amp; close the request.
+
+3
+00:00:06,500 --> 00:00:08,000
+{\an8}<font color="#ffffff">Eva: Olá — we also keep Türkçe names.</font>

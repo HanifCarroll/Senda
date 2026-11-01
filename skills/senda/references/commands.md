@@ -1,6 +1,8 @@
 # Command and proposal reference
 
-The skill lives inside the companion repository. Run `node <skill-directory>/scripts/run.mjs` or, from the repository, `node bin/senda.js`. Node.js 24 and `npm ci` are required. Commands below omit that prefix.
+The npm release is prepared but not published yet. Until it is available, clone this repository, run `npm ci`, then run `npm run install:skill`.
+
+Run `node <skill-directory>/scripts/run.mjs`, which uses a matching installed CLI or downloads its pinned npm version. Requires Node.js 24 or later with npm. From a development checkout, `node bin/senda.js` also works after `npm ci`. Commands below omit that prefix. Set `SENDA_PROJECT` once to choose the project directory; `--project` overrides it, and the default is `.senda` in the current folder.
 
 ## Read and create
 
@@ -9,6 +11,7 @@ The skill lives inside the companion repository. Run `node <skill-directory>/scr
 --project /private/path/booking inspect
 --project /private/path/booking inspect --revision 2
 --project /private/path/booking status
+--project /private/path/booking status --human
 --project /private/path/booking history
 --project /private/path/booking diff --from 1
 schema
@@ -34,6 +37,7 @@ Optional fields:
 
 | Field | Meaning |
 | --- | --- |
+| `name` | Rename the process in a saved revision, up to 160 characters. An As-is rename also updates the hosted project list; To-be titles stay separate. |
 | `context` | Patch `purpose`, `perspective`, `trigger`, `outcomes`, `scopeNotes`, or optional `audience`, `owner`, `customer`, `detailLevel` (`overview`/`operational`). The only profile is `dumas-conceptual-v2`. |
 | `stage` | `boundaries`, `activities`, `responsibilities`, `control-flow`, `additional-detail`, `quality-review` |
 | `sources` | Append immutable `{id,title,kind,text}` records; kind is `transcript`, `answer`, `document` or `observation`. Optional `origin`, `contributor`, `collectedOn` (YYYY-MM-DD), `period`, `coverage`. |
@@ -118,4 +122,6 @@ try {
 }
 ```
 
-`Project.create(directory, options)` returns an open project; close it when done. `project.reviewScenario({expectedRevision,scenarioId,outcome,reviewer,notes})` records human case feedback. The same service could support future MCP or HTTP adapters; those transports are outside this release.
+`Project.create(directory, options)` returns an open project; close it when done. `project.reviewScenario({expectedRevision,scenarioId,outcome,reviewer,notes})` records human case feedback. The hosted app and remote MCP endpoint use the same core service.
+
+`status --human` shows a readable summary; the default remains JSON. `export --open` also opens the saved `review.html` page; plain `export` and `export --no-open` leave it closed. An opening failure keeps the exported files and reports a warning.

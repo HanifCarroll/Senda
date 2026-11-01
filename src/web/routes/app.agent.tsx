@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { api, ApiError } from "@/lib/api";
 import { createAgentChatMachine, type AgentMessage } from "@/lib/agent-chat-machine";
+import { TranscriptUpload } from '@/components/transcript-upload';
 
 export const Route = createFileRoute("/app/agent")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -21,7 +22,7 @@ function AgentChat() {
   const search = Route.useSearch(), navigate = Route.useNavigate();
   const [model, setModel] = useState("as-is"),
     [messages, setMessages] = useState<AgentMessage[]>([]),
-    [text, setText] = useState("");
+    [text, setText] = useState(""), [uploading, setUploading] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const [machine] = useState(() => createAgentChatMachine({
     config: (route, signal) => {
@@ -195,38 +196,12 @@ function AgentChat() {
             required
             disabled={pending}
           />
-          <div className="flex items-center justify-between gap-4">
-            <Button variant="ghost" asChild disabled={pending}>
-              <label htmlFor="agent-transcript" className="cursor-pointer">
-                <Paperclip />
-                Attach transcript
-              </label>
-            </Button>
-            <input
-              id="agent-transcript"
-              className="sr-only"
-              type="file"
-              accept=".txt,.md,text/plain,text/markdown"
-              disabled={pending}
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                if (file.size > 240000) {
-                  setError("Choose a transcript under 60,000 characters.");
-                  return;
-                }
-                const content = await file.text();
-                if (content.length > 60000) {
-                  setError("Choose a transcript under 60,000 characters.");
-                  return;
-                }
-                setText(content);
-                setError("");
-                event.target.value = "";
-              }}
-            />
-
-            <Button type="submit" disabled={pending || !text.trim()}>
+          <div className="space-y-2">
+            <label htmlFor="agent-transcript" className="flex items-center gap-2 text-sm font-medium"><Paperclip className="size-4" />Attach transcript</label>
+            <TranscriptUpload id="agent-transcript" disabled={pending} onText={setText} onError={setError} onReading={setUploading} maxCharacters={60000} />
+          </div>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={pending || uploading || !text.trim()}>
               <Send />
               {pending ? "Working…" : "Send message"}
             </Button>

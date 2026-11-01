@@ -1,0 +1,12 @@
+{
+  "name": "senda",
+  "description": "Create and revise process diagrams from transcripts with Senda.",
+  "owner": { "name": "Hanif Carroll" },
+  "plugins": [
+    {
+      "name": "senda",
+      "source": "./",
+      "description": "Create and revise process diagrams from transcripts with Senda."
+    }
+  ]
+}

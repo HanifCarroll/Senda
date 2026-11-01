@@ -13,7 +13,11 @@ export function memoryD1() {
         bind(...values) { parameters = values; return result; },
         first() { return statement.get(...parameters) || null; },
         all() { return { results: statement.all(...parameters) }; },
-        run() { const r = statement.run(...parameters); return { success: true, meta: { changes: Number(r.changes) } }; },
+        run() {
+          if (statement.columns().length) return { success: true, results: statement.all(...parameters), meta: { changes: 0 } };
+          const r = statement.run(...parameters);
+          return { success: true, results: [], meta: { changes: Number(r.changes) } };
+        },
       };
       return result;
     },

@@ -1,4 +1,6 @@
 import { SendaAgentLink } from "@/components/senda-agent-link";
+import { TranscriptUpload } from '@/components/transcript-upload';
+import { TRANSCRIPT_MAX_TEXT_BYTES } from '../../shared/transcript-files.js';
 import { createFileRoute } from "@tanstack/react-router";
 import { savedModelSignIn } from '../../shared/model-links.js';
 import { useCallback, useEffect, useState } from "react";
@@ -85,6 +87,7 @@ function Workspace() {
     [detailsOpen, setDetailsOpen] = useState(false),
     [deleteOpen, setDeleteOpen] = useState(false),
     [text, setText] = useState(""),
+    [uploading, setUploading] = useState(false),
     [question, setQuestion] = useState("");
   const [reviewMachine] = useState(() => createProjectReviewMachine({
     models: (input: any, signal: AbortSignal) => api<Models>(`/api/projects/${input.projectId}/models`, { signal }),
@@ -136,6 +139,10 @@ function Workspace() {
   function save(event: React.FormEvent<HTMLFormElement>, kind: "transcript" | "answer") {
     event.preventDefault();
     if (!review) return;
+    if (kind === 'transcript' && new TextEncoder().encode(text).length > TRANSCRIPT_MAX_TEXT_BYTES) {
+      sendSave({ type: 'ERROR', message: 'Transcripts can be up to 300 KB of plain text. Shorten the transcript and try again.' });
+      return;
+    }
     const body = kind === "answer"
       ? { expectedRevision: review.revision, questionId: question, text }
       : { expectedRevision: review.revision, source: { id: `Transcript_${crypto.randomUUID()}`, title: String(new FormData(event.currentTarget).get("title")), kind, text } };
@@ -225,18 +232,8 @@ function Workspace() {
                     />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="source-file">Upload text</FieldLabel>
-                    <Input
-                      id="source-file"
-                      type="file"
-                      accept=".txt,.md,text/plain,text/markdown"
-                      onChange={async (e) => {
-                        const f = e.target.files?.[0];
-                        if (f && f.size <= 300000) setText(await f.text());
-                        else if (f)
-                          sendSave({ type: "ERROR", message: "Choose a text file smaller than 300 KB." });
-                      }}
-                    />
+                    <FieldLabel htmlFor="source-file">Upload a transcript</FieldLabel>
+                    <TranscriptUpload id="source-file" disabled={busy} onText={setText} onReading={setUploading} onError={message => sendSave({ type: 'ERROR', message })} />
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="source-text">
@@ -257,7 +254,7 @@ function Workspace() {
                     {error}
                   </p>
                 )}
-                <Button type="submit" disabled={busy}>
+                <Button type="submit" disabled={busy || uploading}>
                   {busy ? "Saving…" : "Save transcript"}
                 </Button>
               </form>

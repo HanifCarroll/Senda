@@ -91,12 +91,19 @@ export class CloudStore {
         candidate,
         summary,
       ),
-      publish: prepared => this.db
-        .prepare(
+      publish: async prepared => {
+        const insert = this.db.prepare(
           "INSERT INTO senda_revisions (model_id,revision,parent,created,summary,object_key,digest,content_hash) SELECT ?,?,?,?,?,?,?,? WHERE COALESCE((SELECT MAX(revision) FROM senda_revisions WHERE model_id=?),0)=? AND EXISTS(SELECT 1 FROM senda_models m JOIN senda_projects p ON p.id=m.project_id WHERE m.id=? AND p.state='active' AND p.generation=?)",
         )
-        .bind(...prepared.values, this.modelId, expectedRevision, this.modelId, this.generation)
-        .run(),
+        .bind(...prepared.values, this.modelId, expectedRevision, this.modelId, this.generation);
+        if (candidate.name === this.read().name) return insert.run();
+        const results = await this.db.batch([
+          insert,
+          this.db.prepare("UPDATE senda_projects SET name=? WHERE generation=? AND state='active' AND id=(SELECT project_id FROM senda_models WHERE id=? AND kind='as-is') AND EXISTS(SELECT 1 FROM senda_revisions WHERE model_id=? AND revision=? AND object_key=?)")
+            .bind(candidate.name, this.generation, this.modelId, this.modelId, prepared.row.revision, prepared.row.object_key),
+        ]);
+        return results[0];
+      },
       accepted: result => result.meta.changes === 1,
       reject: async prepared => {
         await this.bucket.delete(prepared.row.object_key).catch(() => {});

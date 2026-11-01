@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<document xmlns="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <body>
+    <p><r><t>Photo-session booking interview</t></r></p>
+    <p><r><t xml:space="preserve">Eva: </t></r><r><t>We receive a request &amp; check the date.</t></r></p>
+    <p><hyperlink r:id="external-link"><r><t>Luis: What happens next?</t></r></hyperlink></p>
+    <p><r><t>Eva: We email a quote.</t><br/><t>Then we wait for a reply.</t></r></p>
+    <tbl>
+      <tr><tc><p><r><t>Luis:</t></r></p></tc><tc><p><r><t>What if there is no reply?</t></r></p></tc></tr>
+      <tr><tc><p><r><t>Eva:</t></r></p></tc><tc><p><r><t>The request stays open.</t></r></p></tc></tr>
+    </tbl>
+    <p><del><r><delText>Removed draft wording.</delText></r></del><ins><r><t>Eva: Olá — keep Türkçe names.</t></r></ins></p>
+  </body>
+</document>

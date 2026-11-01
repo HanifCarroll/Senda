@@ -137,6 +137,7 @@ export class ProjectCore {
     );
     const candidate = {
       ...previous,
+      name: proposal.name ?? previous.name,
       xml: edit.xml,
       discovery: updateDiscovery(previous.discovery, proposal, edit.aliases),
     };

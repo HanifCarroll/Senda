@@ -2,6 +2,7 @@ import { readFile, mkdir, mkdtemp } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Project, exportBundle } from '../src/core/index.js';
+import { openReviewPage } from './open-review.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 await mkdir(path.join(root, 'output'), { recursive: true });
@@ -21,4 +22,6 @@ try {
   project = new Project(path.join(directory, 'project'));
   const after = await exportBundle(project, path.join(directory, 'after-clarification'));
   console.log(JSON.stringify({ project: path.join(directory, 'project'), before: path.join(before.directory, 'review.html'), after: path.join(after.directory, 'review.html'), status: project.read().status, note: 'The synthetic answer supplies the missing order. Human reviews remain pending.' }, null, 2));
+  if (!process.argv.includes('--no-open') && !await openReviewPage(path.join(after.directory, 'review.html')))
+    process.stderr.write('The demo is ready. Open the review.html path listed as "after" above.\n');
 } finally { project.close(); }

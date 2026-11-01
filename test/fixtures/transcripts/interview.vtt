@@ -1,0 +1,22 @@
+WEBVTT
+Kind: captions
+Language: en
+
+NOTE Generated from a synthetic interview, not a customer recording.
+This note should not become a source passage.
+
+STYLE
+::cue { color: white; }
+
+first-turn
+00:00:01.000 --> 00:00:04.200 align:start position:0%
+<v Eva><b>We receive a booking request</b>
+and check the date.</v>
+
+second-turn
+00:00:04.200 --> 00:00:06.500
+<v Luis>What happens if it is unavailable?</v>
+<v Eva>We email the customer &amp; close the request.</v>
+
+00:00:06.500 --> 00:00:08.000
+<v Eva>Olá — <00:00:07.000>we also keep Türkçe names.</v>
