@@ -461,7 +461,6 @@ export function Marketing() {
             {[
               ["Example", "/example"],
               ["Pricing", "#pricing"],
-              ["Usage", "/usage"],
               ["How it works", "#how-it-works"],
               ["Privacy", "/privacy"],
               ["GitHub", repository],
