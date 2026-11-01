@@ -464,7 +464,7 @@ export function Marketing() {
               ["Usage", "/usage"],
               ["How it works", "#how-it-works"],
               ["Privacy", "/privacy"],
-              ["Source code", repository],
+              ["GitHub", repository],
             ].map(([label, href]) => (
               <a key={label} className="underline underline-offset-4 hover:text-foreground" href={href}>
                 {label}
