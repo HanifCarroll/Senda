@@ -31,8 +31,8 @@ export class CloudStore {
     requireThat(results.length, "NOT_FOUND", "This model is not available.");
     const store = new CloudStore(db, bucket, modelId, results, new Map(), generation);
     if (load) {
-      await store.load(results.at(-1).revision);
-      if (revision !== undefined) await store.load(revision);
+      const latest = results.at(-1).revision;
+      await Promise.all([...new Set([latest, revision === undefined ? latest : revision])].map(wanted => store.load(wanted)));
     }
     return store;
   }

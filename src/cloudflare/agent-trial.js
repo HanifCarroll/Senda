@@ -2,12 +2,13 @@ import { requireThat } from '../core/errors.js';
 import { SENDA_PLAN } from '../server/billing/plan.js';
 
 export async function trialStatus(db, owner) {
-  const grant = await db.prepare('SELECT * FROM senda_agent_trials WHERE owner=?')
-    .bind(owner).first();
-  const usage = await db.prepare(`SELECT
-  COALESCE(SUM(CASE WHEN status<>'running' THEN COALESCE(cost_usd,reserved_usd) ELSE 0 END),0) AS used,
-  COALESCE(SUM(CASE WHEN status='running' THEN reserved_usd ELSE 0 END),0) AS pending
-  FROM senda_agent_runs WHERE trial_owner=?`).bind(owner).first();
+  const [grant, usage] = await Promise.all([
+    db.prepare('SELECT * FROM senda_agent_trials WHERE owner=?').bind(owner).first(),
+    db.prepare(`SELECT
+      COALESCE(SUM(CASE WHEN status<>'running' THEN COALESCE(cost_usd,reserved_usd) ELSE 0 END),0) AS used,
+      COALESCE(SUM(CASE WHEN status='running' THEN reserved_usd ELSE 0 END),0) AS pending
+      FROM senda_agent_runs WHERE trial_owner=?`).bind(owner).first(),
+  ]);
   const limitUsd = grant?.limit_usd ?? SENDA_PLAN.trialUsd;
   return {
     projectId: grant?.project || null,

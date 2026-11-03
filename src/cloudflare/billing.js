@@ -166,22 +166,25 @@ export class CloudBilling {
   }
   async status(actor) {
     if (!this.config.configured) return { available: false, projectLimit: SENDA_PLAN.proProjects };
-    const customer = await this.customer(actor.userId);
-    const subscriptions = (await this.db.prepare('SELECT id,status,eligible,period_start,period_end,cancel_at FROM senda_billing_subscriptions WHERE context=? AND owner=? ORDER BY period_end DESC')
-      .bind(this.config.context, actor.userId).all()).results;
+    const [customer, { results: subscriptions }, held, price, projectLimit] = await Promise.all([
+      this.customer(actor.userId),
+      this.db.prepare('SELECT id,status,eligible,period_start,period_end,cancel_at FROM senda_billing_subscriptions WHERE context=? AND owner=? ORDER BY period_end DESC')
+        .bind(this.config.context, actor.userId).all(),
+      this.reviewHold(actor.userId), this.verifyCatalog(), this.workspaceLimit(actor),
+    ]);
     const current = subscriptions.find(s => s.eligible && s.period_start * 1000 <= this.now() && s.period_end * 1000 > this.now())
       || subscriptions.find(s => ['active','past_due','unpaid','paused','incomplete'].includes(s.status)) || subscriptions[0];
-    const held = await this.reviewHold(actor.userId);
-    const price = await this.verifyCatalog();
     const period = current && { context: this.config.context, subscriptionId: current.id,
       periodStart: new Date(current.period_start * 1000).toISOString(), periodEnd: new Date(current.period_end * 1000).toISOString(), limitUsd: this.config.includedUsd, dailyUsd: SENDA_PLAN.paidDailyUsd };
-    const usage = period ? await paidUsage(this.db, actor.userId, period) : null;
-    const pause = period ? await budgetPause(this.db, actor.userId, new Date().toISOString().slice(0, 10), period, { nowMs: this.now(), limits: serviceLimits(this.env) }) : null;
+    const [usage, pause] = period ? await Promise.all([
+      paidUsage(this.db, actor.userId, period),
+      budgetPause(this.db, actor.userId, new Date().toISOString().slice(0, 10), period, { nowMs: this.now(), limits: serviceLimits(this.env) }),
+    ]) : [null, null];
     return {
       available: true, checkoutAvailable: this.config.paidAgentEnabled && !held && !subscriptions.some(s => ['active','trialing','past_due','unpaid','paused','incomplete'].includes(s.status)), sandbox: !this.config.live, priceUsd: price.unit_amount / 100,
       includedUsd: this.config.includedUsd, usedUsd: usage?.usedUsd || 0, pendingUsd: usage?.pendingUsd || 0,
       minimumTurnUsd: MIN_TURN_USD, pause,
-      projectLimit: await this.workspaceLimit(actor),
+      projectLimit,
       managed: !!customer?.customer,
       subscription: current ? {
         status: current.status, active: !!current.eligible && !held && current.period_start * 1000 <= this.now() && current.period_end * 1000 > this.now(),
@@ -234,8 +237,9 @@ export class CloudBilling {
     const seen = await this.db.prepare('SELECT 1 FROM senda_billing_events WHERE context=? AND id=?')
       .bind(this.config.context, event.id).first();
     if (seen) return { received: true };
-    const subscriptions = await affectedSubscriptions(this.stripe, event);
-    const risk = await this.risk(event);
+    const [subscriptions, risk] = await Promise.all([
+      affectedSubscriptions(this.stripe, event), this.risk(event),
+    ]);
     for (const candidate of subscriptions) {
       const owner = await this.db.prepare('SELECT owner FROM senda_billing_customers WHERE context=? AND customer=?')
         .bind(this.config.context, idOf(candidate.customer)).first();

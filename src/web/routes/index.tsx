@@ -27,12 +27,10 @@ export const Route = createFileRoute("/")({
   loaderDeps: ({ search }) => ({ review: search.review }),
   loader: async ({ deps }) => {
     if (!deps.review) return { reviews: [] as ReviewChoice[], review: null };
-    const reviews = (await getReviews()) as ReviewChoice[];
-    const id = deps.review || reviews[0]?.id;
-    return {
-      reviews,
-      review: id ? ((await getReview({ data: { id } })) as Review) : null,
-    };
+    const [reviews, review] = await Promise.all([
+      getReviews(), getReview({ data: { id: deps.review } }),
+    ]);
+    return { reviews: reviews as ReviewChoice[], review: review as Review };
   },
   pendingComponent: () => (
     <main

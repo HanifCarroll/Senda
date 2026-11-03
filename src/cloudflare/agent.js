@@ -38,7 +38,10 @@ export class HostedAgent {
     return row;
   }
   async trialProjectRoom(actor) {
-    return (await this.projects.list(actor)).length < await this.projects.projectLimit(actor);
+    const [projects, limit] = await Promise.all([
+      this.projects.list(actor), this.projects.projectLimit(actor),
+    ]);
+    return projects.length < limit;
   }
   handle(request, actor, email) {
     const response = this.handleRequest(request, actor, email);
@@ -211,11 +214,11 @@ export class HostedAgent {
           let previousStatus, previousProject;
           try {
             while (!stopped && !request.signal.aborted) {
-              const run = await db.prepare('SELECT status,response,progress FROM senda_agent_runs WHERE id=? AND chat=?')
+              const run = await db.prepare(`SELECT c.project,r.status,r.response,r.progress FROM senda_agent_chats c
+                LEFT JOIN senda_agent_runs r ON r.id=? AND r.chat=c.id WHERE c.id=?`)
                 .bind(runId, chatId).first();
-              const chat = await db.prepare('SELECT project FROM senda_agent_chats WHERE id=?').bind(chatId).first();
-              if (chat?.project && chat.project !== previousProject) {
-                send({ type: 'project', projectId: chat.project }); previousProject = chat.project;
+              if (run?.project && run.project !== previousProject) {
+                send({ type: 'project', projectId: run.project }); previousProject = run.project;
               }
               if (run?.response) { send(JSON.parse(run.response)); break; }
               if (!run || run.status !== 'running') { send({ type: 'error', text: 'This reply was interrupted. Reload to see the saved progress.' }); break; }
