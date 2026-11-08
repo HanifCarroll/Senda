@@ -19,7 +19,7 @@ These generated suites complement the ordinary tests for OAuth scopes, concurren
 
 ## Run locally
 
-Use Node.js 24, npm, Python 3.10+ and [uv](https://docs.astral.sh/uv/getting-started/installation/).
+Use Node.js 24, npm, Python 3.10+ and [uv](https://docs.astral.sh/uv/getting-started/installation/). `mise install` provides the pinned Node.js and uv.
 The lockfile pins `fast-check@4.10.2` and `@jazzer.js/core@4.0.0`. The API runner installs `schemathesis==4.32.7` through uv's isolated cache. To install its CLI separately, run `uv tool install schemathesis==4.32.7`.
 
 ```sh
