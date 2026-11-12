@@ -1,5 +1,5 @@
 # Local toolchain for mise (https://mise.jdx.dev). Run `mise install` once.
-# Keep node in step with .nvmrc, which Cloudflare Workers Builds reads.
+# Keep node in step with .nvmrc and the deploy job in .github/workflows/ci.yml.
 [tools]
 node = "24.18.0"
 uv = "0.9.26" # runs Schemathesis for `npm run test:api`

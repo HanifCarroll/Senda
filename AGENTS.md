@@ -28,14 +28,14 @@ Keep local servers on loopback. `npm run dev:cloudflare` serves the Worker on 12
 
 ## Deploy
 
-Every push to `main` deploys production through Cloudflare Workers Builds.
-The build runs the Node suite, the Cloudflare build, typecheck, and checks, then applies D1 migrations and uploads the Worker.
-GitHub Actions also runs `ci.yml` and `generative.yml`, but those don't gate the deploy.
-After a push, check the commit's runs with `gh api repos/HanifCarroll/Senda/commits/<sha>/check-runs`. The "Workers Builds: senda" run is the deploy.
+Production deploys from the `deploy` job in `.github/workflows/ci.yml` (the Verify workflow) after every check in that workflow passes on a push to `main`.
+The job builds the Worker, applies D1 migrations, and then uploads the Worker. Runs on `main` never cancel each other: a newer push waits for the running workflow, and a still newer push replaces the waiting one, so a running deploy always finishes and an older commit never deploys after a newer one, but not every commit is deployed.
+Cloudflare Workers Builds is disconnected, so nothing else deploys. `generative.yml` doesn't gate the deploy.
+After a push, check the commit's runs with `gh api repos/HanifCarroll/Senda/commits/<sha>/check-runs`. The "deploy" run is the deploy.
 
 ## Traps
 
-- Never add `.tool-versions`, which breaks Workers Builds. Keep `.nvmrc` in step with `mise.toml`.
+- Never add `.tool-versions`. Keep `.nvmrc` and the deploy job's Node version in step with `mise.toml`.
 - `.env`, `.dev.vars`, and `.senda/` hold local secrets and test accounts. All three are gitignored, so never stage them.
 - `.senda/` is persistent data, not a cache, so don't delete it.
 - Read `docs/cloudflare.md` before shipping a migration. Some need a coordinated release, and an older Worker is not a safe rollback.
