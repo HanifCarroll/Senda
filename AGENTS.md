@@ -29,7 +29,7 @@ Keep local servers on loopback. `npm run dev:cloudflare` serves the Worker on 12
 ## Deploy
 
 Production deploys from the `deploy` job in `.github/workflows/ci.yml` (the Verify workflow) after every check in that workflow passes on a push to `main`.
-The job builds the Worker, applies D1 migrations, and then uploads the Worker. Runs on `main` never cancel each other: a newer push waits for the running workflow, and a still newer push replaces the waiting one, so a running deploy always finishes and an older commit never deploys after a newer one, but not every commit is deployed.
+The job builds the Worker, applies D1 migrations, and then uploads the Worker. Runs on `main` never cancel each other: a newer push waits for the running workflow, and a still newer push replaces the waiting one, so a running deploy always finishes and pushes deploy in order, but not every commit is deployed. Re-running an older `main` run from the Actions page deploys that older commit over newer code, so do it only to roll back on purpose. GitHub matches branch names without regard to case, so never create a branch named `Main` or `MAIN`, because it would deploy too.
 Cloudflare Workers Builds is disconnected, so nothing else deploys. `generative.yml` doesn't gate the deploy.
 After a push, check the commit's runs with `gh api repos/HanifCarroll/Senda/commits/<sha>/check-runs`. The "deploy" run is the deploy.
 

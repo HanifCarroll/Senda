@@ -7,8 +7,9 @@ permissions:
 # One run per ref at a time. Other refs cancel older runs. On main a running
 # run (and its deploy) is never cancelled: a newer push waits for it, and
 # GitHub keeps only one waiting run, so a still newer push replaces the waiting
-# one. The running deploy always finishes and an older commit never deploys
-# after a newer one, but not every commit on main is deployed.
+# one. The running deploy always finishes and pushes deploy in order, but not
+# every commit on main is deployed. Re-running an older main run deploys that
+# older commit over newer code, so do it only to roll back on purpose.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
