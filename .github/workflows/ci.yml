@@ -4,6 +4,14 @@ on:
   pull_request:
 permissions:
   contents: read
+# One run per ref at a time. Other refs cancel older runs. On main a running
+# run (and its deploy) is never cancelled: a newer push waits for it, and
+# GitHub keeps only one waiting run, so a still newer push replaces the waiting
+# one. The running deploy always finishes and an older commit never deploys
+# after a newer one, but not every commit on main is deployed.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -50,10 +58,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-    # Deploys queue in push order and never cancel each other.
-    concurrency:
-      group: senda-production-deploy
-      cancel-in-progress: false
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
