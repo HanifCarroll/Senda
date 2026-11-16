@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils";
 
 type Step = 1 | 2 | 3;
 type Point = [number, number];
-type Layout = "h" | "v";
+// "h" is the wide drawing. "m" is the compact one below xl, drawn at one unit per pixel so its
+// 14 px labels stay 14 px and the whole card fits a 640 px phone screen.
+type Layout = "h" | "m";
 
 const steps: Step[] = [1, 2, 3];
 
@@ -18,33 +20,34 @@ const nodes: {
   icon?: "send" | "receive";
   lines?: string[];
   h: Point;
-  v: Point;
+  m: Point;
 }[] = [
-  { kind: "start", h: [22, 120], v: [150, 22] },
-  { kind: "gateway", h: [78, 120], v: [150, 78] },
-  { kind: "task", step: 1, icon: "send", lines: ["Issue deposit", "invoice"], h: [200, 120], v: [150, 196] },
-  { kind: "task", step: 2, icon: "receive", lines: ["Receive", "deposit"], h: [348, 120], v: [150, 320] },
-  { kind: "gateway", h: [448, 120], v: [150, 418] },
-  { kind: "task", step: 3, lines: ["Record financial", "clearance"], h: [556, 120], v: [150, 508] },
-  { kind: "end", h: [660, 120], v: [150, 598] },
+  { kind: "start", h: [22, 120], m: [80, 14] },
+  { kind: "gateway", h: [78, 120], m: [80, 58] },
+  { kind: "task", step: 1, icon: "send", lines: ["Issue deposit", "invoice"], h: [200, 120], m: [80, 142] },
+  { kind: "task", step: 2, icon: "receive", lines: ["Receive", "deposit"], h: [348, 120], m: [80, 194] },
+  { kind: "gateway", h: [448, 120], m: [80, 246] },
+  { kind: "task", step: 3, lines: ["Record financial", "clearance"], h: [556, 120], m: [80, 298] },
+  { kind: "end", h: [660, 120], m: [80, 345] },
 ];
 
-const task = { h: [132, 88], v: [160, 88] } as const;
+// The compact task is wide enough to leave "Record financial" as clear of its step badge as "Issue deposit".
+const task = { h: [132, 88], m: [200, 40] } as const;
 
-const edges: { h: Point[]; v: Point[]; step?: Step }[] = [
-  { h: [[35, 120], [58, 120]], v: [[150, 35], [150, 58]] },
-  { h: [[98, 120], [134, 120]], v: [[150, 98], [150, 152]] },
-  { h: [[266, 120], [282, 120]], v: [[150, 240], [150, 276]] },
-  { h: [[414, 120], [428, 120]], v: [[150, 364], [150, 398]] },
-  { h: [[468, 120], [490, 120]], v: [[150, 438], [150, 464]] },
-  { h: [[622, 120], [647, 120]], v: [[150, 552], [150, 585]] },
-  { h: [[78, 100], [78, 46], [448, 46], [448, 100]], v: [[170, 78], [268, 78], [268, 418], [170, 418]] },
+const edges: { h: Point[]; m: Point[]; step?: Step }[] = [
+  { h: [[35, 120], [58, 120]], m: [[80, 27], [80, 38]] },
+  { h: [[98, 120], [134, 120]], m: [[80, 78], [80, 122]] },
+  { h: [[266, 120], [282, 120]], m: [[80, 162], [80, 174]] },
+  { h: [[414, 120], [428, 120]], m: [[80, 214], [80, 226]] },
+  { h: [[468, 120], [490, 120]], m: [[80, 266], [80, 278]] },
+  { h: [[622, 120], [647, 120]], m: [[80, 318], [80, 332]] },
+  { h: [[78, 100], [78, 46], [448, 46], [448, 100]], m: [[100, 58], [206, 58], [206, 246], [100, 246]] },
 ];
 
-const labels: { text: string; step?: Step; h: Point; v: Point; anchor?: { h?: "start" | "middle" | "end"; v?: "start" | "middle" | "end" }; vLines?: string[]; hLines?: string[] }[] = [
-  { text: "No approved terms", h: [78, 196], v: [164, 114], anchor: { v: "start" }, vLines: ["No approved", "terms"] },
-  { text: "Approved credit terms", h: [263, 30], v: [176, 44], anchor: { v: "start" }, vLines: ["Approved", "credit terms"] },
-  { text: "Finance cleared", h: [660, 188], v: [172, 590], anchor: { v: "start" }, hLines: ["Finance", "cleared"], vLines: ["Finance", "cleared"] },
+const labels: { text: string; step?: Step; h: Point; m: Point; hLines?: string[]; mLines?: string[] }[] = [
+  { text: "No approved terms", h: [78, 196], m: [92, 95], mLines: ["No approved", "terms"] },
+  { text: "Approved credit terms", h: [263, 30], m: [108, 32], mLines: ["Approved", "credit terms"] },
+  { text: "Finance cleared", h: [660, 188], m: [104, 336], hLines: ["Finance", "cleared"], mLines: ["Finance", "cleared"] },
 ];
 
 function useActiveStep() {
@@ -70,7 +73,7 @@ function Badge({ step, active }: { step: Step; active: boolean }) {
     <span
       aria-hidden="true"
       className={cn(
-        "mr-1 inline-flex size-[1.15rem] -translate-y-px items-center justify-center rounded-full align-middle text-[0.7rem] font-semibold tabular-nums transition-colors",
+        "mr-1 inline-flex size-[1.3rem] -translate-y-px items-center justify-center rounded-full align-middle text-sm font-semibold tabular-nums transition-colors",
         active ? "bg-primary text-primary-foreground" : "bg-[var(--brand-teal)]/15 text-primary",
       )}
     >
@@ -107,12 +110,13 @@ function Highlight({
 
 function Diagram({ layout, active }: { layout: Layout; active: Step | null }) {
   const [width, height] = task[layout];
+  const wide = layout === "h";
   const arrow = `itm-arrow-${layout}`;
   const on = (step?: Step) => step !== undefined && step === active;
   return (
     <svg
-      viewBox={layout === "h" ? "-16 0 748 232" : "50 0 240 630"}
-      className={cn("h-auto w-full", layout === "h" ? "hidden xl:block" : "mx-auto max-w-[300px] xl:hidden")}
+      viewBox={wide ? "-16 0 748 232" : "-22 0 236 362"}
+      className={cn("h-auto w-full", wide ? "hidden xl:block" : "mx-auto max-w-[236px] xl:hidden")}
       role="img"
       aria-label="Finance subprocess: check credit terms; without approved terms, issue the deposit invoice and receive the deposit; then record financial clearance."
       fontFamily="ui-sans-serif, system-ui, sans-serif"
@@ -133,18 +137,18 @@ function Diagram({ layout, active }: { layout: Layout; active: Step | null }) {
           className="transition-[stroke,stroke-width]"
         />
       ))}
-      {labels.map(({ text, step, anchor, vLines, hLines, ...at }) => (
+      {labels.map(({ text, step, hLines, mLines, ...at }) => (
         <text
           key={text}
           x={at[layout][0]}
           y={at[layout][1]}
-          textAnchor={anchor?.[layout] ?? "middle"}
-          fontSize={layout === "v" ? 14 : 12}
+          textAnchor={wide ? "middle" : "start"}
+          fontSize="14"
           fontWeight={on(step) ? 600 : 400}
           fill={on(step) ? "var(--brand-ink)" : "var(--brand-muted)"}
         >
-          {(layout === "v" ? vLines : hLines)?.map((line, index) => (
-            <tspan key={line} x={at[layout][0]} y={at[layout][1] + index * 18}>{line}</tspan>
+          {(wide ? hLines : mLines)?.map((line, index) => (
+            <tspan key={line} x={at[layout][0]} y={at[layout][1] + index * (wide ? 18 : 17)}>{line}</tspan>
           )) ?? text}
         </text>
       ))}
@@ -180,8 +184,8 @@ function Diagram({ layout, active }: { layout: Layout; active: Step | null }) {
               </g>
             )}
             <g transform={`translate(${width - 15} 15)`}>
-              <circle r="8" fill={lit ? "var(--brand-ink)" : "var(--brand-tint)"} className="transition-[fill]" />
-              <text y="3.5" textAnchor="middle" fontSize="10" fontWeight="600" fill={lit ? "white" : "var(--brand-ink)"}>
+              <circle r="10" fill={lit ? "var(--brand-ink)" : "var(--brand-tint)"} className="transition-[fill]" />
+              <text y="5" textAnchor="middle" fontSize="14" fontWeight="600" fill={lit ? "white" : "var(--brand-ink)"}>
                 {node.step}
               </text>
             </g>
@@ -189,9 +193,9 @@ function Diagram({ layout, active }: { layout: Layout; active: Step | null }) {
               <text
                 key={line}
                 x={width / 2}
-                y={height / 2 + (n - (node.lines!.length - 1) / 2) * (layout === "v" ? 17 : 16) + (layout === "v" ? 13 : 12)}
+                y={height / 2 + (n - (node.lines!.length - 1) / 2) * 16 + (wide ? 12 : 5)}
                 textAnchor="middle"
-                fontSize={layout === "v" ? 14 : 13}
+                fontSize="14"
                 fontWeight={lit ? 600 : 500}
                 fill="var(--brand-text)"
               >
@@ -216,27 +220,28 @@ export function InterviewToModel() {
             <span key={i} className="size-2.5 rounded-full bg-border" />
           ))}
         </span>
-        <span className="mr-auto text-[0.8rem] text-muted-foreground">Example: Brightline client onboarding</span>
+        <span className="mr-auto text-sm text-muted-foreground">Example: Brightline client onboarding</span>
         <a
           href="/example?view=FinanceWork&element=Invoice"
-          className="hidden items-center gap-1 text-[0.8rem] text-muted-foreground transition-colors hover:text-foreground sm:flex"
+          className="hidden items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground sm:flex"
         >
           Open the example
           <ArrowUpRight className="size-3.5" aria-hidden="true" />
         </a>
       </div>
-      <div className="bg-muted px-5 py-7 sm:px-10 sm:py-9">
-        <p className="mx-auto max-w-3xl text-[1.02rem] leading-[1.95] sm:text-lg sm:leading-[1.9]">
+      <div className="bg-muted px-3 py-3 sm:px-10 sm:py-9">
+        {/* 14 px on the narrowest phones, so the card fits one 640 px screen. */}
+        <p className="mx-auto max-w-3xl leading-[1.8] max-[359px]:text-sm max-[359px]:leading-[1.65] sm:text-lg sm:leading-[1.9]">
           <span className="mr-1.5 font-semibold">Luis, Finance:</span>A new client normally needs a
           deposit. <Highlight {...props(1)}>I issue the deposit invoice</Highlight> to the billing
           contact, <Highlight {...props(2)}>wait until we can identify the received payment</Highlight>,
           and <Highlight {...props(3)}>record financial clearance</Highlight>.
         </p>
       </div>
-      <div className="px-5 py-8 sm:px-10 sm:py-10">
+      <div className="px-3 py-3 sm:px-10 sm:py-10">
         <div className="mx-auto max-w-3xl">
           <Diagram layout="h" active={active} />
-          <Diagram layout="v" active={active} />
+          <Diagram layout="m" active={active} />
         </div>
       </div>
     </div>
