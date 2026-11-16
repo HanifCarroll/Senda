@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
 import { productName } from "@/lib/brand";
@@ -12,7 +12,7 @@ import { PathArt } from "./path-art";
 import { PricingPlans } from "./pricing-plans";
 
 // Bump the version when public/marketing changes (docs/marketing-design.md, "Sharp product previews").
-const capture = (file: string) => `/marketing/${file}?v=10`;
+const capture = (file: string) => `/marketing/${file}?v=11`;
 const repository = "https://github.com/HanifCarroll/Senda";
 const methodology = `${repository}/blob/main/skills/senda/references/methodology.md`;
 
@@ -205,11 +205,16 @@ function EvidenceVisual() {
   // capture is the example's own height, give or take the device's font, and the diagram takes up the
   // difference. Selecting a step changes the panel's height, so the hold ends there and on a resize.
   const [held, setHeld] = useState<number>();
-  const release = () => setHeld(undefined);
+  // A tap ends the hold with the diagram at the height it has, so the buttons under it don't move.
+  const [stage, setStage] = useState<number>();
+  const release = () => {
+    if (held) setStage(frame.current?.querySelector(".canvas-wrap")?.getBoundingClientRect().height);
+    setHeld(undefined);
+  };
   useEffect(() => {
     if (!held) return;
     const width = innerWidth;
-    const resized = () => innerWidth !== width && release();
+    const resized = () => innerWidth !== width && setHeld(undefined);
     addEventListener("resize", resized);
     return () => removeEventListener("resize", resized);
   }, [held]);
@@ -236,15 +241,15 @@ function EvidenceVisual() {
         {demo ? (
           // The cream panel starts at lg here. Below it the capture has no panel, and the example takes its exact box.
           <div className="lg:rounded-[1.75rem] lg:bg-muted lg:p-10">
-            <div data-held={held ? "" : undefined} style={{ height: held }} className={phoneWidth + " lg:h-[756px]"} onClickCapture={release} onKeyDownCapture={release}>
+            <div data-held={held ? "" : undefined} style={{ height: held, "--stage": stage && stage + "px" } as CSSProperties} className={phoneWidth + " lg:h-[756px]"} onClickCapture={release} onKeyDownCapture={release}>
               <demo.Demo review={demo.review} />
             </div>
           </div>
         ) : (
           // The captures are pictures of this panel with the example loaded, so nothing moves when it loads.
           <picture>
-            <source media="(max-width: 359px)" srcSet={capture("evidence-mobile-small.png")} width="280" height="1562" />
-            <source media="(max-width: 1023px)" srcSet={capture("evidence-mobile.png")} width="350" height="1478" />
+            <source media="(max-width: 359px)" srcSet={capture("evidence-mobile-small.png")} width="280" height="1615" />
+            <source media="(max-width: 1023px)" srcSet={capture("evidence-mobile.png")} width="350" height="1531" />
             <img
               src={capture("evidence.svg")}
               width="1088"

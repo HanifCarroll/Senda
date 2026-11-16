@@ -136,6 +136,65 @@ try {
   await p.waitForFunction(y => scrollY > y, scrolled);
   assert.equal(await demo.getByLabel("Zoom level").innerText(), zoomLevel, "The wheel scrolls the page instead of zooming the homepage diagram");
   console.log("Homepage example shows a selected step's evidence in place and leaves the page scroll alone");
+  // On a phone the diagram is wider than the screen, so the buttons under it go through the steps.
+  const demoStep = demo.locator(".step-controls p"), previousStep = demo.getByRole("button", { name: "Previous step" }), nextStep = demo.getByRole("button", { name: "Next step" });
+  assert.equal(await demo.locator(".step-controls").isVisible(), false, "Desktop shows every step, so it has no step buttons");
+  const demoSteps = ["Check handover pack", "Coordinate readiness", "Verify workspace access", "Confirm and hold kickoff", "Send handover pack"];
+  for (const width of [390, 320]) {
+    await p.setViewportSize({ width, height: 844 });
+    await p.goto(base + "/");
+    await demo.scrollIntoViewIfNeeded();
+    await demo.locator(".diagram-stage svg").waitFor();
+    await nextStep.evaluate(button => button.scrollIntoView({ block: "center" }));
+    const stepState = () => p.evaluate(() => {
+      const q = selector => document.querySelector('[data-capture="evidence"] ' + selector);
+      const stage = q(".diagram-stage").getBoundingClientRect(), shape = q(".is-selected").getBoundingClientRect();
+      return {
+        label: q(".step-controls p").textContent, selected: q(".is-selected").getAttribute("aria-label"), title: q('.evidence-card [data-slot="card-title"]').textContent,
+        inside: shape.left >= stage.left + 4 && shape.right <= stage.right - 4 && shape.top >= stage.top + 4 && shape.bottom <= stage.bottom - 4,
+        offCenter: Math.abs(shape.left + shape.right - stage.left - stage.right) / 2,
+        url: location.href, scrollY, buttonTop: q('[aria-label="Next step"]').getBoundingClientRect().top,
+      };
+    });
+    const start = await stepState();
+    assert.equal(start.label, "Step 1 of 5 · " + demoSteps[0]);
+    assert.equal(await previousStep.getAttribute("aria-disabled"), "true", `${width}px: there is no step before the first`);
+    assert.equal(await nextStep.getAttribute("aria-disabled"), "false");
+    await previousStep.click({ force: true });
+    assert.equal((await stepState()).label, start.label, `${width}px: the previous button does nothing on the first step`);
+    for (const [index, name] of demoSteps.entries()) {
+      if (!index) continue;
+      await nextStep.click();
+      const state = await stepState();
+      assert.deepEqual([state.label, state.selected, state.title], [`Step ${index + 1} of 5 · ${name}`, name, name], `${width}px: the label, the diagram and the panel show step ${index + 1}`);
+      assert.ok(state.inside && state.offCenter <= 2, `${width}px: ${name} is centered and whole in the diagram (${state.offCenter}px off)`);
+      assert.equal(state.url, start.url, `${width}px: the step buttons leave the URL alone`);
+      assert.equal(state.scrollY, start.scrollY, `${width}px: the step buttons leave the page where it is`);
+      assert.ok(Math.abs(state.buttonTop - start.buttonTop) <= 1, `${width}px: the step buttons stay under the visitor's thumb`);
+      if (index === 1) {
+        // A flow isn't a step: the panel shows it, and the label and the buttons stay on the last step.
+        await demo.getByRole("button", { name: "Check handover pack → Coordinate readiness", exact: true }).click();
+        assert.equal(await demoTitle.innerText(), "Check handover pack → Coordinate readiness");
+        assert.equal(await demoStep.innerText(), "Step 2 of 5 · Coordinate readiness");
+      }
+    }
+    assert.equal(await nextStep.getAttribute("aria-disabled"), "true", `${width}px: there is no step after the last`);
+    assert.equal(await previousStep.getAttribute("aria-disabled"), "false");
+    await nextStep.click({ force: true });
+    assert.equal(await demoStep.innerText(), "Step 5 of 5 · Send handover pack");
+    // Selecting a step in the diagram moves the label to it.
+    await previousStep.click();
+    await demo.getByRole("button", { name: "Send handover pack", exact: true }).click();
+    assert.equal(await demoStep.innerText(), "Step 5 of 5 · Send handover pack");
+    assert.equal(await demoStep.getAttribute("aria-live"), "polite");
+    for (const button of [previousStep, nextStep]) {
+      const box = await button.boundingBox();
+      assert.ok(box.width >= 44 && box.height >= 44, `${width}px: the step buttons are 44 px tap targets`);
+    }
+  }
+  await p.setViewportSize({ width: 1440, height: 1000 });
+  await p.goto(base + "/");
+  console.log("Homepage example steps through its five steps on a phone without moving the page");
   // The capture holds the example's place: nothing moves when the example loads, and it stays if the load fails.
   const exampleData = "**/examples/onboarding-draft.json";
   for (const width of [1440, 1024, 768, 390, 320]) {

@@ -17,6 +17,8 @@ export interface CanvasControls {
   zoom: (factor: number) => void;
   fit: () => void;
   actual: () => void;
+  // Pan, without zooming, until this element is centered sideways and wholly in view.
+  show: (id: string) => void;
 }
 interface Camera {
   x: number;
@@ -84,6 +86,7 @@ export function DiagramCanvas({
       zoom: (n) => controls.current?.zoom(n),
       fit: () => controls.current?.fit(),
       actual: () => controls.current?.actual(),
+      show: (id) => controls.current?.show(id),
     }),
     [],
   );
@@ -93,6 +96,7 @@ export function DiagramCanvas({
     const abort = new AbortController();
     let observer: ResizeObserver | undefined;
     let saveTimer: ReturnType<typeof setTimeout> | undefined;
+    let panFrame = 0;
     const key = `senda.camera.v1:${storageKey}:${view.elementId}`;
     let flush = () => {};
     try {
@@ -231,10 +235,36 @@ export function DiagramCanvas({
           host.focus({ preventScroll: true });
         }
       }
+      function show(id: string) {
+        const node = nodes.get(id);
+        if (!node || !host.clientWidth || !host.clientHeight) return;
+        const box = node.getBBox(), { width, height } = size(), pad = 12;
+        const dx = box.x + box.width / 2 - width / camera.scale / 2 - camera.x;
+        // Up and down, move only as far as the element needs to be wholly in view.
+        const dy = Math.min(Math.max(camera.y, box.y + box.height + pad - height / camera.scale), box.y - pad) - camera.y;
+        cancelAnimationFrame(panFrame);
+        const began = performance.now(), duration = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 250;
+        let done = 0;
+        // Each frame adds its share of the move, so a resize in the middle of it still counts.
+        const step = (now: number) => {
+          const t = duration ? Math.min(1, Math.max(0, now - began) / duration) : 1, eased = 1 - (1 - t) ** 3;
+          camera.x += dx * (eased - done);
+          camera.y += dy * (eased - done);
+          camera.fitted = false;
+          done = eased;
+          draw();
+          if (t < 1) panFrame = requestAnimationFrame(step);
+        };
+        if (duration) panFrame = requestAnimationFrame(step);
+        else step(began);
+      }
+      // A drag takes over from a pan that is still moving.
+      host.addEventListener("pointerdown", () => cancelAnimationFrame(panFrame), { signal: abort.signal });
       controls.current = {
         fit: () => fit(),
         zoom: (factor) => zoomTo(camera.scale * factor),
         actual: () => zoomTo(1),
+        show,
         select,
       };
       function showFrame() {
@@ -337,6 +367,7 @@ export function DiagramCanvas({
     window.addEventListener("pagehide", pageHide);
     return () => {
       clearTimeout(saveTimer);
+      cancelAnimationFrame(panFrame);
       flush();
       window.removeEventListener("pagehide", pageHide);
       abort.abort();
