@@ -82,19 +82,19 @@ const openDemo = async (width, height, deviceScaleFactor) => {
   await page.setViewportSize({ width, height });
   await page.waitForTimeout(500);
   if ((await page.locator(`${demoSelector} [data-slot="card-title"]`).innerText()) !== "Check handover pack") throw new Error("The home page example doesn't open on Check handover pack");
-  // Stop if the selected step is cut by the stage's edge, or, on desktop, any step is.
+  // Stop if the selected step is cut by the stage's edge, or, on desktop, anything in the diagram is.
   const cut = await page.evaluate((selector) => {
     const stage = document.querySelector(selector + " .diagram-stage").getBoundingClientRect();
-    return [...document.querySelectorAll(selector + " .diagram-element")]
-      .filter((node) => innerWidth >= 1024 ? node.querySelector(":scope > rect[rx], :scope > circle") : node.matches(".is-selected"))
+    return [...document.querySelectorAll(selector + (innerWidth >= 1024 ? " .diagram-stage g[data-id]" : " .diagram-element.is-selected"))]
       .filter((node) => { const r = node.getBoundingClientRect(); return r.left < stage.left + 4 || r.right > stage.right - 4 || r.top < stage.top + 4 || r.bottom > stage.bottom - 4; })
-      .map((node) => node.getAttribute("aria-label"));
+      .map((node) => node.getAttribute("aria-label") || node.dataset.id);
   }, demoSelector);
   if (cut.length) throw new Error("The evidence capture cuts " + cut.join(", "));
   return page;
 };
-{
-  const page = await openDemo(1440, 1100);
+// Side by side at 1440 px, and with the evidence under the diagram at 1024 px.
+for (const [name, width] of [["evidence", 1440], ["evidence-stacked", 1024]]) {
+  const page = await openDemo(width, 1100);
   // Keep only the example and its ancestors, so the image doesn't carry the rest of the home page.
   await page.evaluate((selector) => {
     for (let node = document.querySelector(selector); node !== document.body; node = node.parentElement)
@@ -104,7 +104,7 @@ const openDemo = async (width, height, deviceScaleFactor) => {
   await page.waitForTimeout(300);
   const panel = await page.locator(`${demoSelector} .evidence-card`).boundingBox(), passage = await page.getByText("I check that pack before handing work").boundingBox();
   if (!passage || passage.y + passage.height > panel.y + panel.height) throw new Error("The evidence capture doesn't show the interview passage");
-  await vector(page, "evidence", demoSelector + " > div");
+  await vector(page, name, demoSelector + " > div");
   await page.context().close();
 }
 // Question: the first open question of the first draft, 720 px wide. The crop ends 16 px under the

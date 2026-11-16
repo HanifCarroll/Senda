@@ -2,7 +2,7 @@ import { BpmnModdle } from 'bpmn-moddle';
 import { layoutXml, metricsXml, renderSvg } from '@miragon/bpmn-cli';
 import { collect } from './model.js';
 import { activityProblems, isActivity, sizeReviewActivities } from './activity-presentation.js';
-import {wrapLines,LINE_HEIGHT,escapeSvg} from './diagram-text.js';
+import {wrapLines,textWidth,LINE_HEIGHT,escapeSvg} from './diagram-text.js';
 
 const soft = new Set(['crossings', 'segmentOverlap', 'parallelRun', 'branchLabelFar', 'longDetour']);
 const score = counts => Object.entries(counts).reduce((sum, [key, value]) => sum + value * (key === 'crossings' ? 100 : soft.has(key) ? 10 : 10000), 0);
@@ -55,7 +55,7 @@ const searchBudget = elements => ({ remaining: elements.filter(e=>['bpmn:Sequenc
 
 // Extra presentation checks complement the library's DI metrics. Distances are
 // conservative app heuristics in model pixels, not BPMN validity constraints.
-async function measure(xml, definitions, { native = false } = {}) {
+async function measure(xml, definitions, { native = false, drawn } = {}) {
   const result = await metricsXml(xml);
   const nativeSvg = native ? (await renderSvg(xml)).svg : undefined;
   result.counts = { ...result.counts, titleIntrusion: 0, branchLabelFar: 0, longDetour: 0, tangentEntry: 0, labelOnControl: 0, externalLabelBorder: 0, activityLabelBorder: 0, activityLabelIcon: 0, activityLabelMarker: 0, activityLabelBoundary: 0 };
@@ -83,6 +83,13 @@ async function measure(xml, definitions, { native = false } = {}) {
       if (turns >= 4 && length > Math.max(700, direct * 2)) add('longDetour', [edge.bpmnElement.id]);
     }
     for (const item of all.filter(e=>e.label?.bounds)) if (headers.some(box=>overlaps(item.label.bounds,box,0))) add('titleIntrusion', [item.bpmnElement.id]);
+    // The library estimates a label's text from its name. The renderer's second
+    // wrapping pass can add lines, so also test the lines it actually draws.
+    for (const item of all.filter(e=>e.label?.bounds && drawn?.has(escapeSvg(e.bpmnElement.id)))) {
+      const l=item.label.bounds, text=drawn.get(escapeSvg(item.bpmnElement.id)), id=item.bpmnElement.id;
+      const box={x:l.x+(l.width-text.width)/2,y:Math.round(l.y),width:text.width,height:text.height};
+      for (const edge of edges) if (segments(edge).some(([a,b])=>through(a,b,box)) && !result.problems.some(p=>p.kind==='labelOnLine'&&p.ids[0]===id&&p.ids[1]===edge.bpmnElement.id)) add('labelOnLine',[id,edge.bpmnElement.id]);
+    }
     for (const item of all.filter(e=>e.label?.bounds)) if (controlBands(shapes).some(box=>overlaps(item.label.bounds,box,0))) add('labelOnControl', [item.bpmnElement.id]);
   }
   return result;
@@ -231,14 +238,18 @@ export async function optimizeReviewLayout(xml, { routingBudget } = {}) {
   }
   xml=(await moddle.toXML(definitions,{format:true})).xml;
   const nativeSvg=(await renderSvg(xml)).svg;
-  const nativeLines=new Map([...nativeSvg.matchAll(/<text data-label="([^"]+)"[^>]*>([\s\S]*?)<\/text>/g)]
-    .map(([,id,text])=>[id,(text.match(/<tspan\b/g)||[]).length]));
+  // External labels are drawn at 11px on a 13.2px line. An escaped character
+  // counts as its entity here, which only makes the box a little wider.
+  const drawn=new Map([...nativeSvg.matchAll(/<text data-label="([^"]+)"[^>]*>([\s\S]*?)<\/text>/g)].map(([,id,text])=>{
+    const lines=[...text.matchAll(/<tspan\b[^>]*>([^<]*)<\/tspan>/g)].map(span=>span[1]);
+    return [id,{lines:lines.length,width:Math.max(0,...lines.map(line=>textWidth(line)))*11/12,height:lines.length*13.2}];
+  }));
   // Native external labels wrap twice; the second pass can add another line.
   for(const diagram of definitions.diagrams || []) for(const item of diagram.plane.planeElement || [])
-    if(item.label?.bounds) item.label.bounds.height=Math.max(item.label.bounds.height,(nativeLines.get(escapeSvg(item.bpmnElement.id))||0)*LINE_HEIGHT);
+    if(item.label?.bounds) item.label.bounds.height=Math.max(item.label.bounds.height,(drawn.get(escapeSvg(item.bpmnElement.id))?.lines||0)*LINE_HEIGHT);
   xml=(await moddle.toXML(definitions,{format:true})).xml;
   routingBudget ||= searchBudget(collect(definitions));
-  const baseline=await measure(xml,definitions);
+  const baseline=await measure(xml,definitions,{drawn});
   let current=baseline, currentXml=xml;
   const serialize=async()=> (await moddle.toXML(definitions,{format:true})).xml;
   for (const diagram of definitions.diagrams || []) {
@@ -250,7 +261,7 @@ export async function optimizeReviewLayout(xml, { routingBudget } = {}) {
         const points=route(edge,shapes,edges,routingBudget); if (!points) continue;
         const saved=edge.waypoint, label=edge.label?.bounds, oldLabel=label?{x:label.x,y:label.y}:null;
         edge.waypoint=points.map(p=>moddle.create('dc:Point',p)); moveLabel(edge,shapes,edges);
-        const candidate=await serialize(), measured=await measure(candidate,definitions);
+        const candidate=await serialize(), measured=await measure(candidate,definitions,{drawn});
         if (improves(current,measured)) { current=measured; currentXml=candidate; }
         else { edge.waypoint=saved; if(label) Object.assign(label,oldLabel); }
       }
@@ -262,7 +273,7 @@ export async function optimizeReviewLayout(xml, { routingBudget } = {}) {
         for(const placement of defective?placements:placements.slice(0,1)) {
           Object.assign(label,placement);
           if(label.x===saved.x && label.y===saved.y) continue;
-          const candidate=await serialize(), measured=await measure(candidate,definitions);
+          const candidate=await serialize(), measured=await measure(candidate,definitions,{drawn});
           if(improves(current,measured)) { current=measured; currentXml=candidate; accepted=true; break; }
         }
         if(!accepted) Object.assign(label,saved);

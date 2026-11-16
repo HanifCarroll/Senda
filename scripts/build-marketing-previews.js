@@ -6,11 +6,11 @@ if (!input) throw new Error("Usage: node scripts/build-marketing-previews.js <ca
 const destination = new URL("../public/marketing/", import.meta.url);
 const mark = await readFile(new URL("../public/brand/mark.svg", import.meta.url), "utf8");
 const escape = value => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-const vectorNames = process.argv.includes("--mobile-only") ? [] : ["evidence", "clarification"];
+const vectorNames = process.argv.includes("--mobile-only") ? [] : ["evidence", "evidence-stacked", "clarification"];
 for (const name of vectorNames) {
   const capture = JSON.parse(await readFile(path.join(input, name + "-vector.json"), "utf8"));
-  // The evidence capture is the home page's live example; the question is the example's own page.
-  const [from, text] = name === "evidence" ? ["/", "Onboarding interview"] : ["/example", "Brightline client onboarding"];
+  // The evidence captures are the home page's live example; the question is the example's own page.
+  const [from, text] = name.startsWith("evidence") ? ["/", "Onboarding interview"] : ["/example", "Brightline client onboarding"];
   if (new URL(capture.sourceUrl).pathname !== from || !capture.html.includes(text)) {
     throw new Error(name + " must be captured from the public onboarding example");
   }

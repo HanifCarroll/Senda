@@ -79,18 +79,74 @@ function redockEdges(items, original) {
   }
 }
 
+const ancestor=(element,container)=>{for(let at=element;at;at=at.$parent) if(at===container) return true;return false;};
+const membersOf=(frame,shapes)=>{
+  const e=frame.bpmnElement;
+  return shapes.filter(s=>s!==frame && (e.processRef?ancestor(s.bpmnElement?.attachedToRef||s.bpmnElement,e.processRef):e.$instanceOf('bpmn:Lane')?e.flowNodeRef?.includes(s.bpmnElement?.attachedToRef||s.bpmnElement):frame.isExpanded?ancestor(s.bpmnElement,e):false));
+};
+const roomFor=members=>members.flatMap(s=>[s.bounds,...(s.label?.bounds?[s.label.bounds]:[])]);
+// A horizontal pool or lane is one of a stack: growing its height in place
+// would run it over the band below, so growBands makes that room instead.
+// shortcut: vertical pools and lanes keep the library's label, upgrade if a layout ever draws them (ours are all horizontal).
+const isBand=shape=>['bpmn:Participant','bpmn:Lane'].includes(shape.bpmnElement?.$type) && shape.isHorizontal!==false;
+const BAND=30;
+// Browsers without Arial or Arimo substitute a font up to a tenth wider than
+// the metrics here, so the clearance grows with the length of the strip.
+const nameRoom=length=>Math.max(24,length-2*Math.max(8,length*.05));
+
+/** A pool's or lane's name, wrapped to stay inside its own frame: along the
+ * 30px title strip of a horizontal band, or across a black-box pool. */
+export function frameLabel(shape) {
+  const b=shape.bounds,e=shape.bpmnElement,name=e.name?.trim();
+  if(!name || !isBand(shape)) return null;
+  const blackBox=e.$type==='bpmn:Participant'&&!e.processRef;
+  const lines=wrapLines(name,nameRoom(blackBox?b.width:b.height));
+  const along=Math.max(...lines.map(line=>textWidth(line))),across=lines.length*LINE_HEIGHT;
+  const cx=blackBox?b.x+b.width/2:b.x+BAND/2,cy=b.y+b.height/2;
+  return {lines,blackBox,cx,cy,box:blackBox?{x:cx-along/2,y:cy-across/2,width:along,height:across}:{x:cx-across/2,y:cy-along/2,width:across,height:along}};
+}
+// Two lines fill the title strip. A longer name makes its band taller.
+function labelHeight(shape) {
+  const label=frameLabel(shape);
+  if(!label) return 0;
+  if(label.blackBox) return label.box.height+16;
+  let height=shape.bounds.height;
+  while(wrapLines(shape.bpmnElement.name.trim(),nameRoom(height)).length>2) height+=4;
+  return height;
+}
+
 function growFrames(shapes) {
-  const ancestor=(element,container)=>{for(let at=element;at;at=at.$parent) if(at===container) return true;return false;};
   const frames=shapes.filter(s=>s.bpmnElement?.$instanceOf('bpmn:Participant')||s.bpmnElement?.$instanceOf('bpmn:Lane')||s.isExpanded);
   for(const frame of frames.sort((a,b)=>a.bounds.width*a.bounds.height-b.bounds.width*b.bounds.height)) {
-    const e=frame.bpmnElement;
-    const members=shapes.filter(s=>s!==frame && (e.processRef?ancestor(s.bpmnElement?.attachedToRef||s.bpmnElement,e.processRef):e.$instanceOf('bpmn:Lane')?e.flowNodeRef?.includes(s.bpmnElement?.attachedToRef||s.bpmnElement):frame.isExpanded?ancestor(s.bpmnElement,e):false));
-    if(!members.length) continue;
-    const boxes=members.flatMap(s=>[s.bounds,...(s.label?.bounds?[s.label.bounds]:[])]);
+    const boxes=roomFor(membersOf(frame,shapes));
+    if(!boxes.length) continue;
     frame.bounds.width=Math.max(frame.bounds.width,...boxes.map(b=>b.x+b.width+24-frame.bounds.x));
-    frame.bounds.height=Math.max(frame.bounds.height,...boxes.map(b=>b.y+b.height+24-frame.bounds.y));
+    if(!isBand(frame)) frame.bounds.height=Math.max(frame.bounds.height,...boxes.map(b=>b.y+b.height+24-frame.bounds.y));
   }
   for(const pool of frames.filter(s=>s.bpmnElement.processRef)) for(const lane of frames.filter(s=>s.bpmnElement.$instanceOf('bpmn:Lane')&&ancestor(s.bpmnElement,pool.bpmnElement.processRef))) lane.bounds.width=Math.max(lane.bounds.width,pool.bounds.x+pool.bounds.width-lane.bounds.x);
+}
+
+/** Make each pool and lane tall enough for its content and its name. The
+ * space operation moves the bands below, so lanes keep tiling their pool. */
+async function growBands(xml) {
+  // Undivided bands first. A band divided into lanes is as tall as they are
+  // together, so its own name can only ask for room below its last lane.
+  for(const divided of [false,true]) {
+    const {rootElement:d}=await new BpmnModdle().fromXML(xml),operations=[];
+    for(const diagram of d.diagrams || []) {
+      const shapes=(diagram.plane.planeElement || []).filter(s=>s.bounds);
+      for(const band of shapes.filter(isBand)) {
+        const e=band.bpmnElement,b=band.bounds;
+        const lanes=shapes.filter(s=>s!==band && s.bpmnElement.$type==='bpmn:Lane' && ancestor(s.bpmnElement,e.processRef||e));
+        if(!!lanes.length!==divided) continue;
+        const need=Math.max(labelHeight(band),...(divided?[]:roomFor(membersOf(band,shapes)).map(box=>box.y+box.height+24-b.y)));
+        const last=lanes.sort((x,y)=>y.bounds.y+y.bounds.height-x.bounds.y-x.bounds.height||x.bounds.height-y.bounds.height)[0] || band;
+        if(need>b.height) operations.push({op:'space',below:last.bpmnElement.id,by:`${Math.ceil(need-b.height)}px`});
+      }
+    }
+    if(operations.length) xml=(await applyToXml(xml,operations,{platform:'none'})).xml;
+  }
+  return xml;
 }
 
 export async function sizeReviewActivities(xml) {
@@ -127,7 +183,7 @@ export async function sizeReviewActivities(xml) {
     growFrames(shapes);
     redockEdges(items,original);
   }
-  const resized=(await moddle.toXML(d,{format:true})).xml;
+  const resized=await growBands((await moddle.toXML(d,{format:true})).xml);
   const tidy=await layoutXml(resized,{platform:'none',tidy:true});
   const {rootElement:packed}=await new BpmnModdle().fromXML(tidy.xml);
   const operations=[];
@@ -154,7 +210,7 @@ export async function sizeReviewActivities(xml) {
     growFrames(shapes);
     redockEdges(items,original);
   }
-  return (await finalModdle.toXML(final,{format:true})).xml;
+  return growBands((await finalModdle.toXML(final,{format:true})).xml);
 }
 
 const safeColor=value=>typeof value==='string'&&/^(#[\da-f]{3,8}|[a-z]+|(?:rgb|hsl)a?\([\d.,%\s+-]+\))$/i.test(value)?value:undefined;
@@ -169,6 +225,12 @@ function activitySvg(shape,boundaries) {
   if(p.lines.length) out+=`<text data-activity-label="${escapeSvg(e.id)}" font-family="Arial, Arimo, sans-serif" font-size="12" fill="${labelColor}" text-anchor="middle">${p.lines.map((line,i)=>`<tspan x="${n(b.x+b.width/2)}" y="${n(p.label.y+12+i*LINE_HEIGHT)}">${escapeSvg(line)}</tspan>`).join('')}</text>`;
   for(const m of p.markers) out+=`<g data-activity-marker="${m.kind}" transform="translate(${n(m.x)} ${n(m.y)})">${activityMarkers(e,!!e.$instanceOf('bpmn:CallActivity')||(e.$instanceOf('bpmn:SubProcess')&&!shape.isExpanded),style).find(marker=>marker.kind===m.kind).svg}</g>`;
   return out;
+}
+
+function frameLabelSvg(shape) {
+  const p=frameLabel(shape),top=p.cy-p.lines.length*LINE_HEIGHT/2;
+  const x=p.blackBox?p.cx:p.box.x+p.box.width/2;
+  return `<text data-frame-label="${escapeSvg(shape.bpmnElement.id)}"${p.blackBox?'':` transform="rotate(-90 ${n(x)} ${n(p.cy)})"`} font-size="12" fill="${color(shape.label,'color:color')||color(shape,'color:border-color')||color(shape,'bioc:stroke')||'#22242a'}" text-anchor="middle">${p.lines.map((line,i)=>`<tspan x="${n(x)}" y="${n(top+LINE_HEIGHT*.75+i*LINE_HEIGHT)}">${escapeSvg(line)}</tspan>`).join('')}</text>`;
 }
 
 /** The public renderer promises complete data-id groups. Balanced scanning
@@ -189,8 +251,12 @@ export async function renderReviewSvg(xml) {
   const [rendered,{rootElement:d}]=await Promise.all([renderSvg(xml),new BpmnModdle().fromXML(xml)]);
   const shapes=(d.diagrams[0]?.plane.planeElement || []).filter(s=>s.bounds);
   const replacements=new Map(shapes.filter(isActivity).map(s=>[escapeSvg(s.bpmnElement.id),activitySvg(s,shapes.filter(event=>event.bpmnElement?.attachedToRef===s.bpmnElement))]));
-  const edits=[...activityGroups(rendered.svg)].filter(group=>replacements.has(group.id));
+  const names=new Map(shapes.filter(s=>frameLabel(s)).map(s=>[escapeSvg(s.bpmnElement.id),frameLabelSvg(s)]));
   let svg=rendered.svg;
-  for(const edit of edits.reverse()) svg=svg.slice(0,edit.start)+replacements.get(edit.id)+svg.slice(edit.end);
+  for(const group of [...activityGroups(rendered.svg)].reverse()) {
+    if(replacements.has(group.id)) svg=svg.slice(0,group.start)+replacements.get(group.id)+svg.slice(group.end);
+    // Each pool and lane group holds its own name as its only text.
+    else if(names.has(group.id)) svg=svg.slice(0,group.start)+svg.slice(group.start,group.end).replace(/<text\b[^>]*>[\s\S]*?<\/text>/,()=>names.get(group.id))+svg.slice(group.end);
+  }
   return {...rendered,svg};
 }
