@@ -12,7 +12,7 @@ import { PathArt } from "./path-art";
 import { PricingPlans } from "./pricing-plans";
 
 // Bump the version when public/marketing changes (docs/marketing-design.md, "Sharp product previews").
-const capture = (file: string) => `/marketing/${file}?v=11`;
+const capture = (file: string) => `/marketing/${file}?v=12`;
 const repository = "https://github.com/HanifCarroll/Senda";
 const methodology = `${repository}/blob/main/skills/senda/references/methodology.md`;
 
@@ -192,8 +192,8 @@ function MarketingSection({
   );
 }
 
-// The phone captures' own widths, so the example that replaces them wraps its text the same way.
-const phoneWidth = "mx-auto max-lg:max-w-[350px] max-[359px]:max-w-[280px]";
+// The captures' own widths below xl, so the example that replaces them wraps its text the same way.
+const captureWidth = "mx-auto max-xl:max-w-[960px] max-lg:max-w-[350px] max-[359px]:max-w-[280px]";
 
 // The evidence section's live example. A capture of it holds its place, and the viewer's code and the
 // example's data load only when the section comes near the viewport, so the top of the page stays light.
@@ -239,24 +239,26 @@ function EvidenceVisual() {
     <div className="flex flex-col items-center gap-6">
       <div ref={frame} data-visual data-capture="evidence" className="w-full">
         {demo ? (
-          // The cream panel starts at lg here. Below it the capture has no panel, and the example takes its exact box.
-          <div className="lg:rounded-[1.75rem] lg:bg-muted lg:p-10">
-            <div data-held={held ? "" : undefined} style={{ height: held, "--stage": stage && stage + "px" } as CSSProperties} className={phoneWidth + " lg:h-[756px]"} onClickCapture={release} onKeyDownCapture={release}>
-              <demo.Demo review={demo.review} />
-            </div>
+          // The cream panel starts at lg, as it does in the captures, and from there the box has a height of its
+          // own: 824 px of diagram, which is the whole view at 110%, under 162 px of padding, toolbar and help
+          // line. From xl up the evidence sits beside the diagram. Below xl it sits under it, 650 px tall, which holds
+          // the longest step's evidence.
+          <div data-held={held ? "" : undefined} style={{ height: held, "--stage": stage && stage + "px" } as CSSProperties} className={captureWidth + " lg:rounded-[1.75rem] lg:bg-muted lg:h-[1644px] lg:p-10 xl:h-[986px]"} onClickCapture={release} onKeyDownCapture={release}>
+            <demo.Demo review={demo.review} />
           </div>
         ) : (
           // The captures are pictures of this panel with the example loaded, so nothing moves when it loads.
           <picture>
             <source media="(max-width: 359px)" srcSet={capture("evidence-mobile-small.png")} width="280" height="1615" />
             <source media="(max-width: 1023px)" srcSet={capture("evidence-mobile.png")} width="350" height="1531" />
+            <source media="(max-width: 1279px)" srcSet={capture("evidence-stacked.svg")} width="960" height="1644" />
             <img
               src={capture("evidence.svg")}
               width="1088"
-              height="836"
+              height="986"
               loading="lazy"
               alt="The “Check handover pack” step selected in a client onboarding diagram, next to the interview passages it came from."
-              className={phoneWidth + " block w-full object-contain object-top lg:h-[836px]"}
+              className={captureWidth + " block w-full object-contain object-top lg:h-[1644px] xl:h-[986px]"}
             />
           </picture>
         )}

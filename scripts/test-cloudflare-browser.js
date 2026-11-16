@@ -3,6 +3,7 @@ import { writeFile, readFile } from "node:fs/promises";
 import { BpmnModdle } from 'bpmn-moddle';
 import { savedModelPath, savedModelSignIn } from '../src/shared/model-links.js';
 import { chromium } from "playwright";
+import { diagramTextProblems } from "./diagram-text-check.js";
 import path from "node:path";
 import os from "node:os";
 import { mkdir } from "node:fs/promises";
@@ -197,7 +198,7 @@ try {
   console.log("Homepage example steps through its five steps on a phone without moving the page");
   // The capture holds the example's place: nothing moves when the example loads, and it stays if the load fails.
   const exampleData = "**/examples/onboarding-draft.json";
-  for (const width of [1440, 1024, 768, 390, 320]) {
+  for (const width of [1440, 1280, 1279, 1024, 768, 390, 320]) {
     const bounds = () => p.evaluate(() => {
       const section = document.querySelector('[data-section="evidence"]'), next = section.nextElementSibling;
       return [section.getBoundingClientRect().height, next.getBoundingClientRect().top + scrollY];
@@ -230,6 +231,35 @@ try {
   }
   await p.setViewportSize({ width: 1440, height: 1000 });
   console.log("Homepage example loads without moving the page, and its capture stays when it cannot load");
+  // From 1024 px up the example opens with the whole view inside the diagram's edges.
+  for (const width of [1440, 1024]) {
+    await p.setViewportSize({ width, height: 1000 });
+    // The tab remembers where the checks above left the diagram. A first visit has nothing remembered.
+    await p.evaluate(() => sessionStorage.clear());
+    await p.goto(base + "/");
+    await demo.scrollIntoViewIfNeeded();
+    await demo.locator(".diagram-stage svg text").first().waitFor();
+    const drawn = await demo.locator(".diagram-stage").evaluate(stage => {
+      const edge = stage.getBoundingClientRect(), scale = stage.querySelector("svg").getScreenCTM().a;
+      const parts = [...stage.querySelectorAll("g[data-id]")].map(node => [node.dataset.id, node.getBoundingClientRect()]);
+      return { scale, count: parts.length, cut: parts.filter(([, r]) => r.left < edge.left + 4 || r.right > edge.right - 4 || r.top < edge.top + 4 || r.bottom > edge.bottom - 4).map(([id]) => id) };
+    });
+    assert.ok(drawn.count > 10 && drawn.scale * 11 >= 12, `${width}px: the example's diagram text is 12 px or more`);
+    assert.deepEqual(drawn.cut, [], `${width}px: no step, lane or label is cut by the diagram's edges`);
+  }
+  console.log("Homepage example opens with every step, lane and label whole at 1440 and 1024 px");
+  // No diagram text runs over other text or across a pool or lane border, in this machine's fonts.
+  for (const route of ["/", "/example?draft=true"]) for (const [width, height] of [[1440, 1000], [390, 844]]) {
+    await p.setViewportSize({ width, height });
+    await p.goto(base + route);
+    if (route === "/") await demo.scrollIntoViewIfNeeded();
+    const diagram = p.locator(".diagram-stage svg");
+    await diagram.locator("text[data-frame-label]").first().waitFor({ state: "attached" });
+    assert.ok(await diagram.locator("text").count() > 10, `${route} at ${width}px draws its labels`);
+    assert.deepEqual(await diagram.evaluate(diagramTextProblems), [], `${route} at ${width}px: diagram text stays clear of other text and inside its pool or lane`);
+  }
+  await p.setViewportSize({ width: 1440, height: 1000 });
+  console.log("Diagram text overlaps no other text and crosses no pool or lane border on the home page and the example");
   await p.goto(base + "/sign-in");
   await p.getByLabel("Email", { exact: true }).fill(email);
   await p.getByRole("button", { name: "Send sign-in link", exact: true }).click();

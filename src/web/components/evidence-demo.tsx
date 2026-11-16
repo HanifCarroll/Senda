@@ -57,7 +57,7 @@ export function EvidenceDemo({ review: example }: { review: Review }) {
   const [passage, setPassage] = useState<{ source: string; segment: string }>();
   const selected = review.elements.find((e) => e.id === selectedId);
   return (
-    <div className="evidence-demo grid h-full grid-rows-[minmax(0,1fr)_auto] gap-2 lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[minmax(0,1fr)]">
+    <div className="evidence-demo grid h-full grid-rows-[minmax(0,1fr)_auto] gap-2 lg:max-xl:grid-rows-[auto_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_300px] xl:grid-rows-[minmax(0,1fr)]">
       <Card className="canvas-card min-w-0 gap-0 py-0">
         <div className="canvas-toolbar flex items-center justify-end gap-2 border-b p-2 sm:justify-between" role="toolbar" aria-label="Diagram controls">
           <span className="truncate px-2 text-sm font-medium max-sm:hidden">Process overview</span>
