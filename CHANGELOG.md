@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Rebuild the homepage as one idea per section on a shared template: the comparison with asking an AI now comes before the product sections, the walkthrough is three sections with full-width captures, and marketing text is 16 px or larger. Product captures show the app's text at 12 px or more on desktop and phones.
+
 ## 0.4.0
 
 - Import TXT, Markdown, VTT, SRT and DOCX transcripts in the app, retaining speaker turns and checking file and extracted-text limits.
