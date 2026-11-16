@@ -325,7 +325,7 @@ const faqs = [
     },
     {
       question: "Which agent should I use?",
-      answer: "Start with Senda’s built-in agent, which you can try free on one project and use on every project with Pro. You can also connect your own Claude, ChatGPT (beta) or another assistant that supports custom connectors, on either plan: add Senda in its connection settings, sign in, and ask it to map the interview. Your assistant’s subscription is separate. Coding agents can use the command-line tool with the downloadable skill.",
+      answer: "Start with Senda’s built-in agent, which you can try free on one project and use on every project with Pro. You can also connect your own Claude, ChatGPT (beta) or another assistant that supports custom connectors, on either plan: add Senda in its connection settings, sign in, and ask it to map the interview. ChatGPT can save diagrams to Senda only on its Business, Enterprise, and Edu plans; on ChatGPT Pro it can only read them. Your assistant’s subscription is separate. Coding agents can use the command-line tool with the downloadable skill.",
     },
     {
       question: "Is it free?",
@@ -447,7 +447,7 @@ export function Marketing() {
           ]}
         >
           <p className={cn("text-muted-foreground", centered)}>
-            Prefer a terminal? Use the{" "}
+            ChatGPT can save diagrams only on Business, Enterprise, and Edu plans. Prefer a terminal? Use the{" "}
             <a href={`${repository}#from-the-command-line`} className={textLink}>
               command-line tool
             </a>
