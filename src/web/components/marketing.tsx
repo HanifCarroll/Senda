@@ -12,7 +12,7 @@ import { PathArt } from "./path-art";
 import { PricingPlans } from "./pricing-plans";
 
 // Bump the version when public/marketing changes (docs/marketing-design.md, "Sharp product previews").
-const capture = (file: string) => `/marketing/${file}?v=12`;
+const capture = (file: string) => `/marketing/${file}?v=13`;
 const repository = "https://github.com/HanifCarroll/Senda";
 const methodology = `${repository}/blob/main/skills/senda/references/methodology.md`;
 

@@ -231,6 +231,37 @@ try {
   }
   await p.setViewportSize({ width: 1440, height: 1000 });
   console.log("Homepage example loads without moving the page, and its capture stays when it cannot load");
+  // The example opens with its selected step whole in the diagram, centered where the steps don't all fit,
+  // on a first visit and on a reload after the visitor has moved the diagram to another step.
+  for (const width of [1440, 1279, 1024, 768, 390, 320]) {
+    await p.setViewportSize({ width, height: 844 });
+    await p.evaluate(() => sessionStorage.clear());
+    for (const visit of ["a first visit", "a reload after another step was shown"]) {
+      await p.goto(base + "/");
+      await demo.scrollIntoViewIfNeeded();
+      await demo.locator(".diagram-stage .is-selected").waitFor();
+      const first = await demo.evaluate(node => {
+        const stage = node.querySelector(".diagram-stage").getBoundingClientRect(), shape = node.querySelector(".is-selected > rect").getBoundingClientRect();
+        return {
+          title: node.querySelector('.evidence-card [data-slot="card-title"]').textContent,
+          cut: Math.min(shape.left - stage.left, stage.right - shape.right, shape.top - stage.top, stage.bottom - shape.bottom),
+          offCenter: Math.abs(shape.left + shape.right - stage.left - stage.right) / 2,
+        };
+      });
+      assert.equal(first.title, "Check handover pack");
+      assert.ok(first.cut >= 4, `${width}px, ${visit}: the selected step is whole in the diagram (${first.cut}px inside its nearest edge)`);
+      if (width < 1024) assert.ok(first.offCenter <= 2, `${width}px, ${visit}: the selected step is centered (${first.offCenter}px off)`);
+      // Leave the diagram on the last step, where the first is out of view on a phone.
+      await demo.locator(".diagram-stage").evaluate(node => node.scrollIntoView({ block: "center" }));
+      const box = await demo.locator(".diagram-stage").boundingBox();
+      await p.mouse.move(box.x + box.width - 20, box.y + 300);
+      await p.mouse.down();
+      await p.mouse.move(box.x + 20, box.y + 300, { steps: 5 });
+      await p.mouse.up();
+      await p.waitForTimeout(200);
+    }
+  }
+  console.log("Homepage example opens with its selected step whole at every width, on a first visit and on a reload");
   // From 1024 px up the example opens with the whole view inside the diagram's edges.
   for (const width of [1440, 1024]) {
     await p.setViewportSize({ width, height: 1000 });

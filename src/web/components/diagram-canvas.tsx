@@ -34,7 +34,9 @@ interface Props {
   storageKey: string;
   onSelect: (id: string) => void;
   onZoom: (zoom: number) => void;
-  // Open at this zoom from the view's top left corner, shifted to hold these elements when they fit. The first is always in view.
+  // Open at this zoom from the view's top left corner when these elements fit side by side. When they don't,
+  // open with the first centered sideways, as show() leaves it. A view opened this way always opens the same,
+  // so its camera isn't remembered across page loads.
   frame?: { ids: string[]; scale: number };
   ref: Ref<CanvasControls>;
 }
@@ -114,7 +116,7 @@ export function DiagramCanvas({
       };
       let stored: Camera | undefined;
       try {
-        const candidate = JSON.parse(sessionStorage.getItem(key) || "null");
+        const candidate = frame ? null : JSON.parse(sessionStorage.getItem(key) || "null");
         if (
           candidate &&
           [candidate.x, candidate.y, candidate.scale].every(Number.isFinite) &&
@@ -128,6 +130,7 @@ export function DiagramCanvas({
       let camera: Camera = saved.current.get(view.elementId) ||
         stored || { ...original, scale: 1, fitted: true };
       flush = () => {
+        if (frame) return;
         try {
           sessionStorage.setItem(key, JSON.stringify(camera));
         } catch {
@@ -278,9 +281,10 @@ export function DiagramCanvas({
         // Start at the view's top left corner. Move only as far as the last element needs, and never past the first.
         const start = (edge: number, first: number, last: number, span: number) =>
           Math.min(Math.max(edge + 12, last + pad - span), first - pad);
+        const left = Math.min(...boxes.map((b) => b.x)), right = Math.max(...boxes.map((b) => b.x + b.width));
         camera = {
           scale,
-          x: start(original.x, boxes[0].x, Math.max(...boxes.map((b) => b.x + b.width)), width / scale),
+          x: right - left + 2 * pad > width / scale ? boxes[0].x + boxes[0].width / 2 - width / scale / 2 : start(original.x, boxes[0].x, right, width / scale),
           y: start(original.y, boxes[0].y, Math.max(...boxes.map((b) => b.y + b.height)), height / scale),
           fitted: false,
         };
