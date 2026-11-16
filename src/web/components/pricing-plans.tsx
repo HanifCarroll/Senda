@@ -2,17 +2,18 @@ import { ArrowRight, Check } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 
-const plans = [
+type Plan = { name: string; price: string; detail: string; features: string[]; href: string; action: string };
+
+// Keep these terms in step with docs/billing.md and the home page FAQ.
+const plans: Plan[] = [
   {
     name: "Free", price: "$0", detail: "No payment card needed",
-    intro: "Try the built-in agent before deciding whether to pay.",
-    features: ["Try the built-in agent on one project with a $0.50 lifetime allowance", "Keep up to 3 cloud projects at a time", "Keep using your own Claude or ChatGPT (beta)", "Separate As-is and To-be models", "Source evidence and revision history", "Download standard BPMN diagrams"],
+    features: ["Built-in agent on one project, with a $0.50 lifetime allowance", "Up to 3 cloud projects at a time", "Your own Claude or ChatGPT (beta)", "As-is and To-be models, source evidence, revision history, and BPMN download"],
     href: "/app", action: "Start free",
   },
   {
     name: "Pro", price: "$29", detail: "USD per month · cancel any time",
-    intro: "Work directly with the Senda agent.",
-    features: ["Keep up to 100 cloud projects at a time", "Everything in Free", "Built-in chat with the Senda agent", "$6 monthly AI allowance, with usage shown", "No automatic overage charges"],
+    features: ["Everything in Free", "Built-in agent on every project", "Up to 100 cloud projects at a time", "$6 monthly AI allowance, with usage shown", "No automatic overage charges"],
     href: "/app/billing", action: "Choose Pro",
   },
 ];
@@ -24,11 +25,10 @@ export function PricingPlans() {
         <div className="flex flex-col gap-3">
           <h3 className="text-xl font-semibold">{plan.name}</h3>
           <p className="text-4xl font-semibold tracking-tight">{plan.price}</p>
-          <p className="text-sm text-muted-foreground">{plan.detail}</p>
+          <p className="text-muted-foreground">{plan.detail}</p>
         </div>
-        <p className="leading-relaxed">{plan.intro}</p>
-        <ul className="flex flex-1 flex-col gap-4">{plan.features.map(feature => <li key={feature} className="flex gap-3 text-sm leading-6"><Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />{feature}</li>)}</ul>
-        <Button size="lg" variant={plan.name === "Pro" ? "default" : "outline"} asChild><a href={plan.href}>{plan.action}<ArrowRight /></a></Button>
+        <ul className="flex flex-1 flex-col gap-4">{plan.features.map(feature => <li key={feature} className="flex gap-3 leading-6"><Check aria-hidden="true" className="mt-1 size-4 shrink-0 text-primary" />{feature}</li>)}</ul>
+        <Button size="lg" variant={plan.name === "Pro" ? "default" : "outline"} className="h-11 text-base" asChild><a href={plan.href}>{plan.action}<ArrowRight /></a></Button>
       </section>)}
     </div>
   </>;

@@ -6,7 +6,7 @@ if (!input) throw new Error("Usage: node scripts/build-marketing-previews.js <ca
 const destination = new URL("../public/marketing/", import.meta.url);
 const mark = await readFile(new URL("../public/brand/mark.svg", import.meta.url), "utf8");
 const escape = value => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-const vectorNames = process.argv.includes("--mobile-only") ? [] : ["evidence", "overview", "clarification"];
+const vectorNames = process.argv.includes("--mobile-only") ? [] : ["evidence", "clarification"];
 for (const name of vectorNames) {
   const capture = JSON.parse(await readFile(path.join(input, name + "-vector.json"), "utf8"));
   if (new URL(capture.sourceUrl).pathname !== "/example" || !capture.html.includes("Brightline client onboarding")) {
@@ -27,7 +27,9 @@ for (const name of vectorNames) {
   await writeFile(new URL(name + ".svg", destination), svg);
   console.log(`${name}: ${crop.width} × ${crop.height}, ${Buffer.byteLength(svg)} vector bytes`);
 }
-// Keep the captured mobile sheet's wrapping and controls consistent across image renderers.
-// The capture comes from /example with the Finance invoice's Step evidence sheet open.
-await copyFile(path.join(input, "evidence-mobile.png"), new URL("evidence-mobile.png", destination));
-console.log("evidence-mobile: copied the captured mobile preview");
+// Phones get screenshots taken at the width they are shown at, so the app's text is never scaled down
+// and the sheet's wrapping and controls look the same in every image renderer.
+for (const name of ["evidence-mobile", "evidence-mobile-small", "clarification-mobile", "clarification-mobile-small"]) {
+  await copyFile(path.join(input, name + ".png"), new URL(name + ".png", destination));
+  console.log(name + ": copied the captured mobile preview");
+}
