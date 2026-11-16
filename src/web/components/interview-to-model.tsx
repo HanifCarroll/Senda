@@ -25,32 +25,33 @@ const nodes: {
 }[] = [
   { kind: "start", h: [22, 120], m: [14, 24] },
   { kind: "gateway", h: [78, 120], m: [80, 24] },
-  { kind: "task", step: 1, icon: "send", lines: ["Issue deposit", "invoice"], h: [316, 120], m: [80, 109.5] },
-  { kind: "task", step: 2, icon: "receive", lines: ["Receive", "deposit"], h: [464, 120], m: [80, 176.5] },
-  { kind: "gateway", h: [564, 120], m: [80, 236] },
-  { kind: "task", step: 3, lines: ["Record financial", "clearance"], h: [672, 120], m: [80, 295.5] },
-  { kind: "end", h: [776, 120], m: [80, 350] },
+  { kind: "task", step: 1, icon: "send", lines: ["Issue deposit", "invoice"], h: [320, 120], m: [80, 109.5] },
+  { kind: "task", step: 2, icon: "receive", lines: ["Receive", "deposit"], h: [476, 120], m: [80, 176.5] },
+  { kind: "gateway", h: [580, 120], m: [80, 236] },
+  { kind: "task", step: 3, lines: ["Record financial", "clearance"], h: [692, 120], m: [80, 295.5] },
+  { kind: "end", h: [800, 120], m: [80, 350] },
 ];
 
 // The compact task is as wide as a 320 px phone allows, so "Record financial" stays clear of its step badge.
-const task = { h: [132, 88], m: [216, 55] } as const;
+// The wide task leaves "Record financial" ten units from each border in CI's wider Linux font.
+const task = { h: [140, 88], m: [216, 55] } as const;
 
 const edges: { h: Point[]; m: Point[]; step?: Step }[] = [
   { h: [[35, 120], [58, 120]], m: [[27, 24], [60, 24]] },
   // The wide arrow into step 1 is long enough to carry "No approved terms" in CI's wider Linux font.
   { h: [[98, 120], [250, 120]], m: [[80, 44], [80, 82]] },
-  { h: [[382, 120], [398, 120]], m: [[80, 137], [80, 149]] },
-  { h: [[530, 120], [544, 120]], m: [[80, 204], [80, 216]] },
-  { h: [[584, 120], [606, 120]], m: [[80, 256], [80, 268]] },
-  { h: [[738, 120], [763, 120]], m: [[80, 323], [80, 337]] },
-  { h: [[78, 100], [78, 46], [564, 46], [564, 100]], m: [[100, 24], [206, 24], [206, 236], [100, 236]] },
+  { h: [[390, 120], [406, 120]], m: [[80, 137], [80, 149]] },
+  { h: [[546, 120], [560, 120]], m: [[80, 204], [80, 216]] },
+  { h: [[600, 120], [622, 120]], m: [[80, 256], [80, 268]] },
+  { h: [[762, 120], [787, 120]], m: [[80, 323], [80, 337]] },
+  { h: [[78, 100], [78, 46], [580, 46], [580, 100]], m: [[100, 24], [206, 24], [206, 236], [100, 236]] },
 ];
 
 // The compact labels sit clear of every connector and gateway in wider fonts than the system one, because CI runs on Linux.
 const labels: { text: string; step?: Step; h: Point; m: Point; mAnchor?: "end"; hLines?: string[]; mLines?: string[] }[] = [
-  { text: "No approved terms", h: [170, 106], m: [94, 54], mLines: ["No approved", "terms"] },
-  { text: "Approved credit terms", h: [321, 30], m: [200, -6], mAnchor: "end", mLines: ["Approved", "credit terms"] },
-  { text: "Finance cleared", h: [776, 188], m: [104, 343], hLines: ["Finance", "cleared"], mLines: ["Finance", "cleared"] },
+  { text: "No approved terms", h: [174, 106], m: [94, 54], mLines: ["No approved", "terms"] },
+  { text: "Approved credit terms", h: [329, 30], m: [200, -6], mAnchor: "end", mLines: ["Approved", "credit terms"] },
+  { text: "Finance cleared", h: [800, 188], m: [104, 343], hLines: ["Finance", "cleared"], mLines: ["Finance", "cleared"] },
 ];
 
 function useActiveStep() {
@@ -118,7 +119,7 @@ function Diagram({ layout, active }: { layout: Layout; active: Step | null }) {
   const on = (step?: Step) => step !== undefined && step === active;
   return (
     <svg
-      viewBox={wide ? "-8 0 848 232" : "-30 -30 240 405"}
+      viewBox={wide ? "0 0 848 232" : "-30 -30 240 405"}
       className={cn("h-auto w-full", wide ? "hidden xl:block" : "mx-auto max-w-[240px] xl:hidden")}
       role="img"
       aria-label="Finance subprocess: check credit terms; without approved terms, issue the deposit invoice and receive the deposit; then record financial clearance."
