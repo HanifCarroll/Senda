@@ -45,11 +45,11 @@ const edges: { h: Point[]; m: Point[]; step?: Step }[] = [
   { h: [[78, 100], [78, 46], [448, 46], [448, 100]], m: [[100, 24], [206, 24], [206, 236], [100, 236]] },
 ];
 
-// The compact labels sit clear of every connector in wider fonts than the system one, because CI runs on Linux.
+// The compact labels sit clear of every connector and gateway in wider fonts than the system one, because CI runs on Linux.
 const labels: { text: string; step?: Step; h: Point; m: Point; mAnchor?: "end"; hLines?: string[]; mLines?: string[] }[] = [
-  { text: "No approved terms", h: [78, 196], m: [92, 51], mLines: ["No approved", "terms"] },
-  { text: "Approved credit terms", h: [263, 30], m: [198, 11], mAnchor: "end" },
-  { text: "Finance cleared", h: [660, 188], m: [104, 338], hLines: ["Finance", "cleared"], mLines: ["Finance", "cleared"] },
+  { text: "No approved terms", h: [78, 196], m: [94, 54], mLines: ["No approved", "terms"] },
+  { text: "Approved credit terms", h: [263, 30], m: [200, -6], mAnchor: "end", mLines: ["Approved", "credit terms"] },
+  { text: "Finance cleared", h: [660, 188], m: [104, 343], hLines: ["Finance", "cleared"], mLines: ["Finance", "cleared"] },
 ];
 
 function useActiveStep() {
@@ -117,7 +117,7 @@ function Diagram({ layout, active }: { layout: Layout; active: Step | null }) {
   const on = (step?: Step) => step !== undefined && step === active;
   return (
     <svg
-      viewBox={wide ? "-16 0 748 232" : "-30 -14 240 384"}
+      viewBox={wide ? "-16 0 748 232" : "-30 -30 240 405"}
       className={cn("h-auto w-full", wide ? "hidden xl:block" : "mx-auto max-w-[240px] xl:hidden")}
       role="img"
       aria-label="Finance subprocess: check credit terms; without approved terms, issue the deposit invoice and receive the deposit; then record financial clearance."
@@ -231,7 +231,7 @@ export function InterviewToModel() {
           <ArrowUpRight className="size-3.5" aria-hidden="true" />
         </a>
       </div>
-      <div className="bg-muted px-3 py-3 sm:px-10 sm:py-9">
+      <div className="bg-muted px-3 py-2 sm:px-10 sm:py-9">
         {/* 14 px on the narrowest phones, so the card fits one 640 px screen. */}
         <p className="mx-auto max-w-3xl leading-[1.8] max-[359px]:text-sm max-[359px]:leading-[1.65] sm:text-lg sm:leading-[1.9]">
           <span className="mr-1.5 font-semibold">Luis, Finance:</span>A new client normally needs a
@@ -240,7 +240,7 @@ export function InterviewToModel() {
           and <Highlight {...props(3)}>record financial clearance</Highlight>.
         </p>
       </div>
-      <div className="px-3 py-3 sm:px-10 sm:py-10">
+      <div className="px-3 py-1 sm:px-10 sm:py-10">
         <div className="mx-auto max-w-3xl">
           <Diagram layout="h" active={active} />
           <Diagram layout="m" active={active} />
