@@ -10,7 +10,7 @@ import { PathArt } from "./path-art";
 import { PricingPlans } from "./pricing-plans";
 
 // Bump the version when public/marketing changes (docs/marketing-design.md, "Sharp product previews").
-const capture = (file: string) => `/marketing/${file}?v=7`;
+const capture = (file: string) => `/marketing/${file}?v=8`;
 const repository = "https://github.com/HanifCarroll/Senda";
 const methodology = `${repository}/blob/main/skills/senda/references/methodology.md`;
 
@@ -43,7 +43,7 @@ function WindowBar({ title }: { title: string }) {
 const audiences = [
   {
     title: "Process consultants",
-    text: "Show your client a model they can check against what their own people said.",
+    text: "Show your client a diagram they can check against what their own people said.",
   },
   {
     title: "Business analysts",
@@ -57,14 +57,14 @@ const audiences = [
 
 const asIs = [
   ["Revision 2", "First draft, seven questions open"],
-  ["Revision 3", "Parallel readiness work clarified"],
+  ["Revision 3", "Finance and Delivery order clarified"],
   ["Revision 4", "Reminder and cancellation paths"],
   ["Revision 5", "Credit-terms rule resolved"],
 ];
 
 const toBe = [
-  ["To-be 1", "Drafted from your design brief"],
-  ["To-be 2", "Revised after stakeholder answers"],
+  ["To-be 1", "Copied from As-is revision 5"],
+  ["To-be 2", "Redrawn from the design brief"],
 ];
 
 function RevisionTrack({ name, items, planned = false }: { name: string; items: string[][]; planned?: boolean }) {
@@ -124,7 +124,7 @@ function SectionHeading({ headline, children, dark }: { headline: string; childr
   );
 }
 
-type Point = { title: string; text: string };
+type Point = { title: string; text: ReactNode };
 
 // The one template every section between the hero and the FAQ uses: a centered headline and intro,
 // one full-width visual, and up to three points. docs/marketing-design.md has the word and type rules.
@@ -164,7 +164,7 @@ function MarketingSection({
 const evidence = (
   <div className={panel}>
     <a
-      href="/example?view=FinanceWork&element=Invoice"
+      href="/example?view=Intake&element=CheckPack"
       data-visual
       data-capture="evidence"
       className={cn(windowFrame, "mx-auto block max-lg:max-w-[390px]")}
@@ -177,7 +177,7 @@ const evidence = (
           width="1008"
           height="620"
           loading="lazy"
-          alt="A deposit invoice step selected in a client onboarding diagram, with the transcript passage that supports it."
+          alt="The “Check required items” step selected in a client onboarding diagram, next to the interview passage it came from."
           className="w-full"
         />
       </picture>
@@ -187,12 +187,15 @@ const evidence = (
 
 const questions = (
   <div className={cn(panel, "flex flex-col gap-8 sm:gap-10")}>
-    <blockquote className="mx-auto w-full max-w-[768px] border-l-2 border-[var(--brand-teal)] pl-5">
-      <p className={cn(display, "text-[1.5rem] leading-snug sm:text-[1.75rem]")}>
-        “I would want them to confirm whether one is supposed to wait for the other.”
-      </p>
-      <footer className="mt-2 text-muted-foreground">From the onboarding interview</footer>
-    </blockquote>
+    <div className="mx-auto flex w-full max-w-[768px] flex-col gap-4 text-lg text-muted-foreground">
+      <p>The interview leaves the order of Finance’s and Delivery’s work unclear.</p>
+      <blockquote className="border-l-2 border-[var(--brand-teal)] pl-5">
+        <p className={cn(display, "text-[1.5rem] leading-snug text-foreground sm:text-[1.75rem]")}>
+          “I would want them to confirm whether one is supposed to wait for the other.”
+        </p>
+      </blockquote>
+      <p>So the first draft asked:</p>
+    </div>
     <a
       href="/example?draft=true&section=questions"
       data-visual
@@ -200,12 +203,12 @@ const questions = (
       className={cn(windowFrame, "mx-auto block w-full max-w-[768px] p-2 max-[860px]:max-w-[350px] min-[861px]:p-6")}
     >
       <picture>
-        <source media="(max-width: 359px)" srcSet={capture("clarification-mobile-small.png")} width="264" height="381" />
-        <source media="(max-width: 860px)" srcSet={capture("clarification-mobile.png")} width="334" height="341" />
+        <source media="(max-width: 359px)" srcSet={capture("clarification-mobile-small.png")} width="264" height="186" />
+        <source media="(max-width: 860px)" srcSet={capture("clarification-mobile.png")} width="334" height="146" />
         <img
           src={capture("clarification.svg")}
           width="720"
-          height="229"
+          height="106"
           loading="lazy"
           alt="An open question asking whether Finance and Delivery start together and what must finish before setup starts."
           className="w-full"
@@ -241,8 +244,8 @@ const chat = (
         </div>
         <div className="mr-6 flex flex-col gap-3 rounded-2xl rounded-bl-md bg-muted px-4 py-3">
           <p>
-            I saved revision 2, a first draft with each step linked to its passage. Seven questions are open. The first
-            one decides the shape of the diagram:
+            I saved a first draft with each step linked to its passage. Seven questions are open. One question is about
+            when the teams can start work:
           </p>
           <p className="border-l-2 border-[var(--brand-teal)] pl-3 font-medium">
             Can Finance and Delivery start together, and what must finish before setup starts?
@@ -321,27 +324,31 @@ function MarketingFooter() {
 const faqs = [
     {
       question: "What kind of diagram do I get?",
-      answer: "A BPMN 2.0 process model, the standard notation for activities, decisions, responsibilities and handoffs. You can explore it in Senda or download a .bpmn file with its layout. Exports are tested with bpmn-js, the open-source modeler behind bpmn.io.",
+      answer: "A BPMN 2.0 diagram. BPMN is the standard notation for activities, decisions, responsibilities, and handoffs. You can explore it in Senda or download a .bpmn file with its layout. Exports are tested with bpmn-js, the open-source modeler behind bpmn.io. Check the download in the editor you use, because editors can show labels and subprocesses differently.",
+    },
+    {
+      question: "What can I add?",
+      answer: "Paste a transcript or interview notes, or upload a TXT, Markdown, VTT, SRT, or DOCX file.",
     },
     {
       question: "Which agent should I use?",
-      answer: "Start with Senda’s built-in agent, which you can try free on one project and use on every project with Pro. You can also connect your own Claude, ChatGPT (beta) or another assistant that supports custom connectors, on either plan: add Senda in its connection settings, sign in, and ask it to map the interview. ChatGPT can save diagrams to Senda only on its Business, Enterprise, and Edu plans; on ChatGPT Pro it can only read them. Your assistant’s subscription is separate. Coding agents can use the command-line tool with the downloadable skill.",
+      answer: "Start with Senda’s built-in agent, which you can try free on one project and use on every project with Senda Pro. You can also connect your own Claude, ChatGPT (beta), or another agent that supports custom connectors, on either plan: add Senda in its connection settings, sign in, and ask it to map the interview. ChatGPT can save diagrams to Senda only on its Business, Enterprise, and Edu plans. On ChatGPT’s own Pro plan, ChatGPT can only read your diagrams. Your own agent’s subscription is separate. Coding agents can use the command-line tool with the downloadable skill.",
     },
     {
       question: "Is it free?",
-      answer: <>Free includes a one-project trial of the built-in agent with a $0.50 lifetime allowance. You can keep up to three cloud projects with your own agent. Pro is $29 USD per month for up to 100 projects and a $6 monthly built-in AI allowance. Daily and shared service limits apply, with no automatic overage charges. <a href="#pricing" className={textLink}>Compare plans</a>. The source is MIT-licensed.</>,
+      answer: <>Free includes a one-project trial of the built-in agent with a $0.50 lifetime allowance. You can keep up to three saved projects with your own agent. Senda Pro is $29 USD per month for up to 100 projects and a $6 monthly built-in AI allowance. Daily and shared service limits apply, with no automatic overage charges. <a href="#pricing" className={textLink}>Compare plans</a>. Senda’s code is MIT-licensed.</>,
     },
     {
       question: "How much built-in AI is included?",
-      answer: <>Free includes a $0.50 lifetime allowance on one project; Pro includes $6 per month across your projects. Usage follows Senda’s fixed rate card and varies with the work. At a limit, the built-in agent pauses. Your saved work stays readable, exportable and editable with your connected agent. Daily and shared service limits also apply. Nothing extra is bought or charged automatically. <a href="/usage" className={textLink}>Read the usage policy</a>.</>,
+      answer: <>Free includes a $0.50 lifetime allowance on one project; Senda Pro includes $6 per month across your projects. Usage follows Senda’s fixed rate card and varies with the work. At a limit, the built-in agent pauses. Your saved work stays readable, exportable, and editable with your connected agent. Daily and shared service limits also apply. Nothing extra is bought or charged automatically. <a href="/usage" className={textLink}>Read the usage policy</a>.</>,
     },
     {
       question: "Who can see my transcripts?",
-      answer: <>Projects are private to your account. The built-in agent sends relevant messages, sources and models to its AI provider, named in the <a href="/privacy" className={textLink}>privacy notice</a>. With a connected agent, that agent and its provider do the drafting. It can read only the projects you share with it, and you can disconnect it at any time.</>,
+      answer: <>Projects are private to your account. The built-in agent sends relevant messages, sources, and models to its AI provider, named in the <a href="/privacy" className={textLink}>privacy notice</a>. With a connected agent, that agent and its provider do the drafting. It can read only the projects you share with it, and you can disconnect it at any time.</>,
     },
     {
       question: "What counts as a project?",
-      answer: "A project holds its sources, As-is model and separate To-be model. Free lets you keep up to three projects at a time. Delete one from its project menu to free a slot. You can restore it within seven days if you have room; after that, its content is permanently erased. Deleting a project does not reset your free trial or Pro allowance.",
+      answer: "A project is one process: its interview transcripts and answers, its diagram of how the work runs today, and any To-be plan. Free lets you keep up to three projects at a time. Delete one from its project menu to free a slot. You can restore it within seven days if you have room; after that, its content is permanently erased. Deleting a project does not reset your free trial or Senda Pro allowance.",
     },
   ];
 
@@ -356,8 +363,8 @@ export function Marketing() {
             Turn interviews into process diagrams people can agree on.
           </h1>
           <p className="max-w-2xl text-[1.375rem] leading-relaxed text-pretty text-muted-foreground">
-            Add an interview transcript, and an agent drafts the process. Every step links to the passage it came from,
-            so anyone can check it.
+            Add an interview transcript, and an AI agent drafts the process diagram. Every step links to the passage it
+            came from, so you can check it.
           </p>
           <Buttons />
           <p className="text-muted-foreground">Free plan. No payment card needed.</p>
@@ -382,53 +389,53 @@ export function Marketing() {
           id="why-senda"
           dark
           headline="Why not just ask your AI for a diagram?"
-          intro="Your AI can draw a process from a transcript. You can’t see which steps it guessed, though, and when someone corrects it, you get a new diagram with no record of what changed. With Senda, an agent still does the drafting, and you can check its work."
+          intro="A chat assistant can draw a process from a transcript, but it’s hard to tell which steps came from the interview and which it filled in. In Senda, every step links to its passage, open questions stay visible, and each correction is saved as a new revision."
         />
 
         <MarketingSection
           name="evidence"
           id="how-it-works"
           headline="Every step links to what was said."
-          intro="Add a transcript and ask for a first draft. Each step in the diagram points to the part of the interview that supports it."
+          intro="Select any step in the diagram to read the part of the interview it came from."
           visual={<><span id="map" className="sr-only" />{evidence}</>}
           points={[
             { title: "Read the passage", text: "Select a step and open Evidence to read the transcript passage that supports it." },
-            { title: "Standard BPMN", text: "Activities, decisions, roles, and handoffs are drawn in BPMN 2.0." },
-            { title: "Private projects", text: "Your transcripts and models are private to your account." },
+            { title: "Standard BPMN", text: "Diagrams use BPMN 2.0, the standard notation for process maps, and download as a .bpmn file." },
+            { title: "Private projects", text: "Only your account can open your transcripts and diagrams." },
           ]}
         />
 
         <MarketingSection
           name="questions"
           id="clarify"
-          headline="What the interview missed becomes a question."
-          intro="People describe their own work and skip how it reaches the next team. The agent records each gap as a question instead of guessing."
+          headline="The agent asks instead of guessing."
+          intro="People describe their own part of the work and often leave out what happens between teams. Where the transcript doesn’t say, the agent writes a question for you to take back to the team."
           visual={questions}
           points={[
-            { title: "Open until resolved", text: "A question stays open until an answer resolves it." },
-            { title: "Why it matters", text: "Each question says what it decides." },
-            { title: "Answers become sources", text: "Each answer is saved as a new source." },
+            { title: "Why it’s asking", text: "Each question says what the answer will change in the diagram." },
+            { title: "Bring back the answer", text: "Give the agent the team’s answer, in Senda or in your chat. Senda saves it next to the transcript." },
+            { title: "Open until the diagram changes", text: "A question closes once the agent updates the diagram from your answer." },
           ]}
         />
 
         <MarketingSection
           name="revisions"
           id="plan"
-          headline="Revise the same model, then plan the next one."
-          intro="Each round of answers produces a new revision, and Senda keeps them all. When the current process is settled, start a To-be plan from the revision you choose."
+          headline="Keep every version, then plan the future process."
+          intro="Each time you bring back answers, the agent updates the same diagram and saves a new revision. Once everyone agrees on how the work runs today, start a separate To-be plan for how it should run."
           visual={history}
           points={[
             { title: "See what changed", text: "Each revision lists what it added, changed, and removed." },
-            { title: "Two separate models", text: "The To-be plan starts as a copy. The As-is model is left as it was." },
-            { title: "Download BPMN", text: "Export a .bpmn file with its layout, tested with bpmn-js." },
+            { title: "Plan from a copy", text: "The To-be plan starts as a copy of the revision you pick. Describe what should change, and the agent redraws it." },
+            { title: "Today’s process is untouched", text: "Planning never changes your As-is diagram." },
           ]}
         />
 
         <section data-section="example-band" className={container}>
           <div className="flex flex-col items-center gap-5 rounded-[1.75rem] bg-muted px-6 py-12 text-center sm:py-16">
-            <p className={cn(display, "text-[1.75rem] leading-tight")}>See a finished model before you sign up.</p>
+            <p className={cn(display, "text-[1.75rem] leading-tight")}>See a worked example before you sign up.</p>
             <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
-              The Brightline client onboarding example is public. Open it and select any step.
+              Open the public onboarding example and select any step to read its passage.
             </p>
             <Buttons main="example" />
           </div>
@@ -437,17 +444,21 @@ export function Marketing() {
         <MarketingSection
           name="agent"
           id="your-agent"
-          headline="Use the built-in agent, or connect your own."
-          intro="Either one reads the transcript, drafts the model, and revises it from your answers. Senda keeps every revision in one project."
+          headline="Use Senda’s built-in agent, or your own Claude or ChatGPT."
+          intro="The built-in agent is a chat inside Senda, with nothing to set up."
           visual={chat}
           points={[
-            { title: "Connect", text: "Add Senda in ChatGPT (beta) or Claude’s connection settings, then sign in." },
-            { title: "Share", text: "Give your agent the transcript and ask it to map the process in Senda." },
-            { title: "Review", text: "Answer its questions in the same chat, then open Senda to see the diagram and compare revisions." },
+            { title: "Inside Senda", text: "Add your transcript to a project and chat with the built-in agent." },
+            {
+              title: "In Claude or ChatGPT",
+              text: <>Add Senda in its connection settings and sign in. <strong className="font-medium text-foreground">Connect your agent</strong> in Senda has the steps.</>,
+            },
+            { title: "Keep talking", text: "Answer its questions in the same chat, then open Senda to see the diagram and compare revisions." },
           ]}
         >
           <p className={cn("text-muted-foreground", centered)}>
-            ChatGPT can save diagrams only on Business, Enterprise, and Edu plans. Prefer a terminal? Use the{" "}
+            ChatGPT support is in beta, and ChatGPT can save diagrams only on its Business, Enterprise, and Edu plans.
+            There’s also a{" "}
             <a href={`${repository}#from-the-command-line`} className={textLink}>
               command-line tool
             </a>
@@ -459,12 +470,13 @@ export function Marketing() {
           name="pricing"
           id="pricing"
           headline="Start free. Continue with Pro."
-          intro="Map one project with the built-in agent before deciding whether to pay."
+          intro="Try the built-in agent on one project for free, or connect your own agent on either plan."
         >
           <div className="flex flex-col gap-6">
             <PricingPlans />
             <p className={cn("text-muted-foreground", centered)}>
-              Daily and shared service limits apply.{" "}
+              When the included usage runs out, the built-in agent pauses and nothing extra is charged. Daily and shared
+              service limits apply.{" "}
               <a href="/usage" className={textLink}>
                 Read the usage policy
               </a>
@@ -490,7 +502,7 @@ export function Marketing() {
         <section data-section="closing" className={cn(container, "flex flex-col items-center gap-6 pt-8 pb-28 text-center sm:pb-36")}>
           <h2 className={cn(display, "text-[2.8rem] leading-[1.02] sm:text-[4.2rem]")}>Bring your next interview.</h2>
           <p className="max-w-md text-xl leading-relaxed text-pretty text-muted-foreground">
-            Map how the process runs today, then plan the one you want.
+            Map how the process runs today, then plan how it should run.
           </p>
           <Buttons />
         </section>
