@@ -45,7 +45,9 @@ body:has(.marketing) { background: #FFFFFF; }
 .evidence-demo { --card: white; --muted: #EDF3F5; --secondary: #EDF3F5; --muted-foreground: var(--brand-muted); --border: var(--brand-border); --input: var(--border); }
 /* A swipe over the embedded diagram scrolls the page. Dragging sideways still pans it. */
 .evidence-demo .diagram-stage { touch-action: pan-y; }
-@media (max-width: 1023px) { .evidence-demo .canvas-card { height: 400px; } }
+/* Tall enough on a phone for every step at 110%, because a swipe up or down scrolls the page. When the home
+   page holds the example to its placeholder's height, the diagram takes what the panel leaves. */
+@media (max-width: 1023px) { :not([data-held]) > .evidence-demo .canvas-wrap { height: 610px; } }
 @media (prefers-reduced-motion: no-preference) { html:has(.marketing) { scroll-behavior: smooth; } }
 .font-display { font-family: "Newsreader Variable", "Iowan Old Style", Charter, Georgia, serif; font-optical-sizing: auto; font-weight: 400; }
 .diagram-workspace { height: max(470px, calc(100dvh - 230px)); }

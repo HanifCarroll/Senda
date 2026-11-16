@@ -32,7 +32,7 @@ interface Props {
   storageKey: string;
   onSelect: (id: string) => void;
   onZoom: (zoom: number) => void;
-  // Open on these elements at this zoom instead of the whole diagram, until the visitor moves the camera.
+  // Open at this zoom from the view's top left corner, shifted to hold these elements when they fit. The first is always in view.
   frame?: { ids: string[]; scale: number };
   ref: Ref<CanvasControls>;
 }
@@ -244,14 +244,14 @@ export function DiagramCanvas({
           return node ? [node.getBBox()] : [];
         });
         if (!boxes.length) return false;
-        const { width, height } = size(), { scale } = frame;
-        const left = Math.min(...boxes.map((b) => b.x)),
-          right = Math.max(...boxes.map((b) => b.x + b.width));
+        const { width, height } = size(), { scale } = frame, pad = 8;
+        // Start at the view's top left corner. Move only as far as the last element needs, and never past the first.
+        const start = (edge: number, first: number, last: number, span: number) =>
+          Math.min(Math.max(edge + 12, last + pad - span), first - pad);
         camera = {
           scale,
-          // A group wider than the stage keeps its first element in view instead of its middle.
-          x: Math.min((left + right) / 2 - width / scale / 2, boxes[0].x - 24 / scale),
-          y: original.y + original.height / 2 - height / scale / 2,
+          x: start(original.x, boxes[0].x, Math.max(...boxes.map((b) => b.x + b.width)), width / scale),
+          y: start(original.y, boxes[0].y, Math.max(...boxes.map((b) => b.y + b.height)), height / scale),
           fitted: false,
         };
         draw();

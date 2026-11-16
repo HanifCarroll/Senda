@@ -12,7 +12,7 @@ import { PathArt } from "./path-art";
 import { PricingPlans } from "./pricing-plans";
 
 // Bump the version when public/marketing changes (docs/marketing-design.md, "Sharp product previews").
-const capture = (file: string) => `/marketing/${file}?v=8`;
+const capture = (file: string) => `/marketing/${file}?v=9`;
 const repository = "https://github.com/HanifCarroll/Senda";
 const methodology = `${repository}/blob/main/skills/senda/references/methodology.md`;
 
@@ -192,21 +192,37 @@ function MarketingSection({
   );
 }
 
-const evidenceExample = "/example?view=Intake&element=CheckPack";
+// The phone captures' own widths, so the example that replaces them wraps its text the same way.
+const phoneWidth = "mx-auto max-lg:max-w-[350px] max-[359px]:max-w-[280px]";
 
-// The evidence section's live example. The static capture holds its place, and the viewer's code and the
+// The evidence section's live example. A capture of it holds its place, and the viewer's code and the
 // example's data load only when the section comes near the viewport, so the top of the page stays light.
 // If either fails to load, the capture stays.
 function EvidenceVisual() {
   const frame = useRef<HTMLDivElement>(null);
   const [demo, setDemo] = useState<{ Demo: ComponentType<{ review: Review }>; review: Review }>();
+  // Below lg the example takes the placeholder's exact height, so nothing under it moves when it loads. The
+  // capture is the example's own height, give or take the device's font, and the diagram takes up the
+  // difference. Selecting a step changes the panel's height, so the hold ends there and on a resize.
+  const [held, setHeld] = useState<number>();
+  const release = () => setHeld(undefined);
+  useEffect(() => {
+    if (!held) return;
+    const width = innerWidth;
+    const resized = () => innerWidth !== width && release();
+    addEventListener("resize", resized);
+    return () => removeEventListener("resize", resized);
+  }, [held]);
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
         observer.disconnect();
-        void Promise.all([import("./evidence-demo"), api<Review>("/examples/onboarding-final.json")])
-          .then(([module, review]) => setDemo({ Demo: module.EvidenceDemo, review }))
+        void Promise.all([import("./evidence-demo"), api<Review>("/examples/onboarding-draft.json")])
+          .then(([module, review]) => {
+            if (matchMedia("(max-width: 1023px)").matches) setHeld(frame.current?.offsetHeight);
+            setDemo({ Demo: module.EvidenceDemo, review });
+          })
           .catch(() => {});
       },
       { rootMargin: "800px 0px" },
@@ -216,36 +232,30 @@ function EvidenceVisual() {
   }, []);
   return (
     <div className="flex flex-col items-center gap-6">
-      <div className={cn(panel, "w-full")}>
-        <div
-          ref={frame}
-          data-visual
-          data-capture="evidence"
-          className={cn(
-            "mx-auto lg:aspect-[1008/620]",
-            // The capture is a picture in a window frame. The live example is the app's own two cards.
-            !demo && cn(windowFrame, "max-lg:max-w-[390px]"),
-          )}
-        >
-          {demo ? (
-            <demo.Demo review={demo.review} />
-          ) : (
-            <picture>
-              <source media="(max-width: 359px)" srcSet={capture("evidence-mobile-small.png")} width="280" height="646" />
-              <source media="(max-width: 1023px)" srcSet={capture("evidence-mobile.png")} width="350" height="646" />
-              <img
-                src={capture("evidence.svg")}
-                width="1008"
-                height="620"
-                loading="lazy"
-                alt="The “Check required items” step selected in a client onboarding diagram, next to the interview passage it came from."
-                className="w-full"
-              />
-            </picture>
-          )}
-        </div>
+      <div ref={frame} data-visual data-capture="evidence" className="w-full">
+        {demo ? (
+          <div className={panel}>
+            <div data-held={held ? "" : undefined} style={{ height: held }} className={phoneWidth + " lg:h-[756px]"} onClickCapture={release} onKeyDownCapture={release}>
+              <demo.Demo review={demo.review} />
+            </div>
+          </div>
+        ) : (
+          // The captures are pictures of this panel with the example loaded, so nothing moves when it loads.
+          <picture>
+            <source media="(max-width: 359px)" srcSet={capture("evidence-mobile-small.png")} width="280" height="1564" />
+            <source media="(max-width: 1023px)" srcSet={capture("evidence-mobile.png")} width="350" height="1478" />
+            <img
+              src={capture("evidence.svg")}
+              width="1088"
+              height="836"
+              loading="lazy"
+              alt="The “Check handover pack” step selected in a client onboarding diagram, next to the interview passages it came from."
+              className={phoneWidth + " block w-full object-contain object-top lg:h-[836px]"}
+            />
+          </picture>
+        )}
       </div>
-      <a href={evidenceExample} className={textLink}>
+      <a href="/example?draft=true" className={textLink}>
         Open the full example
       </a>
     </div>
@@ -469,7 +479,7 @@ export function Marketing() {
           visual={<><span id="map" className="sr-only" />
             <EvidenceVisual /></>}
           points={[
-            { title: "Read the passage", text: "Select a step and open Evidence to read the transcript passage that supports it." },
+            { title: "Read the passage", text: "Select a step, and the passage it came from opens in the panel." },
             { title: "Standard BPMN", text: "Diagrams use BPMN 2.0, the standard notation for process maps, and download as a .bpmn file." },
             { title: "Private projects", text: "Only your account can open your transcripts and diagrams." },
           ]}

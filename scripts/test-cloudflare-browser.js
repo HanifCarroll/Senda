@@ -122,9 +122,12 @@ try {
   const demo = p.locator('[data-capture="evidence"]');
   await demo.scrollIntoViewIfNeeded();
   const demoTitle = demo.locator('.evidence-card [data-slot="card-title"]');
-  assert.equal(await demoTitle.innerText(), "Check required items");
-  await demo.getByRole("button", { name: "Request missing items", exact: true }).click();
-  assert.equal(await demoTitle.innerText(), "Request missing items");
+  const demoPassage = demo.locator(".evidence-card blockquote p").first();
+  assert.equal(await demoTitle.innerText(), "Check handover pack");
+  assert.match(await demoPassage.innerText(), /^My case starts when Sales gives me/);
+  await demo.getByRole("button", { name: "Coordinate readiness", exact: true }).click();
+  assert.equal(await demoTitle.innerText(), "Coordinate readiness");
+  assert.match(await demoPassage.innerText(), /^I tell Finance and Delivery/, "Another step shows its own passage");
   assert.equal(p.url(), base + "/", "Selecting a step on the homepage does not navigate");
   const demoStage = await demo.locator(".diagram-stage").boundingBox();
   const zoomLevel = await demo.getByLabel("Zoom level").innerText(), scrolled = await p.evaluate(() => scrollY);
@@ -133,6 +136,41 @@ try {
   await p.waitForFunction(y => scrollY > y, scrolled);
   assert.equal(await demo.getByLabel("Zoom level").innerText(), zoomLevel, "The wheel scrolls the page instead of zooming the homepage diagram");
   console.log("Homepage example shows a selected step's evidence in place and leaves the page scroll alone");
+  // The capture holds the example's place: nothing moves when the example loads, and it stays if the load fails.
+  const exampleData = "**/examples/onboarding-draft.json";
+  for (const width of [1440, 390, 320]) {
+    const bounds = () => p.evaluate(() => {
+      const section = document.querySelector('[data-section="evidence"]'), next = section.nextElementSibling;
+      return [section.getBoundingClientRect().height, next.getBoundingClientRect().top + scrollY];
+    });
+    await p.setViewportSize({ width, height: 844 });
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    await p.route(exampleData, async route => { await held; await route.continue(); });
+    await p.goto(base + "/");
+    await demo.scrollIntoViewIfNeeded();
+    await demo.locator("img").evaluate(image => image.decode());
+    const before = await bounds();
+    assert.equal(await demo.locator(".diagram-stage").count(), 0, `${width}px: the capture shows while the example loads`);
+    release();
+    await demo.locator(".diagram-stage svg").waitFor();
+    const after = await bounds();
+    assert.ok(Math.abs(after[0] - before[0]) <= 2 && Math.abs(after[1] - before[1]) <= 2, `${width}px: the example loads without moving the page (${before} to ${after})`);
+    await p.unroute(exampleData);
+
+    await p.route(exampleData, route => route.abort());
+    const failed = p.waitForEvent("requestfailed", request => request.url().endsWith("/examples/onboarding-draft.json"));
+    await p.goto(base + "/");
+    await demo.scrollIntoViewIfNeeded();
+    await failed;
+    await p.waitForTimeout(300);
+    assert.ok(await demo.locator("img").isVisible(), `${width}px: the capture stays when the example fails to load`);
+    assert.equal(await demo.locator(".diagram-stage").count(), 0);
+    assert.equal(await demo.locator("img").evaluate(image => image.naturalWidth > 0), true);
+    await p.unroute(exampleData);
+  }
+  await p.setViewportSize({ width: 1440, height: 1000 });
+  console.log("Homepage example loads without moving the page, and its capture stays when it cannot load");
   await p.goto(base + "/sign-in");
   await p.getByLabel("Email", { exact: true }).fill(email);
   await p.getByRole("button", { name: "Send sign-in link", exact: true }).click();

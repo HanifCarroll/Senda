@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Review } from "@/lib/types";
 import { DiagramCanvas, ZoomControls, type CanvasControls } from "./diagram-canvas";
 import { EvidencePanel } from "./evidence-panel";
@@ -6,15 +6,17 @@ import { SourcePassage } from "./review-records";
 import { Card } from "./ui/card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 
-// The home page's live example: one view of the public example in the app's own canvas and evidence panel.
+// The home page's live example: the first draft's main view in the app's own canvas and evidence panel.
 // The selection is local state, so selecting a step never navigates or changes the URL.
 // The home page loads this file and the example's data only when the section comes near the viewport.
-const viewId = "Intake";
-// The steps the selected step's passage describes, at the zoom that shows the diagram's 11 px labels at 12 px.
-const frame = { ids: ["CheckPack", "PackDecision", "RequestItems", "WaitPack", "IntakeEnd"], scale: 1.1 };
+// The selected step first, then the view's other steps, at the zoom that shows the diagram's 11 px labels at 12 px.
+const frame = { ids: ["Intake", "Readiness", "SendHandover", "Kickoff", "Workspace"], scale: 1.1 };
 
-export function EvidenceDemo({ review }: { review: Review }) {
-  const view = review.views.find((v) => v.elementId === viewId) ?? review.views[0];
+export function EvidenceDemo({ review: example }: { review: Review }) {
+  const view = example.views[0];
+  // Only this view is shown, so a subprocess is a step with evidence here, not a view to open: the panel
+  // offers "Explore this part" only for a view it is given. Its questions are text, with no list to open.
+  const review = useMemo(() => ({ ...example, views: [view] }), [example, view]);
   const [selectedId, setSelectedId] = useState(frame.ids[0]);
   const [focusRequest, setFocusRequest] = useState(0);
   const [zoom, setZoom] = useState(100);
@@ -22,10 +24,10 @@ export function EvidenceDemo({ review }: { review: Review }) {
   const canvas = useRef<CanvasControls>(null);
   const selected = review.elements.find((e) => e.id === selectedId);
   return (
-    <div className="evidence-demo grid gap-2 lg:h-full lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[minmax(0,1fr)]">
+    <div className="evidence-demo grid h-full grid-rows-[minmax(0,1fr)_auto] gap-2 lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[minmax(0,1fr)]">
       <Card className="canvas-card min-w-0 gap-0 py-0">
         <div className="canvas-toolbar flex items-center justify-end gap-2 border-b p-2 sm:justify-between" role="toolbar" aria-label="Diagram controls">
-          <span className="truncate px-2 text-sm font-medium max-sm:hidden">{view.title}</span>
+          <span className="truncate px-2 text-sm font-medium max-sm:hidden">Process overview</span>
           <div className="flex items-center gap-1">
             <ZoomControls canvas={canvas} zoom={zoom} />
           </div>
@@ -54,7 +56,6 @@ export function EvidenceDemo({ review }: { review: Review }) {
             setFocusRequest((n) => n + 1);
           }}
           onSource={(source, segment) => setPassage({ source, segment })}
-          onQuestions={() => {}}
         />
       )}
       <Sheet open={!!passage} onOpenChange={(open) => !open && setPassage(undefined)}>

@@ -26,7 +26,8 @@ export function EvidencePanel({
   review: Review;
   onGo: (id: string) => void;
   onSource: (sourceId: string, segmentId: string) => void;
-  onQuestions: () => void;
+  // Without it, the related questions are shown as text.
+  onQuestions?: () => void;
   onClose?: () => void;
 }) {
   const label = (id: string) =>
@@ -120,7 +121,9 @@ export function EvidencePanel({
           {element.questions.length ? (
             <div className="flex flex-col gap-2">
               <h3 className="text-sm font-medium">Related clarifications</h3>
-              {element.questions.map((q) => (
+              {element.questions.map((q) => !onQuestions ? (
+                <p key={q.id} className="rounded-md border px-3 py-2 text-sm leading-relaxed">{q.question}</p>
+              ) : (
                 <Button
                   key={q.id}
                   variant="outline"

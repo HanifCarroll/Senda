@@ -9,7 +9,9 @@ const escape = value => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").r
 const vectorNames = process.argv.includes("--mobile-only") ? [] : ["evidence", "clarification"];
 for (const name of vectorNames) {
   const capture = JSON.parse(await readFile(path.join(input, name + "-vector.json"), "utf8"));
-  if (new URL(capture.sourceUrl).pathname !== "/example" || !capture.html.includes("Brightline client onboarding")) {
+  // The evidence capture is the home page's live example; the question is the example's own page.
+  const [from, text] = name === "evidence" ? ["/", "Onboarding interview"] : ["/example", "Brightline client onboarding"];
+  if (new URL(capture.sourceUrl).pathname !== from || !capture.html.includes(text)) {
     throw new Error(name + " must be captured from the public onboarding example");
   }
   const crop = capture.crop || { x: 0, y: 0, width: capture.width, height: capture.height };
