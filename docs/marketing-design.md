@@ -31,7 +31,7 @@ Sections 3 to 7, 9 and 10 use `MarketingSection` in `src/web/components/marketin
 
 Keep to these limits when you change the page:
 
-- **Word budget.** At most 25 words in the hero subtitle, 80 in a section outside its visual, 30 in the short band and 45 in a plan card. FAQ answers are exempt because they are collapsed. Pricing holds two cards, so its section total is higher.
+- **Word budget.** At most 25 words in the hero subtitle, 80 in a section outside its visual, 30 in the short band and 45 in a plan card. FAQ answers are exempt because they are collapsed. Pricing holds two cards, so its section total is higher. The agent section is 85 words, because it carries the ChatGPT plan restriction; don't add to it.
 - **Type floor.** Marketing text is 16 px or larger: 18 px for point titles and FAQ questions, 20 px for section intros and 22 px for the hero subtitle. 14 px is allowed only in the header, the footer, window bars and product visuals, including the hero illustration.
 - **Readable captures.** A product capture shows the app's text at 12 px at 1440, 390 and 320 px, the widths it is captured for, and never under about 10.5 px in between. The page scales a capture down a little between those widths: at 1024 px the evidence capture is drawn 880 px wide, so its text is 10.5 px, and at 360 px the phone captures show their text at 11 px. Capture each image at the width the page shows it at instead of scaling a larger one down. `scripts/capture-marketing-previews.js` fails when a capture's own text is under 12 px.
 
