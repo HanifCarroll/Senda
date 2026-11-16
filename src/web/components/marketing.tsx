@@ -12,7 +12,7 @@ import { PathArt } from "./path-art";
 import { PricingPlans } from "./pricing-plans";
 
 // Bump the version when public/marketing changes (docs/marketing-design.md, "Sharp product previews").
-const capture = (file: string) => `/marketing/${file}?v=9`;
+const capture = (file: string) => `/marketing/${file}?v=10`;
 const repository = "https://github.com/HanifCarroll/Senda";
 const methodology = `${repository}/blob/main/skills/senda/references/methodology.md`;
 
@@ -234,7 +234,8 @@ function EvidenceVisual() {
     <div className="flex flex-col items-center gap-6">
       <div ref={frame} data-visual data-capture="evidence" className="w-full">
         {demo ? (
-          <div className={panel}>
+          // The cream panel starts at lg here. Below it the capture has no panel, and the example takes its exact box.
+          <div className="lg:rounded-[1.75rem] lg:bg-muted lg:p-10">
             <div data-held={held ? "" : undefined} style={{ height: held }} className={phoneWidth + " lg:h-[756px]"} onClickCapture={release} onKeyDownCapture={release}>
               <demo.Demo review={demo.review} />
             </div>
@@ -242,7 +243,7 @@ function EvidenceVisual() {
         ) : (
           // The captures are pictures of this panel with the example loaded, so nothing moves when it loads.
           <picture>
-            <source media="(max-width: 359px)" srcSet={capture("evidence-mobile-small.png")} width="280" height="1564" />
+            <source media="(max-width: 359px)" srcSet={capture("evidence-mobile-small.png")} width="280" height="1562" />
             <source media="(max-width: 1023px)" srcSet={capture("evidence-mobile.png")} width="350" height="1478" />
             <img
               src={capture("evidence.svg")}

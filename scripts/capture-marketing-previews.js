@@ -42,9 +42,24 @@ const open = async (route, width, height, deviceScaleFactor = 1) => {
   const page = await context.newPage();
   await page.goto(origin + route, { waitUntil: "networkidle" });
   await page.addStyleTag({ content: "*{animation:none!important;transition:none!important}" });
+  await hideOverlays(page);
   return page;
 };
+// The page's header and anything else fixed or sticky would be drawn across a capture, where it looks like
+// controls that do nothing. Runs in the page.
+const overlays = () => [...document.querySelectorAll("body *")].filter((node) => {
+  const style = getComputedStyle(node), box = node.getBoundingClientRect();
+  return ["fixed", "sticky"].includes(style.position) && style.visibility !== "hidden" && box.width > 0 && box.height > 0;
+});
+const hideOverlays = (page) => page.evaluate(`(${overlays})().forEach((node) => node.style.setProperty("visibility", "hidden", "important"))`);
+// Stop if the header, or anything else fixed or sticky, would show in a capture.
+const clear = async (page, name) => {
+  const shown = await page.evaluate(`(${overlays})().map((node) => node.tagName.toLowerCase() + ": " + node.textContent.trim().slice(0, 40))`);
+  const header = await page.locator(".marketing > header").isVisible();
+  if (header || shown.length) throw new Error(`${name} would show ${header ? "the page's header" : shown.join(", ")}`);
+};
 const vector = async (page, name, cropSelector, height) => {
+  await clear(page, name);
   const capture = await page.evaluate(`(${capturePreview})(${JSON.stringify({ cropSelector })})`);
   if (height) capture.crop.height = height;
   writeFileSync(path.join(out, `${name}-vector.json`), JSON.stringify(capture));
@@ -63,6 +78,7 @@ const openDemo = async (width, height, deviceScaleFactor) => {
   // The page holds the example to the old capture's height until the width changes, so change it and
   // change it back to capture the example at its own height.
   await page.setViewportSize({ width: width + 1, height });
+  await page.waitForFunction((selector) => !document.querySelector(selector + " [data-held]"), demoSelector);
   await page.setViewportSize({ width, height });
   await page.waitForTimeout(500);
   if ((await page.locator(`${demoSelector} [data-slot="card-title"]`).innerText()) !== "Check handover pack") throw new Error("The home page example doesn't open on Check handover pack");
@@ -111,12 +127,14 @@ for (const [suffix, question] of [["", 390], ["-small", 320]]) {
   let page = await open("/example?draft=true&section=questions", question, 844, 2);
   await page.locator(questionItem).first().waitFor();
   let box = await questionCrop(page);
+  await clear(page, "clarification-mobile" + suffix);
   await page.screenshot({ path: path.join(out, `clarification-mobile${suffix}.png`), clip: box });
   check("clarification-mobile" + suffix, box, await page.evaluate(`(${minText})(${JSON.stringify(box)})`));
   await page.context().close();
 
   page = await openDemo(question, 844, 2);
   box = await page.locator(demoSelector).boundingBox();
+  await clear(page, "evidence-mobile" + suffix);
   await page.locator(demoSelector).screenshot({ path: path.join(out, `evidence-mobile${suffix}.png`) });
   check("evidence-mobile" + suffix, box, await page.evaluate(`(${minText})(${JSON.stringify(box)}, ${JSON.stringify(demoSelector)})`));
   await page.context().close();

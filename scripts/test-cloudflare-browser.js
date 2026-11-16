@@ -138,7 +138,7 @@ try {
   console.log("Homepage example shows a selected step's evidence in place and leaves the page scroll alone");
   // The capture holds the example's place: nothing moves when the example loads, and it stays if the load fails.
   const exampleData = "**/examples/onboarding-draft.json";
-  for (const width of [1440, 390, 320]) {
+  for (const width of [1440, 1024, 768, 390, 320]) {
     const bounds = () => p.evaluate(() => {
       const section = document.querySelector('[data-section="evidence"]'), next = section.nextElementSibling;
       return [section.getBoundingClientRect().height, next.getBoundingClientRect().top + scrollY];
