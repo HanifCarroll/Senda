@@ -17,6 +17,13 @@ export function createDiagramGestureMachine(services) {
   };
   const end = target => ({ context, event }) => event.pointerId === context.pointer.id
     ? { target, context: { pointer: null } } : undefined;
+  // The browser cancels a touch drag when it takes the gesture to scroll the page, so the pan it began is undone.
+  const cancelPan = ({ context, event }, enq) => {
+    const pointer = context.pointer;
+    if (event.pointerId !== pointer.id) return;
+    enq(services.pan, { cx: pointer.cx, cy: pointer.cy, dx: 0, dy: 0 });
+    return { target: 'suppressingClick', context: { pointer: null } };
+  };
   return createMachine({
     id: 'diagram-gesture',
     schemas: { events: {
@@ -38,7 +45,7 @@ export function createDiagramGestureMachine(services) {
     states: {
       idle: {},
       pressed: { on: { MOVE: move, RELEASE: end('idle'), CANCEL: end('idle') } },
-      panning: { on: { MOVE: move, RELEASE: end('suppressingClick'), CANCEL: end('suppressingClick') } },
+      panning: { on: { MOVE: move, RELEASE: end('suppressingClick'), CANCEL: cancelPan } },
       suppressingClick: { on: { CLICK: { target: 'idle' } } },
     },
   });

@@ -5,8 +5,6 @@ import {
   Maximize,
   Minimize,
   MessageSquare,
-  Minus,
-  Plus,
   RefreshCw,
   PanelRight,
   Info,
@@ -23,7 +21,7 @@ import type {
 } from "@/lib/types";
 import { destinationFor, readableLabel } from "@/lib/review-navigation";
 import { cn } from "@/lib/utils";
-import { DiagramCanvas, type CanvasControls } from "./diagram-canvas";
+import { DiagramCanvas, ZoomControls, type CanvasControls } from "./diagram-canvas";
 import { BrandMark } from "./brand";
 import { EvidencePanel } from "./evidence-panel";
 import { RevisionPicker } from "./revision-picker";
@@ -504,31 +502,7 @@ export function ReviewApp({
                               <Button variant="ghost" size="icon" aria-label="Find a step or message" onClick={() => setSearchOpen(true)}><Search /></Button>
                             </div>
                             <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Zoom out"
-                                onClick={() => canvas.current?.zoom(1 / 1.2)}
-                              >
-                                <Minus />
-                              </Button>
-                              <Button variant="ghost" aria-label="Reset zoom to actual size" title="Reset to actual size" onClick={() => canvas.current?.actual()}>
-                                <output className="min-w-10 text-center text-xs tabular-nums" aria-label="Zoom level">{zoom}%</output>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Zoom in"
-                                onClick={() => canvas.current?.zoom(1.2)}
-                              >
-                                <Plus />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                onClick={() => canvas.current?.fit()}
-                              >
-                                Fit
-                              </Button>
+                              <ZoomControls canvas={canvas} zoom={zoom} />
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button

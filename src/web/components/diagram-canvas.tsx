@@ -4,11 +4,14 @@ import {
   useRef,
   useState,
   type Ref,
+  type RefObject,
 } from "react";
+import { Minus, Plus } from "lucide-react";
 import { safeSvg } from "@/lib/svg";
 import { bindDiagramGestures } from "@/lib/diagram-gesture-machine";
 import type { DiagramView, ModelElement } from "@/lib/types";
 import { Alert, AlertTitle, AlertDescription } from "./ui/alert";
+import { Button } from "./ui/button";
 
 export interface CanvasControls {
   zoom: (factor: number) => void;
@@ -29,7 +32,28 @@ interface Props {
   storageKey: string;
   onSelect: (id: string) => void;
   onZoom: (zoom: number) => void;
+  // Open on these elements at this zoom instead of the whole diagram, until the visitor moves the camera.
+  frame?: { ids: string[]; scale: number };
   ref: Ref<CanvasControls>;
+}
+
+export function ZoomControls({ canvas, zoom }: { canvas: RefObject<CanvasControls | null>; zoom: number }) {
+  return (
+    <>
+      <Button variant="ghost" size="icon" aria-label="Zoom out" onClick={() => canvas.current?.zoom(1 / 1.2)}>
+        <Minus />
+      </Button>
+      <Button variant="ghost" aria-label="Reset zoom to actual size" title="Reset to actual size" onClick={() => canvas.current?.actual()}>
+        <output className="min-w-10 text-center text-xs tabular-nums" aria-label="Zoom level">{zoom}%</output>
+      </Button>
+      <Button variant="ghost" size="icon" aria-label="Zoom in" onClick={() => canvas.current?.zoom(1.2)}>
+        <Plus />
+      </Button>
+      <Button variant="outline" onClick={() => canvas.current?.fit()}>
+        Fit
+      </Button>
+    </>
+  );
 }
 
 export function DiagramCanvas({
@@ -40,6 +64,7 @@ export function DiagramCanvas({
   storageKey,
   onSelect,
   onZoom,
+  frame,
   ref,
 }: Props) {
   const stage = useRef<HTMLDivElement>(null);
@@ -212,8 +237,28 @@ export function DiagramCanvas({
         actual: () => zoomTo(1),
         select,
       };
+      function showFrame() {
+        if (!frame || !host.clientWidth || !host.clientHeight) return false;
+        const boxes = frame.ids.flatMap((id) => {
+          const node = nodes.get(id);
+          return node ? [node.getBBox()] : [];
+        });
+        if (!boxes.length) return false;
+        const { width, height } = size(), { scale } = frame;
+        const left = Math.min(...boxes.map((b) => b.x)),
+          right = Math.max(...boxes.map((b) => b.x + b.width));
+        camera = {
+          scale,
+          // A group wider than the stage keeps its first element in view instead of its middle.
+          x: Math.min((left + right) / 2 - width / scale / 2, boxes[0].x - 24 / scale),
+          y: original.y + original.height / 2 - height / scale / 2,
+          fitted: false,
+        };
+        draw();
+        return true;
+      }
       if (saved.current.has(view.elementId) || stored) draw();
-      else fit(true);
+      else if (!showFrame()) fit(true);
       observer = new ResizeObserver(() => {
         if (!host.clientWidth || !host.clientHeight) return;
         const nextSize = size();

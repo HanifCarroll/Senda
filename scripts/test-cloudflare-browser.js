@@ -118,6 +118,21 @@ try {
   }
   await p.setViewportSize({ width: 1440, height: 1000 });
   console.log("Homepage task labels, icons and number badges have clear spacing on desktop and mobile");
+  // The evidence section's live example: selecting a step shows its evidence on the page.
+  const demo = p.locator('[data-capture="evidence"]');
+  await demo.scrollIntoViewIfNeeded();
+  const demoTitle = demo.locator('.evidence-card [data-slot="card-title"]');
+  assert.equal(await demoTitle.innerText(), "Check required items");
+  await demo.getByRole("button", { name: "Request missing items", exact: true }).click();
+  assert.equal(await demoTitle.innerText(), "Request missing items");
+  assert.equal(p.url(), base + "/", "Selecting a step on the homepage does not navigate");
+  const demoStage = await demo.locator(".diagram-stage").boundingBox();
+  const zoomLevel = await demo.getByLabel("Zoom level").innerText(), scrolled = await p.evaluate(() => scrollY);
+  await p.mouse.move(demoStage.x + demoStage.width / 2, demoStage.y + demoStage.height / 2);
+  await p.mouse.wheel(0, 300);
+  await p.waitForFunction(y => scrollY > y, scrolled);
+  assert.equal(await demo.getByLabel("Zoom level").innerText(), zoomLevel, "The wheel scrolls the page instead of zooming the homepage diagram");
+  console.log("Homepage example shows a selected step's evidence in place and leaves the page scroll alone");
   await p.goto(base + "/sign-in");
   await p.getByLabel("Email", { exact: true }).fill(email);
   await p.getByRole("button", { name: "Send sign-in link", exact: true }).click();

@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
+import { api } from "@/lib/api";
 import { productName } from "@/lib/brand";
+import type { Review } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Brand } from "./brand";
@@ -115,21 +117,16 @@ function Buttons({ main = "start" }: { main?: "start" | "example" }) {
   );
 }
 
-function SectionHeading({ headline, children, dark }: { headline: string; children?: ReactNode; dark?: boolean }) {
-  return (
-    <div className={cn("mx-auto flex max-w-[720px] flex-col gap-6", centered)}>
-      <h2 className={h2}>{headline}</h2>
-      {children && <p className={cn(intro, dark ? "text-primary-foreground/80" : "text-muted-foreground")}>{children}</p>}
-    </div>
-  );
-}
-
 type Point = { title: string; text: ReactNode };
+// "centered" is one centered column. "wide" puts the headline beside the intro above a full-width visual.
+// "visual-right" and "visual-left" put the headline, intro and points beside the visual.
+// Every layout is one column below lg.
+type Layout = "centered" | "wide" | "visual-right" | "visual-left";
 
-// The one template every section between the hero and the FAQ uses: a centered headline and intro,
-// one full-width visual, and up to three points. docs/marketing-design.md has the word and type rules.
+// The one template every section between the hero and the FAQ uses: a headline, an intro, one visual and
+// up to three points. docs/marketing-design.md has the layout, word and type rules.
 function MarketingSection({
-  name, id, headline, intro: introText, visual, points, dark, children,
+  name, id, headline, intro: introText, visual, points, dark, layout = "centered", children,
 }: {
   name: string;
   id?: string;
@@ -138,52 +135,122 @@ function MarketingSection({
   visual?: ReactNode;
   points?: Point[];
   dark?: boolean;
+  layout?: Layout;
   children?: ReactNode;
 }) {
+  const split = layout.startsWith("visual");
+  const muted = dark ? "text-primary-foreground/80" : "text-muted-foreground";
+  // Below lg every layout is the centered one.
+  const left = layout !== "centered" && "lg:text-left";
   return (
     <section id={id} data-section={name} className={cn("scroll-mt-24", dark && "bg-primary text-primary-foreground")}>
-      <div className={cn(container, "flex flex-col gap-12 py-20 sm:gap-16 sm:py-28")}>
-        <SectionHeading headline={headline} dark={dark}>{introText}</SectionHeading>
-        {visual}
-        {points && (
-          <ul className={cn("grid gap-8 md:grid-cols-3 md:gap-10", centered)}>
-            {points.map(({ title, text }) => (
-              <li key={title} className="flex flex-col gap-2">
-                <h3 className="text-lg font-semibold">{title}</h3>
-                <p className={cn("leading-relaxed", dark ? "text-primary-foreground/80" : "text-muted-foreground")}>{text}</p>
-              </li>
-            ))}
-          </ul>
+      <div
+        className={cn(
+          container,
+          "flex flex-col gap-12 py-20 sm:gap-16 sm:py-28",
+          // The visual spans both rows, and the points take the spare height, so they sit under the intro.
+          split && "lg:grid lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-16 lg:gap-y-12",
         )}
-        {children}
+      >
+        <div
+          data-text
+          className={cn(
+            "mx-auto flex max-w-[720px] flex-col gap-6",
+            centered,
+            left,
+            layout !== "centered" && "lg:mx-0 lg:max-w-none",
+            layout === "wide" && "lg:grid lg:grid-cols-2 lg:items-end lg:gap-16",
+            layout === "visual-left" && "lg:col-start-2",
+          )}
+        >
+          <h2 className={h2}>{headline}</h2>
+          {introText && <p className={cn(intro, muted)}>{introText}</p>}
+        </div>
+        {visual && (
+          <div className={cn(split && "lg:row-span-2 lg:row-start-1 lg:self-center", layout === "visual-right" && "lg:col-start-2")}>
+            {visual}
+          </div>
+        )}
+        {(points || (split && children)) && (
+          <div className={cn("flex flex-col gap-12 sm:gap-16 lg:gap-8", layout === "visual-left" && "lg:col-start-2")}>
+            {points && (
+              <ul className={cn("grid gap-8 md:grid-cols-3 md:gap-10", centered, left, split && "lg:grid-cols-1 lg:gap-8")}>
+                {points.map(({ title, text }) => (
+                  <li key={title} className="flex flex-col gap-2">
+                    <h3 className="text-lg font-semibold">{title}</h3>
+                    <p className={cn("leading-relaxed", muted)}>{text}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {split && children}
+          </div>
+        )}
+        {!split && children}
       </div>
     </section>
   );
 }
 
-const evidence = (
-  <div className={panel}>
-    <a
-      href="/example?view=Intake&element=CheckPack"
-      data-visual
-      data-capture="evidence"
-      className={cn(windowFrame, "mx-auto block max-lg:max-w-[390px]")}
-    >
-      <picture>
-        <source media="(max-width: 359px)" srcSet={capture("evidence-mobile-small.png")} width="280" height="646" />
-        <source media="(max-width: 1023px)" srcSet={capture("evidence-mobile.png")} width="350" height="646" />
-        <img
-          src={capture("evidence.svg")}
-          width="1008"
-          height="620"
-          loading="lazy"
-          alt="The “Check required items” step selected in a client onboarding diagram, next to the interview passage it came from."
-          className="w-full"
-        />
-      </picture>
-    </a>
-  </div>
-);
+const evidenceExample = "/example?view=Intake&element=CheckPack";
+
+// The evidence section's live example. The static capture holds its place, and the viewer's code and the
+// example's data load only when the section comes near the viewport, so the top of the page stays light.
+// If either fails to load, the capture stays.
+function EvidenceVisual() {
+  const frame = useRef<HTMLDivElement>(null);
+  const [demo, setDemo] = useState<{ Demo: ComponentType<{ review: Review }>; review: Review }>();
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        void Promise.all([import("./evidence-demo"), api<Review>("/examples/onboarding-final.json")])
+          .then(([module, review]) => setDemo({ Demo: module.EvidenceDemo, review }))
+          .catch(() => {});
+      },
+      { rootMargin: "800px 0px" },
+    );
+    observer.observe(frame.current!);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div className="flex flex-col items-center gap-6">
+      <div className={cn(panel, "w-full")}>
+        <div
+          ref={frame}
+          data-visual
+          data-capture="evidence"
+          className={cn(
+            "mx-auto lg:aspect-[1008/620]",
+            // The capture is a picture in a window frame. The live example is the app's own two cards.
+            !demo && cn(windowFrame, "max-lg:max-w-[390px]"),
+          )}
+        >
+          {demo ? (
+            <demo.Demo review={demo.review} />
+          ) : (
+            <picture>
+              <source media="(max-width: 359px)" srcSet={capture("evidence-mobile-small.png")} width="280" height="646" />
+              <source media="(max-width: 1023px)" srcSet={capture("evidence-mobile.png")} width="350" height="646" />
+              <img
+                src={capture("evidence.svg")}
+                width="1008"
+                height="620"
+                loading="lazy"
+                alt="The “Check required items” step selected in a client onboarding diagram, next to the interview passage it came from."
+                className="w-full"
+              />
+            </picture>
+          )}
+        </div>
+      </div>
+      <a href={evidenceExample} className={textLink}>
+        Open the full example
+      </a>
+    </div>
+  );
+}
 
 const questions = (
   <div className={cn(panel, "flex flex-col gap-8 sm:gap-10")}>
@@ -200,11 +267,12 @@ const questions = (
       href="/example?draft=true&section=questions"
       data-visual
       data-capture="clarification"
-      className={cn(windowFrame, "mx-auto block w-full max-w-[768px] p-2 max-[860px]:max-w-[350px] min-[861px]:p-6")}
+      className={cn(windowFrame, "mx-auto block w-full max-w-[768px] p-2 max-[860px]:max-w-[350px] min-[861px]:max-lg:p-6 lg:max-w-[350px]")}
     >
       <picture>
         <source media="(max-width: 359px)" srcSet={capture("clarification-mobile-small.png")} width="264" height="186" />
-        <source media="(max-width: 860px)" srcSet={capture("clarification-mobile.png")} width="334" height="146" />
+        {/* Beside the text the panel is about as wide as a phone, so desktop shows the phone capture too. */}
+        <source media="(max-width: 860px), (min-width: 1024px)" srcSet={capture("clarification-mobile.png")} width="334" height="146" />
         <img
           src={capture("clarification.svg")}
           width="720"
@@ -222,7 +290,7 @@ const history = (
   <div className={panel}>
     <div data-visual className={cn(windowFrame, "mx-auto max-w-4xl")}>
       <WindowBar title="Brightline client onboarding · History" />
-      <div className="grid gap-8 p-6 sm:grid-cols-2 sm:p-10">
+      <div className="grid gap-8 p-6 sm:grid-cols-2 sm:p-10 lg:grid-cols-1 lg:p-8">
         <RevisionTrack name="As-is · Current process" items={asIs} />
         <div className="flex flex-col gap-6">
           <p className="leading-relaxed text-muted-foreground">Started from As-is revision 5 and a design brief.</p>
@@ -397,7 +465,9 @@ export function Marketing() {
           id="how-it-works"
           headline="Every step links to what was said."
           intro="Select any step in the diagram to read the part of the interview it came from."
-          visual={<><span id="map" className="sr-only" />{evidence}</>}
+          layout="wide"
+          visual={<><span id="map" className="sr-only" />
+            <EvidenceVisual /></>}
           points={[
             { title: "Read the passage", text: "Select a step and open Evidence to read the transcript passage that supports it." },
             { title: "Standard BPMN", text: "Diagrams use BPMN 2.0, the standard notation for process maps, and download as a .bpmn file." },
@@ -409,7 +479,8 @@ export function Marketing() {
           name="questions"
           id="clarify"
           headline="The agent asks instead of guessing."
-          intro="People describe their own part of the work and often leave out what happens between teams. Where the transcript doesn’t say, the agent writes a question for you to take back to the team."
+          intro="People describe their own part of the work and often leave out what happens between teams. If the interview doesn’t answer something, the agent writes a question for you to take back to the team."
+          layout="visual-right"
           visual={questions}
           points={[
             { title: "Why it’s asking", text: "Each question says what the answer will change in the diagram." },
@@ -423,6 +494,7 @@ export function Marketing() {
           id="plan"
           headline="Keep every version, then plan the future process."
           intro="Each time you bring back answers, the agent updates the same diagram and saves a new revision. Once everyone agrees on how the work runs today, start a separate To-be plan for how it should run."
+          layout="visual-left"
           visual={history}
           points={[
             { title: "See what changed", text: "Each revision lists what it added, changed, and removed." },
@@ -446,6 +518,7 @@ export function Marketing() {
           id="your-agent"
           headline="Use Senda’s built-in agent, or your own Claude or ChatGPT."
           intro="The built-in agent is a chat inside Senda, with nothing to set up."
+          layout="visual-right"
           visual={chat}
           points={[
             { title: "Inside Senda", text: "Add your transcript to a project and chat with the built-in agent." },
@@ -456,7 +529,7 @@ export function Marketing() {
             { title: "Keep talking", text: "Answer its questions in the same chat, then open Senda to see the diagram and compare revisions." },
           ]}
         >
-          <p className={cn("text-muted-foreground", centered)}>
+          <p className={cn("text-muted-foreground", centered, "lg:text-left")}>
             ChatGPT support is in beta, and ChatGPT can save diagrams only on its Business, Enterprise, and Edu plans.
             There’s also a{" "}
             <a href={`${repository}#from-the-command-line`} className={textLink}>
@@ -471,10 +544,11 @@ export function Marketing() {
           id="pricing"
           headline="Start free. Continue with Pro."
           intro="Try the built-in agent on one project for free, or connect your own agent on either plan."
+          layout="wide"
         >
           <div className="flex flex-col gap-6">
             <PricingPlans />
-            <p className={cn("text-muted-foreground", centered)}>
+            <p className={cn("text-muted-foreground", centered, "lg:text-left")}>
               When the included usage runs out, the built-in agent pauses and nothing extra is charged. Daily and shared
               service limits apply.{" "}
               <a href="/usage" className={textLink}>
@@ -486,8 +560,8 @@ export function Marketing() {
         </MarketingSection>
 
         <section id="questions" data-section="faq" className="scroll-mt-24">
-          <div className={cn(container, "flex max-w-[calc(768px+4rem)] flex-col gap-10 py-20 sm:py-28")}>
-            <h2 className={cn(h2, centered)}>Questions</h2>
+          <div className={cn(container, "flex max-w-[calc(768px+4rem)] flex-col gap-10 py-20 sm:py-28 lg:grid lg:max-w-6xl lg:grid-cols-[1fr_2fr] lg:items-start lg:gap-16")}>
+            <h2 className={cn(h2, centered, "lg:text-left")}>Questions</h2>
             <Accordion type="single" collapsible className="border-t">
               {faqs.map(({ question, answer }, i) => (
                 <AccordionItem key={question} value={String(i)}>

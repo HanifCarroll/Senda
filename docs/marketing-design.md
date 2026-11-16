@@ -16,7 +16,7 @@ Sections run in this order:
 2. The transcript-to-model illustration on the ink panel.
 3. Audience: who Senda is for, as three points with no visual.
 4. "Why not just ask your AI for a diagram?" (`#why-senda`): the dark band, as one paragraph that states the problem. The next three sections are the answer, so it comes before them.
-5. Evidence (`#how-it-works`, `#map`): the evidence capture, and the point about BPMN downloads.
+5. Evidence (`#how-it-works`, `#map`): the live example, a link to the full example, and the point about BPMN downloads.
 6. Questions (`#clarify`): the interview quote between two lines that say what it left unclear, and the question capture.
 7. Revisions and the To-be plan (`#plan`): the History panel.
 8. A short cream band that sends visitors to the example before they sign up.
@@ -27,13 +27,22 @@ Sections run in this order:
 
 The header links follow that order. The method summary link is in the footer.
 
-Sections 3 to 7, 9 and 10 use `MarketingSection` in `src/web/components/marketing.tsx`. It takes a headline, an intro, one visual, up to three points and a dark option, and lays them out as one centered column: the headline and intro at most 720 px wide, the visual at the full container width, and the points in three columns on desktop and one on phones. Don't build a section's layout by hand. Below the `sm` breakpoint the headline, intro and points of these sections and the FAQ heading are left-aligned, because centered paragraphs are hard to read on a phone. The hero, the short band and the closing CTA stay centered at every width.
+Sections 3 to 7, 9 and 10 use `MarketingSection` in `src/web/components/marketing.tsx`. It takes a headline, an intro, one visual, up to three points, a dark option and a layout. Don't build a section's layout by hand. From the `lg` breakpoint up, text and visuals sit side by side, so the page is shorter without smaller type or tighter padding:
+
+- `visual-right` and `visual-left` put the headline, the intro and the points in one column and the visual in the other, centered against the text. Sections with a compact visual use them and alternate down the page: questions has its visual on the right, revisions on the left, and the agent section on the right.
+- `wide` puts the headline on the left and the intro on the right, above a visual or content at the full container width. Evidence uses it, because the diagram and its panel need the room, and so does pricing, for its two cards.
+- `centered` is one centered column, the headline and intro at most 720 px wide. The audience section and the dark band use it.
+
+The FAQ puts its heading on the left and the questions on the right. Below `lg` every section is the centered column, with the visual at the full container width and the points in three columns from `md` and one on phones. Below the `sm` breakpoint the headline, intro and points of these sections and the FAQ heading are left-aligned, because centered paragraphs are hard to read on a phone. The hero, the short band and the closing CTA stay centered at every width.
+
+A visual beside the text is about 430 px wide inside its cream panel at 1440 px, and about 370 px at 1024 px, so it has to read at phone width: the History panel stacks its two tracks, and the question shows its phone capture.
 
 Keep to these limits when you change the page:
 
 - **Word budget.** About 25 words in the hero subtitle (it is 26 now), 80 in a section outside its visual, 30 in the short band and 45 in a plan card. FAQ answers are exempt because they are collapsed. Pricing holds two cards, so its section total is higher. Three sections are over 80 and shouldn't grow: the agent section is 92 words, because it explains both agents and carries the ChatGPT plan restriction; the questions section is 86 outside its panel, which holds another 29 in the quote and the two lines around it; and the revisions section is 84.
 - **Type floor.** Marketing text is 16 px or larger: 18 px for point titles and FAQ questions, 20 px for section intros and 22 px for the hero subtitle. 14 px is allowed only in the header, the footer, window bars and product visuals, including the hero illustration.
 - **Readable captures.** A product capture shows the app's text at 12 px at 1440, 390 and 320 px, the widths it is captured for, and never under about 10.5 px in between. The page scales a capture down a little between those widths: at 1024 px the evidence capture is drawn 880 px wide, so its text is 10.5 px, and at 360 px the phone captures show their text at 11 px. Capture each image at the width the page shows it at instead of scaling a larger one down. `scripts/capture-marketing-previews.js` fails when a capture's own text is under 12 px.
+- **The live example isn't scaled.** The evidence section's example is the app itself, so its text is the app's real size at every width, 12 px or larger.
 
 - **One name for each thing.** A newcomer takes each new word for a new thing, so the page body uses one name each:
   - "AI agent" once, in the hero subtitle, and "the agent" after it. "The built-in agent" is Senda's own, and "your own agent" or "your own Claude or ChatGPT" is a connected one. Don't write "an agent", "your AI" or "assistant" for it. The one exception is "a chat assistant" in the dark band, which means an AI chat used without Senda.
@@ -52,7 +61,20 @@ Live references were inspected and visually captured on 27 October 2026:
 - [Eraser AI diagrams](https://www.eraser.io/product/ai-diagrams): clear action/outcome hierarchy, two visible entry actions and an early product illustration. We use a concrete workflow rather than its speed claims, branding or images.
 - [IcePanel](https://icepanel.io/): leads with the continuing value of a shared model and uses a large product view. We borrow the idea of exploring detail from a compact overview, without copying the brand, mascot, customer marks or broader architecture/governance proposition.
 
-Images in `public/marketing` are captures of the running application's public onboarding example. Desktop previews use SVG; phone previews use PNG so their text and the evidence sheet's controls remain correctly positioned in mobile image renderers. The evidence view shows the coordinator's "Check required items" step in the intake subprocess, alongside her own words from the interview. Pick a step whose evidence is the interview transcript, not an answer to a clarification question, because answers in the example are written as summaries. The clarification view shows the first draft's question about whether Finance and Delivery start together, with its reason, cropped above the two step buttons under it, which look like answer choices out of context. The README shows `evidence.svg` and the npm package ships it, so keep that file name.
+## The live example
+
+The evidence section embeds the public example instead of a picture of it, so a visitor can select a step and read its evidence without leaving the page. `EvidenceDemo` in `src/web/components/evidence-demo.tsx` shows the example's intake view in the app's own `DiagramCanvas` and `EvidencePanel`, with "Check required items" selected. It opens on the same frame as the evidence capture: the diagram at 110%, so its labels are 12 px, on the three steps the passage describes. Keep `evidence-demo.tsx`'s view and steps in line with the capture.
+
+- **Nothing navigates.** The selection is local state, so the URL never changes. A passage's source opens in a sheet over the page. The plain "Open the full example" link under it is the only way out.
+- **It loads late.** The page first shows the evidence capture at the same size. The demo's code and `public/examples/onboarding-final.json` (about 410 kB, 44 kB compressed) load when the section comes within 800 px of the viewport. If either fails, the capture stays. On phones the demo is taller than the capture, because the panel sits under the diagram.
+- **It doesn't trap the page's scroll.** A wheel or trackpad scroll over the diagram scrolls the page; only a pinch or Ctrl and the wheel zooms. On a touch screen a swipe up or down scrolls the page (`touch-action: pan-y` on `.evidence-demo .diagram-stage`), and a sideways drag pans the diagram. Drag, the zoom buttons and Fit work as in the app.
+- **Phones** show the diagram 400 px tall with the evidence panel under it at its full height, so the panel never scrolls inside the page.
+
+`scripts/test-cloudflare-browser.js` selects a step in it and checks that the panel changes, the URL doesn't, and the wheel scrolls the page.
+
+## Captures
+
+Images in `public/marketing` are captures of the running application's public onboarding example. Desktop previews use SVG; phone previews use PNG so their text and the evidence sheet's controls remain correctly positioned in mobile image renderers. The three evidence captures are what the evidence section shows until the live example loads, and the README shows `evidence.svg`. The evidence view shows the coordinator's "Check required items" step in the intake subprocess, alongside her own words from the interview. Pick a step whose evidence is the interview transcript, not an answer to a clarification question, because answers in the example are written as summaries. The clarification view shows the first draft's question about whether Finance and Delivery start together, with its reason, cropped above the two step buttons under it, which look like answer choices out of context. The README shows `evidence.svg` and the npm package ships it, so keep that file name.
 
 The original transcript and clarification fixtures remain documented in `examples/complex-onboarding`. Public copy uses short process and source labels, with captions explaining what a visitor can explore. Keep it direct and affirmative. Do not add repeated fixture disclaimers, speculative limitations or implementation details to product copy. Explain relevant decisions through concrete actions. Customer results and named client integrations need supporting evidence.
 
@@ -70,14 +92,14 @@ Earlier WebP assets included desktop captures enlarged from 1× images, and an e
 
 | File | Shown | Size | Captured from |
 | --- | --- | --- | --- |
-| `evidence.svg` | 1024 px and wider | 1008 × 620 | `/example?view=Intake&element=CheckPack` at 1056 × 850, cropped to `.diagram-workspace` |
-| `evidence-mobile.png` | 360 to 1023 px | 350 × 646 | The **Step evidence** dialog of the same view at 350 × 760, scrolled to its source passages |
-| `evidence-mobile-small.png` | Under 360 px | 280 × 646 | The same dialog at 280 × 760 |
-| `clarification.svg` | 861 px and wider | 720 × 106 | `/example?draft=true&section=questions` at 800 × 1000, cropped to the first `.reading-column [data-slot="accordion-item"]` and cut 16 px under its reason |
-| `clarification-mobile.png` | 360 to 860 px | 334 × 146 | The same question at 390 × 844 |
+| `evidence.svg` | 1024 px and wider, until the live example loads | 1008 × 620 | `/example?view=Intake&element=CheckPack` at 1056 × 850, cropped to `.diagram-workspace` |
+| `evidence-mobile.png` | 360 to 1023 px, until the live example loads | 350 × 646 | The **Step evidence** dialog of the same view at 350 × 760, scrolled to its source passages |
+| `evidence-mobile-small.png` | Under 360 px, until the live example loads | 280 × 646 | The same dialog at 280 × 760 |
+| `clarification.svg` | 861 to 1023 px | 720 × 106 | `/example?draft=true&section=questions` at 800 × 1000, cropped to the first `.reading-column [data-slot="accordion-item"]` and cut 16 px under its reason |
+| `clarification-mobile.png` | 360 to 860 px, and 1024 px and wider, where the question sits beside the text | 334 × 146 | The same question at 390 × 844 |
 | `clarification-mobile-small.png` | Under 360 px | 264 × 186 | The same question at 320 × 844 |
 
 1. If the example's data changed, first run `node scripts/build-public-example.js`; it rewrites `public/examples/onboarding-draft.json` and `onboarding-final.json` from `examples/complex-onboarding/proposals.js`. Then run `npm run build`, then `npm run serve`, so the public example is at `http://127.0.0.1:3000/example`. Install the browser once with `npx playwright install chromium`.
 2. Run `node scripts/capture-marketing-previews.js <capture-directory>`. It uses the read-only `capturePreview` function in [capture-preview-dom.js](../scripts/capture-preview-dom.js) for the two vector captures and saves them as `evidence-vector.json` and `clarification-vector.json`. For the evidence view it opens the evidence panel, zooms the diagram to 110% so its labels are 12 px, and drags the canvas until the selected step and the steps after it are centered. The whole intake flow doesn't fit beside the panel at that size, so the frame holds the three steps the passage describes, the decision between them and the end event; the start event and the first merge are off the left edge. It stops if a step, gateway or event is cut by the edge, or if the interviewee's passage isn't visible in the panel. For the question it cuts the crop 16 px under the reason. It saves the four phone PNGs with animations disabled, after the dialog has opened and scrolled to its source passages. It prints each capture's size and smallest text, and stops if any text is under 12 px.
 3. Run `npm run build:marketing -- <capture-directory>`. The builder validates and writes the two SVGs and copies the four PNGs into `public/marketing`. To refresh only the phone images, use `node scripts/build-marketing-previews.js <capture-directory> --mobile-only`; this needs only the PNGs and leaves the SVGs unchanged.
-4. If a capture's size changed, update its `width` and `height` in `src/web/components/marketing.tsx`. Bump the version in that file's `capture` function, then check the images as embedded images at 1440, 390 and 320 px. Check that each crop is complete and that each image opens its intended example view.
+4. If a capture's size changed, update its `width` and `height` in `src/web/components/marketing.tsx`. Bump the version in that file's `capture` function, then check the images as embedded images at 1440, 390 and 320 px. Check that each crop is complete, that the question image opens its example view, and that the evidence capture matches the live example that replaces it.
