@@ -31,8 +31,8 @@ const nodes: {
   { kind: "end", h: [660, 120], m: [80, 345] },
 ];
 
-// The compact task is wide enough to leave "Record financial" as clear of its step badge as "Issue deposit".
-const task = { h: [132, 88], m: [200, 40] } as const;
+// The compact task is as wide as a 320 px phone allows, which leaves 30 px between "Record financial" and its step badge.
+const task = { h: [132, 88], m: [216, 40] } as const;
 
 const edges: { h: Point[]; m: Point[]; step?: Step }[] = [
   { h: [[35, 120], [58, 120]], m: [[80, 27], [80, 38]] },
@@ -115,8 +115,8 @@ function Diagram({ layout, active }: { layout: Layout; active: Step | null }) {
   const on = (step?: Step) => step !== undefined && step === active;
   return (
     <svg
-      viewBox={wide ? "-16 0 748 232" : "-22 0 236 362"}
-      className={cn("h-auto w-full", wide ? "hidden xl:block" : "mx-auto max-w-[236px] xl:hidden")}
+      viewBox={wide ? "-16 0 748 232" : "-30 0 240 362"}
+      className={cn("h-auto w-full", wide ? "hidden xl:block" : "mx-auto max-w-[240px] xl:hidden")}
       role="img"
       aria-label="Finance subprocess: check credit terms; without approved terms, issue the deposit invoice and receive the deposit; then record financial clearance."
       fontFamily="ui-sans-serif, system-ui, sans-serif"
