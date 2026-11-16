@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Rebuild the homepage as one idea per section on a shared template: the comparison with asking an AI now comes before the product sections, the walkthrough is three sections with full-width captures, and marketing text is 16 px or larger. Product captures show the app's text at 12 px or more on desktop and phones.
+- Rebuild the homepage as one idea per section on a shared template: the comparison with asking an AI now comes before the product sections, the walkthrough is three sections with full-width captures, and marketing text is 16 px or larger. Product captures show the app's text at 12 px at 1440, 390 and 320 px wide, and at about 10.5 px or more at the widths in between.
 
 ## 0.4.0
 
