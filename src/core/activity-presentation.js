@@ -94,24 +94,36 @@ const BAND=30;
 // the metrics here, so the clearance grows with the length of the strip.
 const nameRoom=length=>Math.max(24,length-2*Math.max(8,length*.05));
 
+// Other editors save hard line breaks in a name. A title strip has no room to
+// honor them, so here they are spaces. The model keeps the name as it is.
+const frameName=element=>(element.name || '').replace(/\s+/g,' ').trim();
+// A band grows this tall for its name, and no taller. Two lines hold about 200 characters then.
+const NAME_HEIGHT=600;
+
 /** A pool's or lane's name, wrapped to stay inside its own frame: along the
  * 30px title strip of a horizontal band, or across a black-box pool. */
 export function frameLabel(shape) {
-  const b=shape.bounds,e=shape.bpmnElement,name=e.name?.trim();
+  const b=shape.bounds,e=shape.bpmnElement,name=frameName(e);
   if(!name || !isBand(shape)) return null;
-  const blackBox=e.$type==='bpmn:Participant'&&!e.processRef;
-  const lines=wrapLines(name,nameRoom(blackBox?b.width:b.height));
+  const blackBox=e.$type==='bpmn:Participant'&&!e.processRef,room=nameRoom(blackBox?b.width:b.height);
+  let lines=wrapLines(name,room);
+  // The strip holds two lines. A name too long even for the tallest band ends in an ellipsis.
+  if(!blackBox && lines.length>2) {
+    let last=lines[1];
+    while(last && textWidth(last+'…')>room) last=last.slice(0,-1);
+    lines=[lines[0],last.trimEnd()+'…'];
+  }
   const along=Math.max(...lines.map(line=>textWidth(line))),across=lines.length*LINE_HEIGHT;
   const cx=blackBox?b.x+b.width/2:b.x+BAND/2,cy=b.y+b.height/2;
   return {lines,blackBox,cx,cy,box:blackBox?{x:cx-along/2,y:cy-across/2,width:along,height:across}:{x:cx-across/2,y:cy-along/2,width:across,height:along}};
 }
-// Two lines fill the title strip. A longer name makes its band taller.
+// Two lines fill the title strip. A longer name makes its band taller, up to NAME_HEIGHT.
 function labelHeight(shape) {
   const label=frameLabel(shape);
   if(!label) return 0;
   if(label.blackBox) return label.box.height+16;
   let height=shape.bounds.height;
-  while(wrapLines(shape.bpmnElement.name.trim(),nameRoom(height)).length>2) height+=4;
+  while(height<NAME_HEIGHT && wrapLines(frameName(shape.bpmnElement),nameRoom(height)).length>2) height+=4;
   return height;
 }
 
