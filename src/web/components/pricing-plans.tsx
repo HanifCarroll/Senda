@@ -8,12 +8,12 @@ type Plan = { name: string; price: string; detail: string; features: string[]; h
 const plans: Plan[] = [
   {
     name: "Free", price: "$0", detail: "No payment card needed",
-    features: ["Built-in agent on one project, with a $0.50 lifetime allowance", "Up to 3 cloud projects at a time", "Your own Claude or ChatGPT (beta)", "As-is and To-be models, source evidence, revision history, and BPMN download"],
+    features: ["Try the built-in agent on one project, with $0.50 of AI usage included", "Up to 3 saved projects at a time", "Connect your own Claude or ChatGPT (beta)", "As-is and To-be diagrams, evidence, revision history, and BPMN downloads"],
     href: "/app", action: "Start free",
   },
   {
     name: "Pro", price: "$29", detail: "USD per month · cancel any time",
-    features: ["Everything in Free", "Built-in agent on every project", "Up to 100 cloud projects at a time", "$6 monthly AI allowance, with usage shown", "No automatic overage charges"],
+    features: ["Everything in Free", "Built-in agent on every project", "Up to 100 saved projects at a time", "$6 of built-in agent usage each month, with usage shown", "No automatic overage charges"],
     href: "/app/billing", action: "Choose Pro",
   },
 ];

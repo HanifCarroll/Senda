@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Rebuild the homepage as one idea per section on a shared template: the comparison with asking an AI now comes before the product sections, the walkthrough is three sections with full-width captures, and marketing text is 16 px or larger. Product captures show the app's text at 12 px at 1440, 390 and 320 px wide, and at about 10.5 px or more at the widths in between.
+- Make the homepage copy clearer: one name for each thing ("the agent", "diagram", "passage"), a rewritten questions section, both ways to use an agent, revisions split from the To-be plan, plainer plan terms, and a new "What can I add?" question. The evidence capture now shows the interviewee's own words, the question capture drops the step buttons, and the example's first question gives its reason in plain words.
 
 ## 0.4.0
 

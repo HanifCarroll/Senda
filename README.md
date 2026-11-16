@@ -6,7 +6,7 @@ Senda turns interview transcripts into BPMN process diagrams people can agree on
 
 **[Try Senda](https://senda.hanifcarroll.com)** · **[See the example](https://senda.hanifcarroll.com/example)** · **[Documentation](#documentation)**
 
-<img src="public/marketing/evidence.svg" alt="A deposit invoice step selected in a client onboarding diagram, with the transcript passage that supports it." width="100%">
+<img src="public/marketing/evidence.svg" alt="The “Check required items” step selected in a client onboarding diagram, next to the interview passage it came from." width="100%">
 
 ## What it does
 

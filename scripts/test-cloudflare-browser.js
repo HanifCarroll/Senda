@@ -509,12 +509,12 @@ try {
   console.log('Actual BPMN/SVG files, independent saved revisions and signed-out mobile download return passed');
 
   const beforeDelete=await(await context.request.get(base+`/api/projects/${project.id}/read?model=to-be`)).json();
-  const faq=['What kind of diagram do I get?','Which agent should I use?','Is it free?','How much built-in AI is included?','Who can see my transcripts?','What counts as a project?'];
+  const faq=['What kind of diagram do I get?','What can I add?','Which agent should I use?','Is it free?','How much built-in AI is included?','Who can see my transcripts?','What counts as a project?'];
   for(const [width,height] of [[1440,1000],[390,844]]){
     await p.setViewportSize({width,height});await p.goto(base+'/#questions');
     await p.locator('#questions').getByRole('button',{name:faq[0],exact:true}).waitFor();
     assert.deepEqual((await p.locator('#questions').getByRole('button').allTextContents()).map(s=>s.trim()),faq);
-    await p.getByRole('button',{name:faq[5],exact:true}).click();
+    await p.getByRole('button',{name:faq.at(-1),exact:true}).click();
     await p.getByText('Delete one from its project menu to free a slot.',{exact:false}).waitFor();
     assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await p.screenshot({path:`${artifacts}/faq-${width}.png`,animations:'disabled'});
@@ -555,7 +555,7 @@ try {
     assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await p.screenshot({path:`${artifacts}/restored-project-${width}.png`,animations:'disabled'});
   }
-  console.log('Six-question FAQ, named delete/cancel/confirm, reload, freed slots, full restore, deleted downloads and exact restore passed at desktop and phone widths');
+  console.log('FAQ questions, named delete/cancel/confirm, reload, freed slots, full restore, deleted downloads and exact restore passed at desktop and phone widths');
 
   const activeForOrdering=await(await context.request.get(base+'/api/projects')).json();
   for(const spare of activeForOrdering.filter(x=>x.id!==project.id).slice(0,2))await post(`/api/projects/${spare.id}/delete`,{confirm:true});
