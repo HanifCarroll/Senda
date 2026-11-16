@@ -23,7 +23,7 @@ const nodes: {
   h: Point;
   m: Point;
 }[] = [
-  { kind: "start", h: [22, 120], m: [22, 24] },
+  { kind: "start", h: [22, 120], m: [14, 24] },
   { kind: "gateway", h: [78, 120], m: [80, 24] },
   { kind: "task", step: 1, icon: "send", lines: ["Issue deposit", "invoice"], h: [200, 120], m: [80, 109.5] },
   { kind: "task", step: 2, icon: "receive", lines: ["Receive", "deposit"], h: [348, 120], m: [80, 176.5] },
@@ -36,7 +36,7 @@ const nodes: {
 const task = { h: [132, 88], m: [216, 55] } as const;
 
 const edges: { h: Point[]; m: Point[]; step?: Step }[] = [
-  { h: [[35, 120], [58, 120]], m: [[35, 24], [60, 24]] },
+  { h: [[35, 120], [58, 120]], m: [[27, 24], [60, 24]] },
   { h: [[98, 120], [134, 120]], m: [[80, 44], [80, 82]] },
   { h: [[266, 120], [282, 120]], m: [[80, 137], [80, 149]] },
   { h: [[414, 120], [428, 120]], m: [[80, 204], [80, 216]] },
@@ -45,10 +45,11 @@ const edges: { h: Point[]; m: Point[]; step?: Step }[] = [
   { h: [[78, 100], [78, 46], [448, 46], [448, 100]], m: [[100, 24], [206, 24], [206, 236], [100, 236]] },
 ];
 
+// The compact labels sit clear of every connector in wider fonts than the system one, because CI runs on Linux.
 const labels: { text: string; step?: Step; h: Point; m: Point; mAnchor?: "end"; hLines?: string[]; mLines?: string[] }[] = [
-  { text: "No approved terms", h: [78, 196], m: [70, 56], mAnchor: "end", mLines: ["No approved", "terms"] },
-  { text: "Approved credit terms", h: [263, 30], m: [114, 46], mLines: ["Approved", "credit terms"] },
-  { text: "Finance cleared", h: [660, 188], m: [104, 342], hLines: ["Finance", "cleared"], mLines: ["Finance", "cleared"] },
+  { text: "No approved terms", h: [78, 196], m: [92, 51], mLines: ["No approved", "terms"] },
+  { text: "Approved credit terms", h: [263, 30], m: [198, 11], mAnchor: "end" },
+  { text: "Finance cleared", h: [660, 188], m: [104, 338], hLines: ["Finance", "cleared"], mLines: ["Finance", "cleared"] },
 ];
 
 function useActiveStep() {
@@ -116,7 +117,7 @@ function Diagram({ layout, active }: { layout: Layout; active: Step | null }) {
   const on = (step?: Step) => step !== undefined && step === active;
   return (
     <svg
-      viewBox={wide ? "-16 0 748 232" : "-30 0 240 374"}
+      viewBox={wide ? "-16 0 748 232" : "-30 -14 240 384"}
       className={cn("h-auto w-full", wide ? "hidden xl:block" : "mx-auto max-w-[240px] xl:hidden")}
       role="img"
       aria-label="Finance subprocess: check credit terms; without approved terms, issue the deposit invoice and receive the deposit; then record financial clearance."
