@@ -60,7 +60,9 @@ test('other pointer movement and non-primary presses do not pan, and cancellatio
   h.send('pointermove', { pointerId: 2, clientX: 140 });
   assert.equal(h.frames.length, 0);
   h.send('pointermove', { clientX: 140 });
+  assert.equal(h.camera.x, 0);
   h.send('pointercancel');
+  assert.deepEqual([h.camera.x, h.camera.y], [20, 30], 'a cancelled drag puts the camera back');
   h.send('click');
   assert.deepEqual(h.selection, []);
   h.send('pointerdown');

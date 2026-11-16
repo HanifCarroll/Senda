@@ -42,58 +42,69 @@ const open = async (route, width, height, deviceScaleFactor = 1) => {
   const page = await context.newPage();
   await page.goto(origin + route, { waitUntil: "networkidle" });
   await page.addStyleTag({ content: "*{animation:none!important;transition:none!important}" });
+  await hideOverlays(page);
   return page;
 };
+// The page's header and anything else fixed or sticky would be drawn across a capture, where it looks like
+// controls that do nothing. Runs in the page.
+const overlays = () => [...document.querySelectorAll("body *")].filter((node) => {
+  const style = getComputedStyle(node), box = node.getBoundingClientRect();
+  return ["fixed", "sticky"].includes(style.position) && style.visibility !== "hidden" && box.width > 0 && box.height > 0;
+});
+const hideOverlays = (page) => page.evaluate(`(${overlays})().forEach((node) => node.style.setProperty("visibility", "hidden", "important"))`);
+// Stop if the header, or anything else fixed or sticky, would show in a capture.
+const clear = async (page, name) => {
+  const shown = await page.evaluate(`(${overlays})().map((node) => node.tagName.toLowerCase() + ": " + node.textContent.trim().slice(0, 40))`);
+  const header = await page.locator(".marketing > header").isVisible();
+  if (header || shown.length) throw new Error(`${name} would show ${header ? "the page's header" : shown.join(", ")}`);
+};
 const vector = async (page, name, cropSelector, height) => {
+  await clear(page, name);
   const capture = await page.evaluate(`(${capturePreview})(${JSON.stringify({ cropSelector })})`);
   if (height) capture.crop.height = height;
   writeFileSync(path.join(out, `${name}-vector.json`), JSON.stringify(capture));
   check(name, capture.crop, await page.evaluate(`(${minText})(${JSON.stringify(capture.crop)})`));
 };
 
-const evidenceRoute = "/example?view=Intake&element=CheckPack";
-// Evidence: the workspace cropped to the diagram and its evidence panel, 1,008 px wide, which is the
-// width the page shows it at. The selected step's evidence is the interviewee's own words. 110% zoom
-// lifts the diagram's 11 px labels to 12 px. At that size the whole intake flow is wider than the stage,
-// and a narrower panel would push the passage out of view, so the frame holds the three steps the
-// passage describes, the decision between them and the end event, with no shape cut by an edge. The
-// start event and the merge before the check are off the left.
-{
-  const page = await open(evidenceRoute, 1056, 850);
-  await page.waitForSelector(".diagram-stage svg");
-  await page.getByRole("button", { name: "Show evidence" }).click();
-  const box = (selector) => page.locator(selector).first().boundingBox();
-  let stage = await box(".diagram-stage");
-  // Ctrl+wheel zooms by exp(-deltaY × 0.003), so -32 is 110%.
-  await page.mouse.move(stage.x + stage.width / 2, stage.y + stage.height / 2);
-  await page.keyboard.down("Control");
-  await page.mouse.wheel(0, -32);
-  await page.keyboard.up("Control");
-  await page.waitForTimeout(300);
-  // Drag the canvas until the selected step through the last step is centered in the stage.
-  stage = await box(".diagram-stage");
-  const shapes = await page.locator(".diagram-stage .diagram-element").evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().toJSON()));
-  const selected = await box(".diagram-stage .is-selected");
-  const right = Math.max(...shapes.map((r) => r.right)), top = Math.min(...shapes.map((r) => r.top)), bottom = Math.max(...shapes.map((r) => r.bottom));
-  const dx = stage.x + stage.width / 2 - (selected.x + right) / 2, dy = stage.y + stage.height / 2 - (top + bottom) / 2;
-  const from = [stage.x + stage.width / 2, stage.y + 12];
-  await page.mouse.move(...from);
-  await page.mouse.down();
-  await page.mouse.move(from[0] + dx, from[1] + dy, { steps: 8 });
-  await page.mouse.up();
-  await page.waitForTimeout(300);
-  // Stop if a step, gateway or event is cut by the stage's edge. Connectors and pools may run off it.
-  const cut = await page.evaluate(() => {
-    const stage = document.querySelector(".diagram-stage").getBoundingClientRect();
-    return [...document.querySelectorAll(".diagram-stage .diagram-element")].map((node) => [node.getAttribute("aria-label") ?? "", node.getBoundingClientRect()])
-      .filter(([label, r]) => !label.includes("→") && r.width < 200 && r.right > stage.left && r.left < stage.right && (r.left < stage.left + 8 || r.right > stage.right - 8))
-      .map(([label]) => label);
-  });
+// Evidence: the home page's own evidence section with its live example loaded, because these captures hold
+// the example's place until it loads. Each is taken at the size the page shows it at, so nothing moves when
+// the example replaces it. The example opens on the first draft's main view at 110%, which shows the
+// diagram's 11 px labels at 12 px, with "Check handover pack" selected.
+const demoSelector = '[data-capture="evidence"]';
+const openDemo = async (width, height, deviceScaleFactor) => {
+  const page = await open("/", width, height, deviceScaleFactor);
+  await page.locator(demoSelector).scrollIntoViewIfNeeded();
+  await page.waitForSelector(`${demoSelector} .diagram-stage svg`);
+  // The page holds the example to the old capture's height until the width changes, so change it and
+  // change it back to capture the example at its own height.
+  await page.setViewportSize({ width: width + 1, height });
+  await page.waitForFunction((selector) => !document.querySelector(selector + " [data-held]"), demoSelector);
+  await page.setViewportSize({ width, height });
+  await page.waitForTimeout(500);
+  if ((await page.locator(`${demoSelector} [data-slot="card-title"]`).innerText()) !== "Check handover pack") throw new Error("The home page example doesn't open on Check handover pack");
+  // Stop if the selected step is cut by the stage's edge, or, on desktop, any step is.
+  const cut = await page.evaluate((selector) => {
+    const stage = document.querySelector(selector + " .diagram-stage").getBoundingClientRect();
+    return [...document.querySelectorAll(selector + " .diagram-element")]
+      .filter((node) => innerWidth >= 1024 ? node.querySelector(":scope > rect[rx], :scope > circle") : node.matches(".is-selected"))
+      .filter((node) => { const r = node.getBoundingClientRect(); return r.left < stage.left + 4 || r.right > stage.right - 4 || r.top < stage.top + 4 || r.bottom > stage.bottom - 4; })
+      .map((node) => node.getAttribute("aria-label"));
+  }, demoSelector);
   if (cut.length) throw new Error("The evidence capture cuts " + cut.join(", "));
-  // The interviewee's own words must be readable in the panel without scrolling.
-  const workspace = await box(".diagram-workspace"), passage = await page.getByText("I check that pack before handing work").boundingBox();
-  if (!passage || passage.y + passage.height > workspace.y + workspace.height) throw new Error("The evidence capture doesn't show the interview passage");
-  await vector(page, "evidence", ".diagram-workspace");
+  return page;
+};
+{
+  const page = await openDemo(1440, 1100);
+  // Keep only the example and its ancestors, so the image doesn't carry the rest of the home page.
+  await page.evaluate((selector) => {
+    for (let node = document.querySelector(selector); node !== document.body; node = node.parentElement)
+      for (const sibling of [...node.parentElement.children]) if (sibling !== node && sibling.tagName !== "SCRIPT") sibling.remove();
+    scrollTo(0, 0);
+  }, demoSelector);
+  await page.waitForTimeout(300);
+  const panel = await page.locator(`${demoSelector} .evidence-card`).boundingBox(), passage = await page.getByText("I check that pack before handing work").boundingBox();
+  if (!passage || passage.y + passage.height > panel.y + panel.height) throw new Error("The evidence capture doesn't show the interview passage");
+  await vector(page, "evidence", demoSelector + " > div");
   await page.context().close();
 }
 // Question: the first open question of the first draft, 720 px wide. The crop ends 16 px under the
@@ -110,29 +121,22 @@ const questionCrop = async (page) => {
   await vector(page, "clarification", questionItem, (await questionCrop(page)).height);
   await page.context().close();
 }
-// The same question and the Step evidence sheet as PNGs at device scale 2, at the widths a 390 px and
+// The same question and the home page's example as PNGs at device scale 2, at the widths a 390 px and
 // a 320 px phone show them.
-for (const [suffix, question, sheet] of [["", 390, 350], ["-small", 320, 280]]) {
+for (const [suffix, question] of [["", 390], ["-small", 320]]) {
   let page = await open("/example?draft=true&section=questions", question, 844, 2);
   await page.locator(questionItem).first().waitFor();
   let box = await questionCrop(page);
+  await clear(page, "clarification-mobile" + suffix);
   await page.screenshot({ path: path.join(out, `clarification-mobile${suffix}.png`), clip: box });
   check("clarification-mobile" + suffix, box, await page.evaluate(`(${minText})(${JSON.stringify(box)})`));
   await page.context().close();
 
-  page = await open(evidenceRoute, sheet, 760, 2);
-  await page.getByRole("button", { name: "View evidence" }).first().click();
-  const dialog = page.getByRole("dialog");
-  await dialog.waitFor();
-  await page.waitForTimeout(500);
-  // Scroll the sheet to its source passages, so the interviewee's own words are in the picture.
-  await dialog.getByRole("heading", { name: "Source passages" }).evaluate((heading) => heading.scrollIntoView({ block: "start" }));
-  await page.waitForTimeout(200);
-  box = await dialog.boundingBox();
-  const words = await dialog.getByText("I check that pack before handing work").boundingBox();
-  if (!words || words.y + words.height > box.y + box.height) throw new Error(`evidence-mobile${suffix} doesn't show the interview passage`);
-  await dialog.screenshot({ path: path.join(out, `evidence-mobile${suffix}.png`) });
-  check("evidence-mobile" + suffix, box, await page.evaluate(`(${minText})(${JSON.stringify(box)}, "[role=dialog]")`));
+  page = await openDemo(question, 844, 2);
+  box = await page.locator(demoSelector).boundingBox();
+  await clear(page, "evidence-mobile" + suffix);
+  await page.locator(demoSelector).screenshot({ path: path.join(out, `evidence-mobile${suffix}.png`) });
+  check("evidence-mobile" + suffix, box, await page.evaluate(`(${minText})(${JSON.stringify(box)}, ${JSON.stringify(demoSelector)})`));
   await page.context().close();
 }
 await browser.close();
