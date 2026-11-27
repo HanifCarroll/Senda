@@ -7,6 +7,7 @@ This repo is public, so never commit secrets, real interviews, or customer data.
 
 ## Layout
 
+Use [GLOSSARY.md](GLOSSARY.md) when naming Senda concepts in plans, tickets, code, or user-facing copy.
 `CONTRIBUTING.md` explains what belongs in each folder and the checks to run after a change.
 `docs/cloudflare.md` covers production, and `skills/senda/SKILL.md` is the method the app and skill share.
 
