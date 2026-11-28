@@ -11,6 +11,8 @@ Use [GLOSSARY.md](GLOSSARY.md) when naming Senda concepts in plans, tickets, cod
 `CONTRIBUTING.md` explains what belongs in each folder and the checks to run after a change.
 `docs/cloudflare.md` covers production, and `skills/senda/SKILL.md` is the method the app and skill share.
 
+**Atlas.** This app's screens are mapped in `atlas/atlas.json` and captured by `atlas/capture.sh` (contract: the Atlas repo's `docs/app-contract.md`). A change that adds, removes, or visibly changes a screen or state updates `atlas/atlas.json` (the state, its `sources`, and its flow steps) and the capture code in the same PR, and keeps the atlas test passing. Visual proof can link to the state's Atlas page, `https://atlas.hanifcarroll.com/#/senda/states/<state-id>`. Never commit screenshots or capture metadata; the nightly job publishes them.
+
 ## Install, run, and test
 
 Develop on the VPS. `mise.toml` pins Node 24.18.0 and uv, so run `mise install` once.

@@ -43,6 +43,7 @@
     "test:workflow": "node scripts/test-complex-workflow.js",
     "test:cloudflare": "node scripts/test-cloudflare-workflow.js",
     "test:cloudflare:browser": "node scripts/test-cloudflare-browser.js",
+    "atlas:capture": "bash atlas/capture.sh",
     "check": "node scripts/check-project.js",
     "demo": "node scripts/demo.js",
     "start": "node bin/senda.js",
