@@ -12,6 +12,12 @@ No generated reports, dependencies or benchmark environments belong in the repos
 
 Production runs on Cloudflare Workers, D1 and private R2. See [deployment and runtime checks](docs/cloudflare.md). The Node server is for local development and review exports. Shared HTTP/account operations live in `src/server/`; model-level reads and writes belong in `src/server/project-models.js`, with authorization and persistence in the Node and Cloudflare adapters. Keep the CLI and offline bundle functional when changing the hosted app.
 
+## Atlas captures
+
+From the commit you want to capture, run `npm run atlas:capture -- --out /tmp/senda-atlas` on the Pro. Add `--only home,sign-in` to capture a subset. Use an empty output directory. The script builds an isolated copy of `HEAD`, uses fresh local D1 and R2, and does not read private files or use `ATLAS_ENV_DIR`. It uses Chrome on macOS by default. Elsewhere, install Playwright Chromium or set `SENDA_TEST_BROWSER` to a Chrome executable.
+
+Check `result.json` for captured and failed IDs. Exit code `2` means at least one state failed. The normal unit suite checks the manifest against the browser checkpoints without starting a browser or Worker. Do not commit the capture output.
+
 ## What belongs where
 
 | Folder | Purpose |
@@ -20,6 +26,7 @@ Production runs on Cloudflare Workers, D1 and private R2. See [deployment and ru
 | `src/web/` | TanStack Start pages and shadcn components |
 | `src/server/`, `src/cloudflare/` | Shared account/API behavior, local server and production storage/runtime adapters |
 | `test/`, `examples/` | Regression tests and reusable transcript/model fixtures |
+| `atlas/`, `tests/atlas/` | Atlas state and flow manifest, capture entry point, and browser checkpoints |
 | `skills/`, `docs/` | Agent methodology and developer/operational documentation |
 | `branding/`, `public/` | Canonical logo artwork and assets served to browsers |
 | `scripts/`, `.github/` | Build, preview and verification entry points |
